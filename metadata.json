@@ -1,0 +1,6 @@
+{
+  "name": "Album Kenangan XII PPLG 1 — MAKN Ende",
+  "description": "Album digital 3D hangat dan penuh nostalgia untuk Kelas XII PPLG 1 (Pengembangan Perangkat Lunak dan Gim), Madrasah Aliyah Kejuruan Negeri Ende.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

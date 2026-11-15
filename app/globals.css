@@ -1,0 +1,259 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Palet Sore / Album Kertas Tua (Light Mode) */
+  --color-background: #f6efe2;
+  --color-foreground: #2b2118;
+  --color-card: #fbf6ec;
+  --color-card-foreground: #2b2118;
+  --color-muted: #ebe0cd;
+  --color-muted-foreground: #6e5a47;
+  --color-border: #d8c7ae;
+  --color-ring: #b85d35;
+
+  /* Aksen Danau Kelimutu & Madrasah Ende */
+  --color-chart-1: #2d6a6e; /* Teal Kawah Tiwu Ata Mbupu */
+  --color-chart-2: #3b593f; /* Hijau Madrasah / Tiwu Nuwa Muri Koo Fai */
+  --color-chart-3: #a84232; /* Merah Bata Tiwu Ata Polo */
+  --color-chart-4: #c86d3b; /* Oranye Senja Ende */
+  --color-chart-5: #85684a; /* Sepia Tenun Ikat */
+
+  --color-accent-warm: #c86d3b;
+  --color-accent-green: #3b593f;
+  --color-paper-shadow: rgba(43, 33, 24, 0.12);
+}
+
+.dark {
+  /* Palet Malam / Lampu Meja Kuning Hangat (Dark Mode) */
+  --color-background: #1c1510;
+  --color-foreground: #f2e6d5;
+  --color-card: #261d16;
+  --color-card-foreground: #f2e6d5;
+  --color-muted: #33271e;
+  --color-muted-foreground: #b8a38c;
+  --color-border: #463629;
+  --color-ring: #e09f4c;
+
+  /* Aksen Danau Kelimutu versi Malam Hangat */
+  --color-chart-1: #4da1a7;
+  --color-chart-2: #5b8761;
+  --color-chart-3: #d46552;
+  --color-chart-4: #e09f4c;
+  --color-chart-5: #b08d6a;
+
+  --color-accent-warm: #e09f4c;
+  --color-accent-green: #5b8761;
+  --color-paper-shadow: rgba(0, 0, 0, 0.45);
+}
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-border: var(--color-border);
+  --color-ring: var(--color-ring);
+  --color-chart-1: var(--color-chart-1);
+  --color-chart-2: var(--color-chart-2);
+  --color-chart-3: var(--color-chart-3);
+  --color-chart-4: var(--color-chart-4);
+  --color-chart-5: var(--color-chart-5);
+
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), cursive;
+}
+
+html {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Ornamen tipis pola tenun ikat Ende sebagai pembatas */
+.ikat-divider {
+  height: 6px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-chart-3) 0px,
+    var(--color-chart-3) 8px,
+    transparent 8px,
+    transparent 12px,
+    var(--color-chart-4) 12px,
+    var(--color-chart-4) 24px,
+    transparent 24px,
+    transparent 28px,
+    var(--color-chart-1) 28px,
+    var(--color-chart-1) 36px,
+    transparent 36px,
+    transparent 44px
+  );
+  opacity: 0.55;
+}
+
+/* Tepi foto dengan garis cetak tua & bayangan kertas lembut */
+.vintage-photo-frame {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 8px 24px -6px var(--color-paper-shadow),
+    inset 0 0 0 4px var(--color-card),
+    inset 0 0 0 5px color-mix(in oklab, var(--color-border) 60%, transparent);
+}
+
+/* ============================================================================
+   PERBESAR UKURAN ID CARD DI DESKTOP (TANPA CSS ZOOM AGAR KOORDINAT KLIK 1:1)
+   & 16 VARIASI WARNA + EDISI EMAS MAHKOTA BUNGA SAHABAT ISTIMEWA (.text-chart-5)
+   ============================================================================ */
+@media (min-width: 768px) {
+  [data-slot="team-lanyard-rail"] [data-stage] {
+    margin-bottom: 18px;
+  }
+  [data-slot="team-lanyard-rail"] button[data-badge] {
+    scale: 1.15;
+    transform-origin: 50% 0%;
+  }
+}
+
+/* 16 Variasi Warna Lanyard & Pita Header ID Card untuk kartu reguler (:not(.text-chart-5)) */
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 1),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 1) [data-face] > span:first-child { color: #2563eb !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 2),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 2) [data-face] > span:first-child { color: #059669 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 3),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 3) [data-face] > span:first-child { color: #dc2626 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 4),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 4) [data-face] > span:first-child { color: #d97706 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 5),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 5) [data-face] > span:first-child { color: #7c3aed !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 6),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 6) [data-face] > span:first-child { color: #0891b2 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 7),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 7) [data-face] > span:first-child { color: #db2777 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 8),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 8) [data-face] > span:first-child { color: #4f46e5 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 9),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 9) [data-face] > span:first-child { color: #65a30d !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 10),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 10) [data-face] > span:first-child { color: #ea580c !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 11),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 11) [data-face] > span:first-child { color: #0d9488 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 12),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 12) [data-face] > span:first-child { color: #9333ea !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 13),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 13) [data-face] > span:first-child { color: #be123c !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 14),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 14) [data-face] > span:first-child { color: #0284c7 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 15),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 15) [data-face] > span:first-child { color: #b45309 !important; }
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 16),
+[data-slot="team-lanyard-rail"] [data-lanyard]:not(.text-chart-5):nth-of-type(16n + 16) [data-face] > span:first-child { color: #15803d !important; }
+
+/* ============================================================================
+   ID CARD KHUSUS KEDUA SAHABAT (.text-chart-5):
+   Tali Lanyard Keduanya Emas, Bingkai & Glow Emas, Mahkota + Rantai Bunga di Atas Avatar,
+   Pill Badge "✦ SAHABAT ISTIMEWA SELAMANYA", dan Busur Bunga di Atas Barcode (Sesuai Gambar Referensi)
+   ============================================================================ */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 {
+  color: #d4a024 !important;
+}
+
+/* Pita Header Diagonal Taupe-Emas */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face] > span:first-child {
+  color: #8c7a65 !important;
+}
+
+/* Badan Kartu Gelap Hangat dengan Garis Tepi Emas Berkilau */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face] {
+  background-color: #241b14 !important;
+  color: #fbf6ec !important;
+  border: 2px solid #eab308 !important;
+  box-shadow:
+    0 0 18px rgba(234, 179, 8, 0.38),
+    inset 0 0 14px rgba(234, 179, 8, 0.1) !important;
+}
+
+/* Lingkaran Avatar dengan Cincin Gelap & Mahkota Emas + Untai Bunga Pink-Emas di Atasnya */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(3) {
+  background-color: #2b2118 !important;
+  box-shadow: 0 0 0 2px #3d2f22, 0 4px 12px rgba(0, 0, 0, 0.55) !important;
+  overflow: visible !important;
+}
+
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(3)::before {
+  content: "";
+  position: absolute;
+  top: -1.12em;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8.2em;
+  height: 2.3em;
+  z-index: 30;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 52'%3E%3Cdefs%3E%3ClinearGradient id='crG' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23fde047'/%3E%3Cstop offset='100%25' stop-color='%23d97706'/%3E%3C/linearGradient%3E%3CradialGradient id='flw' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0%25' stop-color='%23fde047'/%3E%3Cstop offset='45%25' stop-color='%23fb7185'/%3E%3Cstop offset='100%25' stop-color='%23f43f5e' stop-opacity='0.15'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M12 22 Q42 42 72 30' fill='none' stroke='%23eab308' stroke-width='1.8' stroke-dasharray='2.5 2'/%3E%3Cpath d='M168 22 Q138 42 108 30' fill='none' stroke='%23eab308' stroke-width='1.8' stroke-dasharray='2.5 2'/%3E%3Ccircle cx='30' cy='25' r='8' fill='url(%23flw)'/%3E%3Ccircle cx='30' cy='25' r='3' fill='%23fef08a'/%3E%3Ccircle cx='54' cy='33' r='6.5' fill='url(%23flw)'/%3E%3Ccircle cx='54' cy='33' r='2.4' fill='%23fef08a'/%3E%3Ccircle cx='126' cy='33' r='6.5' fill='url(%23flw)'/%3E%3Ccircle cx='126' cy='33' r='2.4' fill='%23fef08a'/%3E%3Ccircle cx='150' cy='25' r='8' fill='url(%23flw)'/%3E%3Ccircle cx='150' cy='25' r='3' fill='%23fef08a'/%3E%3Cpath d='M71 39 L68 18 L80 28 L90 12 L100 28 L112 18 L109 39 Z' fill='url(%23crG)' stroke='%2378350f' stroke-width='1.8' stroke-linejoin='round'/%3E%3Crect x='70' y='38' width='40' height='5.5' rx='2' fill='%23b45309' stroke='%2378350f' stroke-width='1.4'/%3E%3Ccircle cx='90' cy='31' r='2.8' fill='%23f43f5e'/%3E%3Ccircle cx='79' cy='32' r='2.1' fill='%232dd4bf'/%3E%3Ccircle cx='101' cy='32' r='2.1' fill='%232dd4bf'/%3E%3Ccircle cx='90' cy='10' r='2.5' fill='%23fef08a'/%3E%3C/svg%3E");
+}
+
+/* Subtitle "Sahabat yang pernah di sini" */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(5) {
+  color: #b8a692 !important;
+}
+
+/* Pill Badge Emas "✦ SAHABAT ISTIMEWA SELAMANYA" */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(6) {
+  background: rgba(180, 118, 18, 0.32) !important;
+  border: 1px solid rgba(234, 179, 8, 0.45) !important;
+  color: #fbbf24 !important;
+  border-radius: 9999px !important;
+  padding: 0.24em 0.65em !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* Busur Rantai Bunga Emas-Pink di Atas Barcode */
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(7) {
+  position: relative !important;
+  border-top-color: rgba(234, 179, 8, 0.28) !important;
+}
+
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(7)::before {
+  content: "";
+  position: absolute;
+  top: -0.45em;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7.4em;
+  height: 1.1em;
+  z-index: 25;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 24'%3E%3Cdefs%3E%3CradialGradient id='bf' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0%25' stop-color='%23fef08a'/%3E%3Cstop offset='50%25' stop-color='%23fb7185'/%3E%3Cstop offset='100%25' stop-color='%23f43f5e' stop-opacity='0.1'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M12 18 Q75 3 138 18' fill='none' stroke='%23d97706' stroke-width='1.5'/%3E%3Ccircle cx='28' cy='15' r='5.5' fill='url(%23bf)'/%3E%3Ccircle cx='75' cy='10' r='6.5' fill='url(%23bf)'/%3E%3Ccircle cx='122' cy='15' r='5.5' fill='url(%23bf)'/%3E%3C/svg%3E");
+}
+
+[data-slot="team-lanyard-rail"] [data-lanyard].text-chart-5 [data-face="front"] > span:nth-child(7) svg {
+  color: #e5dac9 !important;
+}
+
+
