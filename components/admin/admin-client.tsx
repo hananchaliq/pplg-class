@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import { DbConnectionGuard } from "@/components/layout/db-connection-guard";
 import { notifyPublicDataUpdated } from "@/lib/use-public-data";
 import type {
   ContentStatus,
@@ -26,6 +27,7 @@ import type {
   DreamRow,
   MemoryEntryRow,
   MomentRow,
+  PollWithOptions,
   StudentRow,
   TeacherRow,
   ThanksRow,
@@ -53,10 +55,14 @@ interface AdminDashboardData {
   timeCapsules: RawTimeCapsuleAdmin[];
   thanksList: ThanksRow[];
   works: WorkRow[];
+  polls?: PollWithOptions[];
   settings: {
     graduation_date: string;
   };
   supabaseConnected: boolean;
+  dbConnected?: boolean;
+  missingTables?: boolean;
+  dbError?: string | null;
 }
 
 interface QueueRow {
@@ -70,10 +76,41 @@ interface QueueRow {
   createdAt?: string;
 }
 
+const ADMIN_TOKEN_STORAGE_KEY = "xii_pplg1_admin_token";
+
+function readStoredAdminToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return (
+      window.sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ||
+      window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ||
+      ""
+    );
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredAdminToken(token: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) {
+      window.sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+      window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+    } else {
+      window.sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage restriction errors in sandboxed iframes
+  }
+}
+
 export function AdminClient() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [sessionToken, setSessionToken] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
@@ -106,31 +143,65 @@ export function AdminClient() {
   const [editingTeacher, setEditingTeacher] = useState<Partial<TeacherRow> | null>(
     null
   );
-  // Form state for graduation date
+  // Form state for graduation date & polls
   const [gradDateInput, setGradDateInput] = useState("");
+  const [pollQuestionInput, setPollQuestionInput] = useState("");
+  const [pollOptionsInput, setPollOptionsInput] = useState("");
 
-  const fetchDashboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin", { cache: "no-store" });
-      const json = await res.json();
-      if (json.ok && json.authenticated && json.data) {
-        setAuthenticated(true);
-        setData(json.data);
-        setGradDateInput(
-          json.data.settings?.graduation_date?.slice(0, 16) ||
-            "2026-05-15T08:00"
-        );
-      } else {
+  const getActiveToken = useCallback(
+    (overrideToken?: string) =>
+      overrideToken || sessionToken || readStoredAdminToken(),
+    [sessionToken]
+  );
+
+  const adminPost = useCallback(
+    async (payload: Record<string, unknown>, overrideToken?: string) => {
+      const token = getActiveToken(overrideToken);
+      return fetch("/api/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-admin-session": token } : {}),
+        },
+        body: JSON.stringify({
+          ...payload,
+          ...(token ? { sessionToken: token } : {}),
+        }),
+      });
+    },
+    [getActiveToken]
+  );
+
+  const fetchDashboard = useCallback(
+    async (overrideToken?: string) => {
+      setLoading(true);
+      try {
+        const token = overrideToken || readStoredAdminToken();
+        if (token) setSessionToken(token);
+        const res = await fetch("/api/admin", {
+          cache: "no-store",
+          headers: token ? { "x-admin-session": token } : undefined,
+        });
+        const json = await res.json();
+        if (json.ok && json.authenticated && json.data) {
+          setAuthenticated(true);
+          setData(json.data);
+          setGradDateInput(
+            json.data.settings?.graduation_date?.slice(0, 16) ||
+              "2026-05-15T08:00"
+          );
+        } else {
+          setAuthenticated(false);
+          setData(null);
+        }
+      } catch {
         setAuthenticated(false);
-        setData(null);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     void fetchDashboard();
@@ -152,20 +223,32 @@ export function AdminClient() {
         );
         return;
       }
-      setAuthenticated(true);
+      const token = String(json.token || "authenticated_admin_xiipplg1");
+      setSessionToken(token);
+      writeStoredAdminToken(token);
       setPassword("");
-      await fetchDashboard();
+
+      if (json.data) {
+        setData(json.data);
+        setGradDateInput(
+          json.data.settings?.graduation_date?.slice(0, 16) ||
+            "2026-05-15T08:00"
+        );
+        setAuthenticated(true);
+        setLoading(false);
+      } else {
+        setAuthenticated(true);
+        await fetchDashboard(token);
+      }
     } catch {
       setAuthError("Gagal menghubungi server autentikasi.");
     }
   };
 
   const handleLogout = async () => {
-    await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "logout" }),
-    });
+    await adminPost({ action: "logout" });
+    setSessionToken("");
+    writeStoredAdminToken("");
     setAuthenticated(false);
     setData(null);
   };
@@ -298,16 +381,12 @@ export function AdminClient() {
     updatedText?: string
   ) => {
     try {
-      const res = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "moderate",
-          table,
-          id,
-          status,
-          updatedText,
-        }),
+      const res = await adminPost({
+        action: "moderate",
+        table,
+        id,
+        status,
+        updatedText,
       });
       const json = await res.json();
       if (json.ok && json.data) {
@@ -330,16 +409,12 @@ export function AdminClient() {
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "upsert_student",
-        student: {
-          ...editingStudent,
-          tags: parsedTags.length > 0 ? parsedTags : ["PPLG", "MAKNEnde"],
-        },
-      }),
+    const res = await adminPost({
+      action: "upsert_student",
+      student: {
+        ...editingStudent,
+        tags: parsedTags.length > 0 ? parsedTags : ["PPLG", "MAKNEnde"],
+      },
     });
     const json = await res.json();
     if (json.ok && json.data) {
@@ -351,13 +426,9 @@ export function AdminClient() {
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "delete_student",
-        id,
-      }),
+    const res = await adminPost({
+      action: "delete_student",
+      id,
     });
     const json = await res.json();
     if (json.ok && json.data) {
@@ -371,13 +442,9 @@ export function AdminClient() {
   const handleSaveTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeacher?.full_name || !editingTeacher?.title) return;
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "upsert_teacher",
-        teacher: editingTeacher,
-      }),
+    const res = await adminPost({
+      action: "upsert_teacher",
+      teacher: editingTeacher,
     });
     const json = await res.json();
     if (json.ok && json.data) {
@@ -389,13 +456,9 @@ export function AdminClient() {
   };
 
   const handleDeleteTeacher = async (id: string, name: string) => {
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "delete_teacher",
-        id,
-      }),
+    const res = await adminPost({
+      action: "delete_teacher",
+      id,
     });
     const json = await res.json();
     if (json.ok && json.data) {
@@ -410,19 +473,72 @@ export function AdminClient() {
     e.preventDefault();
     if (!gradDateInput) return;
     const iso = new Date(gradDateInput).toISOString();
-    const res = await fetch("/api/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "settings",
-        graduationDate: iso,
-      }),
+    const res = await adminPost({
+      action: "settings",
+      graduationDate: iso,
     });
     const json = await res.json();
     if (json.ok && json.data) {
       setData(json.data);
       notifyPublicDataUpdated();
       setFeedback("Tanggal kelulusan berhasil diperbarui & disinkronkan ke Beranda.");
+    }
+  };
+
+  const handleDeleteModeratedItem = async (
+    table: ModeratableTable,
+    id: string
+  ) => {
+    const res = await adminPost({
+      action: "delete_moderated_item",
+      table,
+      id,
+    });
+    const json = await res.json();
+    if (json.ok && json.data) {
+      setData(json.data);
+      notifyPublicDataUpdated();
+      setFeedback("Item berhasil dihapus permanen dari database Supabase.");
+    }
+  };
+
+  const handleCreatePoll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const opts = pollOptionsInput
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!pollQuestionInput.trim() || opts.length < 2) {
+      setFeedback("Pertanyaan polling dan minimal 2 baris pilihan wajib diisi.");
+      return;
+    }
+    const res = await adminPost({
+      action: "create_poll",
+      question: pollQuestionInput,
+      options: opts,
+    });
+    const json = await res.json();
+    if (json.ok && json.data) {
+      setData(json.data);
+      setPollQuestionInput("");
+      setPollOptionsInput("");
+      notifyPublicDataUpdated();
+      setFeedback("Polling baru berhasil disimpan ke database Supabase.");
+    } else {
+      setFeedback(json.error || "Gagal membuat polling.");
+    }
+  };
+
+  const handleDeletePoll = async (id: string) => {
+    const res = await adminPost({
+      action: "delete_poll",
+      id,
+    });
+    const json = await res.json();
+    if (json.ok && json.data) {
+      setData(json.data);
+      notifyPublicDataUpdated();
+      setFeedback("Polling berhasil dihapus dari database Supabase.");
     }
   };
 
@@ -534,11 +650,11 @@ export function AdminClient() {
 
         <div className="flex items-center gap-3">
           <span className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            Penyimpanan:{" "}
+            Database:{" "}
             <strong className="text-foreground">
-              {data.supabaseConnected
+              {data.dbConnected ?? data.supabaseConnected
                 ? "Supabase PostgreSQL Aktif"
-                : "Penyimpanan Persisten Server"}
+                : "Belum Terkoneksi / Tabel Belum Siap"}
             </strong>
           </span>
           <button
@@ -551,6 +667,18 @@ export function AdminClient() {
           </button>
         </div>
       </div>
+
+      {data.dbConnected === false && (
+        <div className="mb-8">
+          <DbConnectionGuard
+            dbConnected={false}
+            missingTables={data.missingTables}
+            dbError={data.dbError}
+          >
+            {null}
+          </DbConnectionGuard>
+        </div>
+      )}
 
       {feedback && (
         <div
@@ -767,6 +895,16 @@ export function AdminClient() {
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           Tolak
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteModeratedItem(item.table, item.id)
+                          }
+                          title="Hapus permanen dari database"
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1240,43 +1378,122 @@ export function AdminClient() {
         </div>
       )}
 
-      {/* TAB 4: PENGATURAN SITUS */}
+      {/* TAB 4: PENGATURAN SITUS & POLLING KELAS */}
       {activeTab === "pengaturan" && (
-        <div className="max-w-xl rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2.5">
-            <Clock className="h-5 w-5 text-[var(--color-chart-2)]" />
-            <h2 className="font-serif text-xl font-bold text-foreground">
-              Pengaturan Hitung Mundur Kelulusan
-            </h2>
-          </div>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Jika waktu kelulusan di masa depan, Beranda menampilkan hitung
-            mundur. Jika sudah terlampaui, Beranda otomatis beralih ke mode{" "}
-            <strong>&ldquo;Waktu sejak kita lulus&rdquo;</strong>.
-          </p>
-          <form onSubmit={handleSaveSettings} className="space-y-4">
-            <div>
-              <label
-                htmlFor="graduation-date-input"
-                className="mb-1 block text-xs font-semibold text-foreground"
-              >
-                Tanggal & Waktu Kelulusan (WITA)
-              </label>
-              <input
-                id="graduation-date-input"
-                type="datetime-local"
-                value={gradDateInput}
-                onChange={(e) => setGradDateInput(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-              />
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-5 h-fit">
+            <div className="mb-4 flex items-center gap-2.5">
+              <Clock className="h-5 w-5 text-[var(--color-chart-2)]" />
+              <h2 className="font-serif text-xl font-bold text-foreground">
+                Pengaturan Hitung Mundur Kelulusan
+              </h2>
             </div>
-            <button
-              type="submit"
-              className="rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background hover:opacity-90"
-            >
-              Simpan Pengaturan Tanggal
-            </button>
-          </form>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Jika waktu kelulusan di masa depan, Beranda menampilkan hitung
+              mundur. Jika sudah terlampaui, Beranda otomatis beralih ke mode{" "}
+              <strong>&ldquo;Waktu sejak kita lulus&rdquo;</strong>.
+            </p>
+            <form onSubmit={handleSaveSettings} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="graduation-date-input"
+                  className="mb-1 block text-xs font-semibold text-foreground"
+                >
+                  Tanggal & Waktu Kelulusan (WITA)
+                </label>
+                <input
+                  id="graduation-date-input"
+                  type="datetime-local"
+                  value={gradDateInput}
+                  onChange={(e) => setGradDateInput(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </div>
+              <button
+                type="submit"
+                className="rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background hover:opacity-90"
+              >
+                Simpan Pengaturan Tanggal
+              </button>
+            </form>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-7">
+            <h2 className="font-serif text-xl font-bold text-foreground">
+              Kelola Polling Kelas (/main)
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tambahkan atau hapus polling kelas di database Supabase.
+            </p>
+
+            <form onSubmit={handleCreatePoll} className="mt-4 space-y-3 border-b border-border pb-6">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-foreground">
+                  Pertanyaan Polling Baru
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={pollQuestionInput}
+                  onChange={(e) => setPollQuestionInput(e.target.value)}
+                  placeholder="Mis. Momen paling tak terlupakan di XII PPLG 1?"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-foreground">
+                  Daftar Pilihan Jawaban (1 baris = 1 pilihan, minimal 2 baris)
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={pollOptionsInput}
+                  onChange={(e) => setPollOptionsInput(e.target.value)}
+                  placeholder={"Begadang ngerjain projek akhir\nPraktik Kerja Lapangan (PKL)\nMakan bareng di kantin madrasah"}
+                  className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Polling ke Database</span>
+              </button>
+            </form>
+
+            <div className="mt-5 space-y-3">
+              {(data.polls ?? []).length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">
+                  Belum ada polling di database Supabase (0 data).
+                </p>
+              ) : (
+                (data.polls ?? []).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-4"
+                  >
+                    <div>
+                      <p className="font-serif text-sm font-bold text-foreground">
+                        {p.question}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {p.options.map((o) => `${o.label} (${o.votes})`).join(" · ")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePoll(p.id)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

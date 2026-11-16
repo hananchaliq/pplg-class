@@ -20,6 +20,7 @@ export const DREAM_PAPER_PALETTE: DreamPaperPaletteItem[] = [
 
 export interface StudentRecord {
   id: string;
+  dream_id?: string;
   roll_no: number;
   name: string;
   nickname?: string;
@@ -34,59 +35,47 @@ export interface StudentRecord {
   capsule_message?: string;
 }
 
-const SPECIFIC_PLANS: string[] = [
-  "Membangun fondasi arsitektur sistem terdistribusi, mengambil sertifikasi cloud, dan berkontribusi pada proyek open-source pendidikan di Nusa Tenggara Timur.",
-  "Mendalami rekayasa antarmuka interaktif berbasis WebGL & 3D, menyusun portofolio aplikasi kreatif, dan berkolaborasi dengan studio teknologi nasional.",
-  "Mengembangkan gim edukasi bertema budaya lokal Flores & tenun ikat, lalu mempublikasikannya agar dikenal oleh generasi muda.",
-  "Memperkuat kompetensi keamanan siber, basis data skala besar, dan arsitektur finansial yang aman serta bermanfaat bagi masyarakat luas.",
-  "Merancang aplikasi mobile lintas platform yang ringan untuk membantu layanan kesehatan dan logistik masyarakat kepulauan.",
-  "Menjadi pendidik teknologi dan mentor koding yang inklusif bagi adik-adik madrasah serta komunitas pemuda di Ende.",
-];
-
+/**
+ * Memetakan murni dari baris tabel `dreams` di database Supabase (tanpa data statis JS).
+ * Jika tabel `dreams` di database kosong (0 baris), kembalikan array kosong `[]`.
+ */
 export function mapToExtendedStudentRecords(
   students: StudentRow[],
   dreams: DreamRow[]
 ): StudentRecord[] {
-  const activeStudents = students.filter((s) => s.is_active);
-  const sourceList = activeStudents.length > 0 ? activeStudents : students;
+  if (!dreams || dreams.length === 0) {
+    return [];
+  }
 
-  return sourceList.map((stu, idx) => {
+  const studentById = new Map(students.map((s) => [s.id, s]));
+
+  return dreams.map((d, idx) => {
+    const stu = studentById.get(d.student_id);
     const rollNo = idx + 1;
-    const matchedDream = dreams.find((d) => d.student_id === stu.id);
     const palette =
       DREAM_PAPER_PALETTE[idx % DREAM_PAPER_PALETTE.length] ??
       DREAM_PAPER_PALETTE[0]!;
 
-    const tone = (((idx % 5) + 1) as 1 | 2 | 3 | 4 | 5);
+    const tone = (stu?.tone ?? (((idx % 5) + 1) as 1 | 2 | 3 | 4 | 5));
+    const displayName = stu?.full_name || d.student_name || "Siswa";
     const avatarUrl =
-      stu.photo_url && stu.photo_url.trim().length > 0
+      stu?.photo_url && stu.photo_url.trim().length > 0
         ? stu.photo_url
-        : createAvatarPlaceholderDataUri(stu.full_name, tone, true);
-
-    const dreamTitle =
-      matchedDream?.dream ||
-      `Software Engineer & Inovator Digital (${stu.tags[0] || "PPLG"})`;
-    const dreamReason =
-      matchedDream?.reason ||
-      stu.bio ||
-      "Ingin menghadirkan karya teknologi yang bermanfaat nyata bagi keluarga, madrasah, dan masyarakat di Ende.";
-    const dreamDescription =
-      SPECIFIC_PLANS[idx % SPECIFIC_PLANS.length]!;
+        : createAvatarPlaceholderDataUri(displayName, tone, true);
 
     return {
-      id: stu.id,
+      id: stu?.id || d.student_id || d.id,
+      dream_id: d.id,
       roll_no: rollNo,
-      name: stu.full_name,
-      nickname: stu.nickname,
-      role: stu.tags[0] ? `Spesialis ${stu.tags[0]}` : "Rekayasa Perangkat Lunak",
+      name: displayName,
+      nickname: stu?.nickname || d.student_nickname || displayName.split(" ")[0],
+      role: stu?.tags?.[0] ? `Peminatan ${stu.tags[0]}` : "",
       avatar_url: avatarUrl,
-      dream_title: dreamTitle,
-      dream_reason: dreamReason,
-      dream_description: dreamDescription,
-      tags: stu.tags.length > 0 ? stu.tags : ["PPLG", "MAKNEnde", "ClassOf2027"],
-      nis: `202410${String(rollNo).padStart(2, "0")}`,
-      dream_paper_color: matchedDream?.paper_color || palette.hex,
-      capsule_message: `Kapsul Waktu XII PPLG 1 — Bismillah, semoga beberapa tahun lagi ${stu.nickname || stu.full_name} benar-benar sukses sebagai ${dreamTitle}!`,
+      dream_title: d.dream,
+      dream_reason: d.reason,
+      dream_description: "",
+      tags: stu?.tags ?? [],
+      dream_paper_color: d.paper_color || palette.hex,
     };
   });
 }

@@ -27,11 +27,17 @@ export interface PublicAppDataPayload {
     graduation_date: string;
   };
   supabaseConnected: boolean;
+  dbConnected?: boolean;
+  missingTables?: boolean;
+  dbError?: string | null;
   updatedAt?: number;
 }
 
 const SYNC_CHANNEL_NAME = "xii_pplg1_backend_sync";
 const SYNC_STORAGE_KEY = "xii_pplg1_backend_sync_ts";
+
+let sharedClientData: Partial<PublicAppDataPayload> = {};
+let inflightRefresh: Promise<PublicAppDataPayload | null> | null = null;
 
 /**
  * Pancarkan sinyal pembaruan data ke semua tab/komponen frontend yang terbuka
@@ -62,8 +68,23 @@ export function notifyPublicDataUpdated() {
 }
 
 /**
- * Hook sinkronisasi langsung ke endpoint backend (/api/content) agar seluruh halaman
- * Frontend selalu menampilkan data terbaru dari Backend tanpa tertahan cache.
+ * Pancarkan sinyal saat pengguna mengklik menu navigasi agar loop WebGL 3D
+ * segera berhenti dan tidak membuat transisi halaman macet (lag).
+ */
+export function notifyRouteTransitionStart() {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent("app:route-transition-start"));
+  } catch {
+    // Ignore
+  }
+}
+
+/**
+ * Hook sinkronisasi langsung ke endpoint backend (/api/content).
+ * Menggunakan initialData dari Server Component secara instan saat pindah menu
+ * (tanpa memicu fetch ganda saat mount), dan hanya mem-fetch ulang ketika ada
+ * sinyal perubahan dari Admin atau pengiriman form.
  */
 export function useLivePublicData(
   initialData?: Partial<PublicAppDataPayload>
@@ -71,29 +92,45 @@ export function useLivePublicData(
   data: Partial<PublicAppDataPayload>;
   refresh: () => Promise<void>;
 } {
-  const [data, setData] = React.useState<Partial<PublicAppDataPayload>>(
-    () => initialData ?? {}
-  );
+  const [data, setData] = React.useState<Partial<PublicAppDataPayload>>(() => {
+    if (initialData) {
+      sharedClientData = { ...sharedClientData, ...initialData };
+      return sharedClientData;
+    }
+    return sharedClientData;
+  });
 
-  // Sinkronkan bila prop server berubah setelah navigasi
+  // Sinkronkan secara instan bila prop dari Server Component berubah setelah navigasi
   React.useEffect(() => {
     if (initialData) {
+      sharedClientData = { ...sharedClientData, ...initialData };
       setData((prev) => ({ ...prev, ...initialData }));
     }
   }, [initialData]);
 
   const refresh = React.useCallback(async () => {
     try {
-      const res = await fetch(`/api/content?_t=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache",
-        },
-      });
-      if (!res.ok) return;
-      const fresh = (await res.json()) as PublicAppDataPayload;
+      if (!inflightRefresh) {
+        inflightRefresh = fetch(`/api/content?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            Pragma: "no-cache",
+            "Cache-Control": "no-cache",
+          },
+        })
+          .then(async (res) => {
+            if (!res.ok) return null;
+            return (await res.json()) as PublicAppDataPayload;
+          })
+          .catch(() => null)
+          .finally(() => {
+            inflightRefresh = null;
+          });
+      }
+
+      const fresh = await inflightRefresh;
       if (fresh && Array.isArray(fresh.students)) {
+        sharedClientData = fresh;
         setData(fresh);
       }
     } catch {
@@ -102,17 +139,6 @@ export function useLivePublicData(
   }, []);
 
   React.useEffect(() => {
-    // Ambil data segar dari backend saat halaman dimuat
-    void refresh();
-
-    const onFocus = () => {
-      void refresh();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void refresh();
-      }
-    };
     const onStorage = (e: StorageEvent) => {
       if (e.key === SYNC_STORAGE_KEY) {
         void refresh();
@@ -122,8 +148,6 @@ export function useLivePublicData(
       void refresh();
     };
 
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("storage", onStorage);
     window.addEventListener("xii-pplg1-data-updated", onCustomUpdate);
 
@@ -140,8 +164,6 @@ export function useLivePublicData(
     }
 
     return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("xii-pplg1-data-updated", onCustomUpdate);
       if (channel) {

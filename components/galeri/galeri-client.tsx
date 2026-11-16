@@ -287,7 +287,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Filter Kategori */}
+      {/* Filter Kategori dengan Animasi Interaktif */}
       <div
         role="group"
         aria-label="Filter Kategori Momen"
@@ -296,26 +296,28 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         {SITE_CONTENT.momentCategories.map((cat) => {
           const active = activeCategory === cat;
           return (
-            <button
+            <motion.button
               key={cat}
               type="button"
+              whileHover={{ y: -1, scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setActiveCategory(cat);
                 setMomentPage(1);
               }}
               className={`min-h-[40px] rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 active
-                  ? "bg-foreground text-background font-semibold"
+                  ? "bg-foreground text-background font-semibold shadow-2xs"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               {cat}
-            </button>
+            </motion.button>
           );
         })}
       </div>
 
-      {/* Rak Polaroid (Adaptive: 3D Verlet Catenary di Desktop HD, Deret Scroll-Snap Polaroid Miring di Mobile Simple) */}
+      {/* Rak Polaroid (Adaptive: 3D Verlet Catenary di Desktop HD, Deret Scroll-Snap Polaroid Kertas Foto Asli di Mobile Simple) */}
       {!showAllGrid && (
         <div className="mt-6">
           <Adaptive
@@ -326,10 +328,10 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               >
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-serif text-lg font-bold text-foreground">
-                    Jemuran Polaroid Kelas {activePhase} ({phaseRackMoments.length} Foto Pilihan)
+                    Jemuran Kertas Foto Kelas {activePhase} ({phaseRackMoments.length} Lembar)
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    Geser ke samping · Ketuk untuk perbesar
+                  <span className="font-hand text-base text-muted-foreground">
+                    Geser ke samping · Ketuk foto untuk perbesar
                   </span>
                 </div>
 
@@ -339,28 +341,30 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     aria-hidden="true"
                     className="pointer-events-none absolute top-2 right-0 left-0 h-1.5 rounded-full bg-gradient-to-r from-[#8d6b48] via-[#c8a97e] to-[#8d6b48] shadow-sm"
                   />
-                  <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-5 pt-4">
                     {phaseRackMoments.map((m, idx) => {
                       const tiltClass =
-                        idx % 2 === 0 ? "-rotate-1" : "rotate-1";
+                        idx % 2 === 0 ? "-rotate-2" : "rotate-2";
                       const globalIdx = filteredMoments.findIndex(
                         (fm) => fm.id === m.id
                       );
                       return (
-                        <button
+                        <motion.button
                           key={m.id}
                           type="button"
+                          whileHover={{ scale: 1.04, rotate: 0, y: -4 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() =>
                             setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)
                           }
-                          className={`vintage-photo-frame relative w-[235px] shrink-0 snap-center rounded-lg p-3 pt-4 text-left transition-transform hover:scale-[1.02] ${tiltClass}`}
+                          className={`real-photo-paper relative w-[242px] shrink-0 snap-center rounded-md p-3 pb-5 pt-4 text-left transition-shadow ${tiltClass}`}
                         >
-                          {/* Jepitan Kayu di Tepi Atas (Tidak menghalangi foto maupun tulisan) */}
+                          {/* Jepitan Kayu di Tepi Atas */}
                           <span
                             aria-hidden="true"
-                            className="absolute -top-3.5 left-1/2 h-5 w-2.5 -translate-x-1/2 rounded-sm border border-[#5c3d24] bg-[#c89662] shadow"
+                            className="absolute -top-3.5 left-1/2 h-5 w-2.5 -translate-x-1/2 rounded-xs border border-[#5c3d24] bg-[#c89662] shadow"
                           />
-                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded bg-muted">
+                          <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-xs border border-[#cbb799] bg-muted shadow-inner">
                             <img
                               src={m.image_url}
                               alt={m.caption}
@@ -369,15 +373,14 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                               className="size-full object-cover"
                             />
                           </div>
-                          <p className="mt-3 line-clamp-2 font-hand text-xl leading-snug text-foreground">
+                          <p className="mt-3.5 line-clamp-2 font-hand text-2xl font-bold leading-snug text-foreground">
                             {m.caption}
                           </p>
-                          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>{m.category}</span>
-                            <span aria-hidden="true">·</span>
-                            <span className="tabular-nums">{m.taken_at}</span>
+                          <div className="mt-1.5 flex items-center justify-between font-hand text-base font-bold text-muted-foreground">
+                            <span>~ {m.category}</span>
+                            <span>{m.taken_at}</span>
                           </div>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -396,36 +399,36 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center"
+                    className="real-photo-paper flex flex-col items-start justify-between gap-3 rounded-xl p-4 sm:flex-row sm:items-center"
                   >
                     <div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 font-hand text-lg font-bold text-muted-foreground">
                         <span>Fase Kelas {selected3DMoment.phase}</span>
                         <span aria-hidden="true">·</span>
                         <span>{selected3DMoment.category}</span>
                         <span aria-hidden="true">·</span>
-                        <span className="tabular-nums">
-                          {selected3DMoment.taken_at}
-                        </span>
+                        <span>{selected3DMoment.taken_at}</span>
                         <span aria-hidden="true">·</span>
-                        <span>Diunggah oleh {selected3DMoment.uploader_name}</span>
+                        <span>Ditulis oleh {selected3DMoment.uploader_name}</span>
                       </div>
-                      <p className="mt-1 font-hand text-2xl text-foreground">
+                      <p className="mt-1 font-hand text-3xl font-bold text-foreground">
                         &ldquo;{selected3DMoment.caption}&rdquo;
                       </p>
                     </div>
-                    <button
+                    <motion.button
                       type="button"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
                       onClick={() => {
                         const idx = filteredMoments.findIndex(
                           (x) => x.id === selected3DMoment.id
                         );
                         if (idx >= 0) setLightboxIndex(idx);
                       }}
-                      className="min-h-[40px] rounded-lg border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
+                      className="min-h-[40px] rounded-lg border border-border bg-background px-3.5 py-2 font-hand text-lg font-bold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
                     >
-                      Buka di Lightbox Penuh
-                    </button>
+                      Lihat Lembar Foto Penuh →
+                    </motion.button>
                   </motion.div>
                 )}
               </div>
@@ -434,7 +437,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         </div>
       )}
 
-      {/* Daftar Momen Terpaginasi (8 Foto per Halaman dengan Tombol Ikon Prev & Next) */}
+      {/* Daftar Momen Terpaginasi Bervisual Kertas Foto Cetak Asli & Font Tulisan Tangan */}
       <section aria-labelledby="all-photos-heading" className="mt-12">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
           <div>
@@ -443,66 +446,71 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               className="font-serif text-xl font-bold text-foreground"
             >
               {showAllGrid
-                ? `Seluruh Koleksi Foto (${listSourceMoments.length} Momen)`
-                : `Daftar Momen Fase Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
+                ? `Seluruh Koleksi Lembar Foto (${listSourceMoments.length} Momen)`
+                : `Album Kertas Foto Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
             </h2>
-            <p className="text-xs text-muted-foreground">
-              Menampilkan {MOMENTS_PER_PAGE} foto per halaman — gunakan ikon panah kiri/kanan untuk berpindah halaman.
+            <p className="font-hand text-lg text-muted-foreground">
+              Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk melihat catatan tulisan tangan di baliknya.
             </p>
           </div>
-          <button
+          <motion.button
             type="button"
+            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => {
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="text-xs font-semibold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
+            className="font-hand text-xl font-bold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
           >
             {showAllGrid
-              ? `Filter Hanya Kelas ${activePhase}`
-              : `Gabungkan Semua ${filteredMoments.length} Foto →`}
-          </button>
+              ? `← Filter Hanya Kelas ${activePhase}`
+              : `Gabungkan Semua ${filteredMoments.length} Lembar Foto →`}
+          </motion.button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-7 grid grid-cols-1 gap-7 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {pagedMoments.map((m, idx) => {
             const globalIdx = filteredMoments.findIndex((x) => x.id === m.id);
+            const naturalRot = ((idx % 4) - 1.5) * 1.1;
             return (
               <motion.button
                 key={m.id}
                 type="button"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 14, rotate: naturalRot }}
+                animate={{ opacity: 1, y: 0, rotate: naturalRot }}
                 transition={{ duration: 0.3, delay: idx * 0.04 }}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -6, rotate: 0, scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
-                className="vintage-photo-frame group relative flex flex-col justify-between rounded-xl p-3 pt-4 text-left shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className="real-photo-paper group relative flex flex-col justify-between rounded-md p-3.5 pb-5 pt-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
-                {/* Jepitan Kayu di Atas Bingkai Foto (Tidak menghalangi tulisan/foto) */}
+                {/* Jepitan Kayu di Atas Bingkai Kertas Foto */}
                 <span
                   aria-hidden="true"
-                  className=" absolute -top-2.5 left-1/2 h-4 w-2 -translate-x-1/2 rounded-sm border border-[#5c3d24] bg-[#c89662] shadow-sm"
+                  className="absolute -top-2.5 left-1/2 h-4 w-2.5 -translate-x-1/2 rounded-xs border border-[#5c3d24] bg-[#c89662] shadow-sm transition-transform group-hover:scale-110"
                 />
                 <div>
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded bg-muted">
+                  <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-xs border border-[#cbb799] bg-muted shadow-inner dark:border-[#544030]">
                     <img
                       src={m.image_url}
                       alt={m.caption}
                       referrerPolicy="no-referrer"
                       loading="lazy"
-                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
-                  <p className="mt-3 line-clamp-2 font-hand text-xl leading-snug text-foreground">
+                  {/* Tulisan Tangan Spidol di Dagu Kertas Polaroid */}
+                  <p className="mt-3.5 line-clamp-2 font-hand text-2xl font-bold leading-snug text-foreground">
                     {m.caption}
                   </p>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-dashed border-border pt-2 text-[11px] text-muted-foreground">
+                <div className="mt-3 flex items-center justify-between border-t border-dashed border-[#cbb799]/70 pt-2 font-hand text-base font-bold text-muted-foreground dark:border-[#544030]">
                   <span>
-                    Kelas {m.phase} · {m.category}
+                    ~ Kelas {m.phase} · {m.category}
                   </span>
-                  <span className="tabular-nums">{m.taken_at}</span>
+                  <span>{m.taken_at}</span>
                 </div>
               </motion.button>
             );
@@ -515,40 +523,45 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           totalItems={listSourceMoments.length}
           pageSize={MOMENTS_PER_PAGE}
           onPageChange={setMomentPage}
-          itemLabel="momen kenangan"
+          itemLabel="lembar foto kenangan"
         />
       </section>
 
-      {/* Modal Lightbox dengan Navigasi Geser & Keyboard */}
+      {/* Modal Lightbox Bervisual Kertas Foto Fisik Asli & Tulisan Tangan */}
       {currentLightboxMoment && lightboxIndex !== null && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Peninjau Foto Ukuran Penuh"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          aria-label="Peninjau Lembar Kertas Foto Ukuran Penuh"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
         >
-          <div className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, rotate: -1 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            className="real-photo-paper relative flex w-full max-w-3xl flex-col overflow-hidden rounded-xl p-4 pb-6 text-card-foreground shadow-2xl sm:p-6 sm:pb-8"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex flex-wrap items-center gap-2 font-hand text-xl font-bold text-muted-foreground">
                 <span>Fase Kelas {currentLightboxMoment.phase}</span>
                 <span aria-hidden="true">·</span>
                 <span>{currentLightboxMoment.category}</span>
                 <span aria-hidden="true">·</span>
-                <span className="tabular-nums">
-                  {currentLightboxMoment.taken_at}
-                </span>
+                <span>{currentLightboxMoment.taken_at}</span>
               </div>
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.06, rotate: 90 }}
+                whileTap={{ scale: 0.92 }}
                 aria-label="Tutup foto"
                 onClick={() => setLightboxIndex(null)}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted"
+                className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-border bg-background/80 text-foreground hover:bg-muted"
               >
                 <X className="size-4" />
-              </button>
+              </motion.button>
             </div>
 
-            <div className="relative aspect-[16/10] w-full bg-black/40">
+            <div className="photo-gloss-sheen relative aspect-[16/10] w-full overflow-hidden rounded-sm border-2 border-[#cbb799] bg-black/90 shadow-inner dark:border-[#544030]">
               <img
                 src={currentLightboxMoment.image_url}
                 alt={currentLightboxMoment.caption}
@@ -557,20 +570,22 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               />
             </div>
 
-            <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+            <div className="mt-5 flex flex-col justify-between gap-4 border-t border-dashed border-[#cbb799] pt-4 sm:flex-row sm:items-center dark:border-[#544030]">
               <div>
-                <p className="font-hand text-2xl text-foreground">
+                <p className="font-hand text-3xl font-bold leading-snug text-foreground">
                   &ldquo;{currentLightboxMoment.caption}&rdquo;
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Diabadikan oleh {currentLightboxMoment.uploader_name} · Foto{" "}
-                  {lightboxIndex + 1} dari {filteredMoments.length}
+                <p className="mt-1 font-hand text-lg font-bold text-muted-foreground">
+                  ~ Diabadikan oleh {currentLightboxMoment.uploader_name} · Lembar Foto{" "}
+                  {lightboxIndex + 1} dari {filteredMoments.length} ~
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <button
+                <motion.button
                   type="button"
+                  whileHover={{ scale: 1.06, x: -2 }}
+                  whileTap={{ scale: 0.92 }}
                   aria-label="Foto sebelumnya"
                   onClick={() =>
                     setLightboxIndex(
@@ -581,9 +596,11 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
                 >
                   <ChevronLeft className="size-5" />
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
+                  whileHover={{ scale: 1.06, x: 2 }}
+                  whileTap={{ scale: 0.92 }}
                   aria-label="Foto berikutnya"
                   onClick={() =>
                     setLightboxIndex(
@@ -593,10 +610,10 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
                 >
                   <ChevronRight className="size-5" />
-                </button>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 

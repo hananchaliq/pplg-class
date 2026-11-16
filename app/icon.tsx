@@ -18,46 +18,37 @@ export default function Icon() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #2b2118 0%, #68271e 55%, #c86d3b 100%)",
+          background:
+            "linear-gradient(135deg, #d97736 0%, #b84a27 55%, #7c2817 100%)",
           borderRadius: "16px",
-          border: "3px solid #f3ca82",
-          color: "#fbf6ec",
+          border: "3px solid #f4ca7e",
+          color: "#fff8ec",
           fontFamily: "Georgia, serif",
           position: "relative",
         }}
       >
         <div
           style={{
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: "0.08em",
-            color: "#f3ca82",
-            lineHeight: 1,
-          }}
-        >
-          XII
-        </div>
-        <div
-          style={{
-            fontSize: 18,
+            fontSize: 21,
             fontWeight: 900,
-            letterSpacing: "-0.03em",
-            color: "#fbf6ec",
-            lineHeight: 1.05,
-            marginTop: 1,
+            letterSpacing: "0.04em",
+            lineHeight: 1,
+            display: "flex",
           }}
         >
-          PPLG
+          UNO
         </div>
         <div
           style={{
-            fontSize: 9,
+            marginTop: 3,
+            fontSize: 8,
             fontWeight: 700,
-            color: "#e6d3b3",
-            marginTop: 2,
+            letterSpacing: "0.12em",
+            color: "#ffe1a6",
+            display: "flex",
           }}
         >
-          MAKN 1
+          PPLG 1
         </div>
       </div>
     ),

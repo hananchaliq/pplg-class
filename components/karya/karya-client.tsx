@@ -323,7 +323,9 @@ export function KaryaClient({
           </div>
 
           <div className="flex items-center gap-2 rounded-xl border border-border bg-background p-1">
-            <button
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("constellation")}
               className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
@@ -334,8 +336,10 @@ export function KaryaClient({
             >
               <Network className="size-3.5" />
               <span>Konstelasi Orbit</span>
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("radar")}
               className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
@@ -346,7 +350,7 @@ export function KaryaClient({
             >
               <Radar className="size-3.5" />
               <span>Radar Spektrum</span>
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -496,7 +500,9 @@ export function KaryaClient({
             {/* Tombol Filter Cepat */}
             <div className="mt-5 border-t border-border pt-4">
               <div className="flex flex-wrap gap-1.5">
-                <button
+                <motion.button
+                  whileHover={{ y: -1.5, scale: 1.03 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={() => {
                     setSelectedSkill(null);
@@ -509,11 +515,13 @@ export function KaryaClient({
                   }`}
                 >
                   Semua ({works.length})
-                </button>
+                </motion.button>
                 {topNodes.map((node) => {
                   const active = selectedSkill === node.skill;
                   return (
-                    <button
+                    <motion.button
+                      whileHover={{ y: -1.5, scale: 1.03 }}
+                      whileTap={{ scale: 0.95 }}
                       key={node.skill}
                       type="button"
                       onClick={() => {
@@ -527,7 +535,7 @@ export function KaryaClient({
                       }`}
                     >
                       {node.skill} ({node.workCount})
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>

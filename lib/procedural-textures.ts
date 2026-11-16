@@ -257,7 +257,284 @@ export function createChalkboardTexture(renderer?: THREE.WebGLRenderer | null) {
 }
 
 /**
- * Tekstur kertas catatan tempel (Dream Board Note) dengan font tulisan tangan Caveat
+ * Helper untuk mengambil font tulisan tangan asli (--font-caveat dari next/font)
+ * agar teks yang digambar di HTML5 Canvas 2D benar-benar tampak seperti tulisan tangan pena/spidol, bukan ketikan.
+ */
+export function getHandwritingFont(): string {
+  if (typeof document !== "undefined") {
+    const cssVar = getComputedStyle(document.documentElement)
+      .getPropertyValue("--font-caveat")
+      .trim();
+    if (cssVar) {
+      return `${cssVar}, "Caveat", "Segoe Print", "Bradley Hand", cursive`;
+    }
+  }
+  return `"Caveat", "Segoe Print", "Bradley Hand", cursive`;
+}
+
+export interface FarewellMemeStickerDef {
+  id: string;
+  topText: string;
+  bottomText: string;
+  badge: string;
+  bg: string;
+  accent: string;
+  ink: string;
+  icon: "cat-cry" | "git-bye" | "tissue" | "coffee" | "ctrl-s" | "reuni" | "bug" | "uno";
+}
+
+export const FAREWELL_MEME_STICKERS: FarewellMemeStickerDef[] = [
+  {
+    id: "404-school",
+    topText: "404: SEKOLAH NOT FOUND",
+    bottomText: "Udah lulus bre, jangan ke kantin lagi 😭",
+    badge: "ERR_RINDU_KELAS",
+    bg: "#fff3c4",
+    accent: "#d9534f",
+    ink: "#23140b",
+    icon: "cat-cry",
+  },
+  {
+    id: "git-pamit",
+    topText: "git commit -m 'Pamit dulu bre'",
+    bottomText: "git push origin masa-depan 🚀",
+    badge: "BRANCH: ALUMNI",
+    bg: "#e8f6f3",
+    accent: "#2d6a6e",
+    ink: "#142628",
+    icon: "git-bye",
+  },
+  {
+    id: "tutorial-nangis",
+    topText: "TUTORIAL GAK NANGIS PAS PISAH:",
+    bottomText: "Step 1: Gagal total sejak pelukan pertama 🤧",
+    badge: "100% BAPER",
+    bg: "#fdebd0",
+    accent: "#c86d3b",
+    ink: "#2b190d",
+    icon: "tissue",
+  },
+  {
+    id: "doa-ibu-kopi",
+    topText: "LULUS JALUR DOA IBU & KOPI",
+    bottomText: "Plus warisan WiFi Lab PPLG 1 tercinta ☕",
+    badge: "SURVIVOR PPLG",
+    bg: "#f9ebea",
+    accent: "#a84232",
+    ink: "#2b1410",
+    icon: "coffee",
+  },
+  {
+    id: "ctrl-s-kenangan",
+    topText: "CTRL + S KENANGAN KITA!",
+    bottomText: "Awas jangan sampe ke-Ctrl+Z ya bre 💾",
+    badge: "AUTO-SAVED ♥",
+    bg: "#eaf2f8",
+    accent: "#285582",
+    ink: "#132438",
+    icon: "ctrl-s",
+  },
+  {
+    id: "info-reuni",
+    topText: "INFO LOKER? INFO REUNI?",
+    bottomText: "Awas grup WA cuma rame pas lebaran doang 😂",
+    badge: "ANTI WACANA",
+    bg: "#fef9e7",
+    accent: "#b8732a",
+    ink: "#2b1c0c",
+    icon: "reuni",
+  },
+  {
+    id: "satu-error",
+    topText: "PERNAH SATU ERROR BARENG",
+    bottomText: "Titip salam buat titik koma (;) yang hilang 🐛",
+    badge: "DEBUG SQUAD",
+    bg: "#eef6f0",
+    accent: "#3b7a57",
+    ink: "#152b1f",
+    icon: "bug",
+  },
+  {
+    id: "uno-forever",
+    topText: "UNO FOREVER · XII PPLG 1",
+    bottomText: "Tiga tahun satu atap, selamanya satu saudara ✨",
+    badge: "MAKN ENDE",
+    bg: "#fff0e6",
+    accent: "#b84a27",
+    ink: "#2b160e",
+    icon: "uno",
+  },
+];
+
+/**
+ * Menggambar Stiker Meme Perpisahan Lucu bergaya Die-Cut Sticker (tepi putih tebal + ilustrasi doodle lucu + teks tulisan tangan)
+ */
+function drawFarewellMemeSticker(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  rot: number,
+  memeIdx: number
+) {
+  const meme = FAREWELL_MEME_STICKERS[Math.abs(memeIdx) % FAREWELL_MEME_STICKERS.length]!;
+  const handFont = getHandwritingFont();
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+
+  const w = 276;
+  const h = 118;
+
+  // Bayangan stiker lembut
+  ctx.fillStyle = "rgba(28, 18, 10, 0.22)";
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 + 5, -h / 2 + 7, w, h, 20);
+  ctx.fill();
+
+  // Die-cut white sticker border
+  ctx.fillStyle = "#fffdf9";
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 - 7, -h / 2 - 7, w + 14, h + 14, 22);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(60, 42, 26, 0.28)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Isi kartu stiker
+  ctx.fillStyle = meme.bg;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, 16);
+  ctx.fill();
+  ctx.strokeStyle = meme.accent;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Ilustrasi doodle meme lucu di sisi kiri
+  const ix = -w / 2 + 44;
+  const iy = 4;
+  ctx.save();
+  ctx.translate(ix, iy);
+
+  // Lingkaran latar ikon
+  ctx.fillStyle = "#fffdf9";
+  ctx.beginPath();
+  ctx.arc(0, 0, 31, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = meme.accent;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Gambar ekspresi karakter doodle lucu sesuai tipe meme
+  if (meme.icon === "cat-cry" || meme.icon === "tissue") {
+    // Kucing mewek pakai toga wisuda
+    ctx.fillStyle = "#f2c86b";
+    ctx.beginPath();
+    ctx.arc(0, 4, 18, 0, Math.PI * 2);
+    ctx.fill();
+    // Telinga kucing
+    ctx.beginPath();
+    ctx.moveTo(-15, -4);
+    ctx.lineTo(-18, -18);
+    ctx.lineTo(-5, -11);
+    ctx.moveTo(15, -4);
+    ctx.lineTo(18, -18);
+    ctx.lineTo(5, -11);
+    ctx.fill();
+    // Air mata banjir biru
+    ctx.fillStyle = "#4ea3d8";
+    ctx.fillRect(-12, 2, 5, 16);
+    ctx.fillRect(7, 2, 5, 16);
+    // Mata & mulut mewek
+    ctx.strokeStyle = "#23140b";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(-8, 0, 3, 0, Math.PI * 2);
+    ctx.arc(8, 0, 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 11, 5, Math.PI, 0, false);
+    ctx.stroke();
+    // Topi toga kecil
+    ctx.fillStyle = "#1c1510";
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(16, -16);
+    ctx.lineTo(0, -10);
+    ctx.lineTo(-16, -16);
+    ctx.closePath();
+    ctx.fill();
+  } else if (meme.icon === "coffee" || meme.icon === "reuni") {
+    // Gelas kopi begadang tersenyum bangga
+    ctx.fillStyle = "#c86d3b";
+    ctx.fillRect(-13, -6, 26, 24);
+    ctx.strokeStyle = "#23140b";
+    ctx.lineWidth = 2.2;
+    ctx.strokeRect(-13, -6, 26, 24);
+    ctx.beginPath();
+    ctx.arc(13, 6, 7, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    // Uap hangat
+    ctx.beginPath();
+    ctx.moveTo(-5, -11);
+    ctx.quadraticCurveTo(-8, -18, -3, -23);
+    ctx.moveTo(5, -11);
+    ctx.quadraticCurveTo(2, -18, 7, -23);
+    ctx.stroke();
+  } else {
+    // Wajah sahabat kacamata cool / emotikon perpisahan
+    ctx.fillStyle = "#ffd97d";
+    ctx.beginPath();
+    ctx.arc(0, 2, 19, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#23140b";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Kacamata pixel cool
+    ctx.fillStyle = "#1c1510";
+    ctx.fillRect(-14, -5, 12, 8);
+    ctx.fillRect(2, -5, 12, 8);
+    ctx.fillRect(-2, -3, 4, 3);
+    // Senyum lebar terharu
+    ctx.beginPath();
+    ctx.arc(0, 6, 8, 0.15, Math.PI - 0.15);
+    ctx.stroke();
+    // Setetes air mata haru
+    ctx.fillStyle = "#4ea3d8";
+    ctx.beginPath();
+    ctx.arc(14, 7, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Pita badge atas
+  ctx.fillStyle = meme.accent;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2 + 84, -h / 2 + 10, 176, 22, 6);
+  ctx.fill();
+  ctx.fillStyle = "#fffdf9";
+  ctx.font = `bold 13px monospace`;
+  ctx.textAlign = "center";
+  ctx.fillText(`★ ${meme.badge} ★`, -w / 2 + 172, -h / 2 + 25);
+
+  // Teks meme atas (Handwriting Tebal)
+  ctx.fillStyle = meme.ink;
+  ctx.textAlign = "left";
+  ctx.font = `700 22px ${handFont}`;
+  ctx.fillText(meme.topText.slice(0, 28), -w / 2 + 82, 6);
+
+  // Teks meme bawah (Handwriting Miring/Santai)
+  ctx.fillStyle = meme.accent;
+  ctx.font = `700 19px ${handFont}`;
+  ctx.fillText(meme.bottomText.slice(0, 36), -w / 2 + 82, 34);
+
+  ctx.restore();
+}
+
+/**
+ * Tekstur kertas catatan tempel (Dream Board Note) dengan font tulisan tangan Caveat asli
  */
 export function createDreamNoteTexture(
   opts: {
@@ -273,39 +550,50 @@ export function createDreamNoteTexture(
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
+  const handFont = getHandwritingFont();
+  const rand = seededRandom(opts.seed || 77);
 
-  // Warna dasar kertas tempel
-  ctx.fillStyle = opts.paperColor || "#fae6b1";
+  // Warna dasar kertas tempel dengan gradasi halus kertas asli
+  const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+  bgGrad.addColorStop(0, opts.paperColor || "#fae6b1");
+  bgGrad.addColorStop(1, opts.paperColor || "#f3d58d");
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, size, size);
 
-  // Pita header kontras di bagian atas kertas (tempat pin & nama siswa)
-  ctx.fillStyle = "rgba(43, 24, 10, 0.14)";
-  ctx.fillRect(0, 0, size, 96);
+  // Serat kertas tipis
+  ctx.fillStyle = "rgba(80, 50, 20, 0.04)";
+  for (let i = 0; i < 60; i++) {
+    ctx.fillRect(rand() * size, rand() * size, 2 + rand() * 8, 1.5);
+  }
 
-  // Garis buku tipis
-  ctx.strokeStyle = "rgba(45, 28, 12, 0.16)";
+  // Pita header lipatan atas tempat paku pin menancap
+  ctx.fillStyle = "rgba(43, 24, 10, 0.11)";
+  ctx.fillRect(0, 0, size, 92);
+
+  // Garis buku tulis tipis dengan goresan tangan
+  ctx.strokeStyle = "rgba(45, 28, 12, 0.15)";
   ctx.lineWidth = 2;
-  for (let y = 152; y < size - 44; y += 56) {
+  for (let y = 154; y < size - 44; y += 54) {
     ctx.beginPath();
-    ctx.moveTo(28, y);
-    ctx.lineTo(size - 28, y);
+    ctx.moveTo(26, y);
+    ctx.lineTo(size - 26, y);
     ctx.stroke();
   }
 
-  // Pinggiran kertas tegas agar terpisah jelas dari papan tulis
-  ctx.strokeStyle = "rgba(35, 20, 8, 0.35)";
-  ctx.lineWidth = 8;
+  // Pinggiran kertas tegas
+  ctx.strokeStyle = "rgba(35, 20, 8, 0.32)";
+  ctx.lineWidth = 7;
   ctx.strokeRect(4, 4, size - 8, size - 8);
 
-  // Nama siswa di kiri atas (sangat jelas)
-  ctx.fillStyle = "#1f1005";
-  ctx.font = "800 34px sans-serif";
+  // Nama siswa di kiri atas dengan tulisan tangan spidol
+  ctx.fillStyle = "#2b1608";
+  ctx.font = `700 42px ${handFont}`;
   ctx.textAlign = "left";
-  ctx.fillText(opts.studentName.slice(0, 16), 28, 64);
+  ctx.fillText(opts.studentName.slice(0, 18), 28, 64);
 
-  // Isi cita-cita dengan ukuran besar & kontras ekstra tinggi agar terbaca tanpa zoom
-  ctx.fillStyle = "#0f0702";
-  ctx.font = "bold 42px Georgia, serif";
+  // Isi cita-cita dengan tulisan tangan pena tebal & kontras tinggi
+  ctx.fillStyle = "#140903";
+  ctx.font = `700 48px ${handFont}`;
   const words = opts.dream.trim().split(/\s+/);
   let line = "";
   let y = 148;
@@ -325,17 +613,18 @@ export function createDreamNoteTexture(
     ctx.fillText(line, 28, y);
   }
 
-  // Label kecil di sudut kanan bawah
-  ctx.fillStyle = "rgba(168, 66, 50, 0.85)";
-  ctx.font = "bold 22px sans-serif";
+  // Tanda tangan kecil tulisan tangan di sudut kanan bawah
+  ctx.fillStyle = "rgba(168, 66, 50, 0.9)";
+  ctx.font = `700 30px ${handFont}`;
   ctx.textAlign = "right";
-  ctx.fillText("XII PPLG 1 ★", size - 24, size - 22);
+  ctx.fillText("~ UNO · XII PPLG 1 ★", size - 24, size - 20);
 
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
 }
 
 /**
- * Tekstur Polaroid 3D (margin atas ekstra lega agar jepitan kayu tidak pernah menutupi foto/tulisan)
+ * Tekstur Polaroid 3D Bervisual Kertas Foto Fisik Asli (Silver-Halide Glossy/Satin Photo Paper)
+ * & Font Tulisan Tangan Spidol Permanen Asli
  */
 export function createPolaroidTexture(
   opts: {
@@ -354,59 +643,122 @@ export function createPolaroidTexture(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+  const handFont = getHandwritingFont();
+  const rand = seededRandom(opts.seed || 101);
 
-  // Kertas Polaroid krem hangat
-  ctx.fillStyle = "#fbf6ec";
+  // Dasar Kertas Foto Asli (Warm Pearl Photo Paper Base dengan gradasi halus & bevel)
+  const paperGrad = ctx.createLinearGradient(0, 0, width, height);
+  paperGrad.addColorStop(0, "#fffdf9");
+  paperGrad.addColorStop(0.55, "#faf3e6");
+  paperGrad.addColorStop(1, "#f0e4ce");
+  ctx.fillStyle = paperGrad;
   ctx.fillRect(0, 0, width, height);
 
+  // Serat halus kertas cetak foto
+  ctx.fillStyle = "rgba(92, 68, 42, 0.035)";
+  for (let i = 0; i < 90; i++) {
+    ctx.fillRect(rand() * width, rand() * height, 2 + rand() * 5, 1.5);
+  }
+
+  // Bevel tepi luar kertas foto asli
   ctx.strokeStyle = "#d4c0a3";
   ctx.lineWidth = 6;
   ctx.strokeRect(3, 3, width - 6, height - 6);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(8, 8, width - 16, height - 16);
 
   if (opts.isBack) {
-    // Sisi belakang Polaroid: beri ruang aman di atas (y >= 115) agar jepitan di bibir atas tidak menghalangi teks
-    ctx.strokeStyle = "rgba(110, 90, 71, 0.28)";
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(32, 68, width - 64, height - 100);
+    // Sisi Belakang Kertas Foto Asli (Watermark Diagonal Archival Paper + Stempel + Tulisan Tangan Pena)
+    ctx.save();
+    ctx.strokeStyle = "rgba(140, 112, 82, 0.11)";
+    ctx.fillStyle = "rgba(140, 112, 82, 0.13)";
+    ctx.font = "bold 16px monospace";
+    for (let wy = -120; wy < height + 120; wy += 95) {
+      ctx.save();
+      ctx.translate(width / 2, wy);
+      ctx.rotate(-0.28);
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "UNO · ARCHIVAL PHOTO PAPER · KODAK ROYAL · XII PPLG 1 · UNO",
+        0,
+        0
+      );
+      ctx.restore();
+    }
+    ctx.restore();
 
+    // Bingkai kartu pos belakang foto
+    ctx.strokeStyle = "rgba(110, 86, 62, 0.34)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(34, 72, width - 68, height - 106);
+
+    // Kotak perangko / cap tanggal di kanan atas
+    ctx.strokeStyle = "rgba(168, 66, 50, 0.55)";
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(width - 134, 90, 80, 92);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(168, 66, 50, 0.78)";
+    ctx.font = `700 22px ${handFont}`;
+    ctx.textAlign = "center";
+    ctx.fillText("UNO", width - 94, 130);
+    ctx.fillText(opts.phase || "XII", width - 94, 158);
+
+    // Header tulisan tangan di kiri atas
+    ctx.textAlign = "left";
     ctx.fillStyle = "#8c3b2b";
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = `700 32px ${handFont}`;
     ctx.fillText(
-      `FASE KELAS ${opts.phase} · ${opts.category.toUpperCase()}`,
+      `Fase Kelas ${opts.phase} ~ ${opts.category}`,
       54,
-      118
+      124
     );
 
-    ctx.fillStyle = "#170e06";
-    ctx.font = "bold 38px Georgia, serif";
-    const words = (opts.caption || "Kenangan manis bersama XII PPLG 1").split(" ");
+    // Garis buku tipis untuk catatan di balik foto
+    ctx.strokeStyle = "rgba(110, 86, 62, 0.2)";
+    ctx.lineWidth = 1.5;
+    for (let ly = 210; ly <= height - 120; ly += 54) {
+      ctx.beginPath();
+      ctx.moveTo(54, ly);
+      ctx.lineTo(width - 54, ly);
+      ctx.stroke();
+    }
+
+    // Catatan di balik foto dengan tulisan tangan pena biru/sepia asli
+    ctx.fillStyle = "#1b2845";
+    ctx.font = `700 44px ${handFont}`;
+    const words = (opts.caption || "Kenangan manis bersama keluarga UNO XII PPLG 1").split(" ");
     let line = "";
-    let y = 185;
+    let y = 202;
     for (const w of words) {
       const test = line ? `${line} ${w}` : w;
-      if (ctx.measureText(test).width > width - 108) {
+      if (ctx.measureText(test).width > width - 120) {
         ctx.fillText(line, 54, y);
         line = w;
-        y += 50;
+        y += 54;
       } else {
         line = test;
       }
     }
     if (line) ctx.fillText(line, 54, y);
 
-    ctx.fillStyle = "#5c4735";
-    ctx.font = "bold 22px sans-serif";
-    ctx.fillText(`MAKN Ende · ${opts.dateStr || "2026"}`, 54, height - 58);
+    // Tanda tangan tanggal di bawah dengan tulisan tangan
+    ctx.fillStyle = "#6e4e32";
+    ctx.font = `700 30px ${handFont}`;
+    ctx.fillText(`Abadi di MAKN Ende · ${opts.dateStr || "2026"} ♥`, 54, height - 56);
 
     return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
   }
 
-  // Area foto Polaroid (mulai di topPad = 58 agar jepitan kayu di bibir atas tidak menyentuh foto)
+  // Area Emulsi Foto Polaroid (mulai di topPad = 56 agar jepitan kayu tidak menutupi gambar)
   const sidePad = 32;
-  const topPad = 58;
+  const topPad = 56;
   const photoW = width - sidePad * 2;
-  const photoH = 400;
-  const rand = seededRandom(opts.seed);
+  const photoH = 396;
+
+  // Bayangan cekung tipis di sekeliling jendela emulsi foto
+  ctx.fillStyle = "#dfd1bc";
+  ctx.fillRect(sidePad - 3, topPad - 3, photoW + 6, photoH + 6);
 
   const palettes = [
     ["#c86d3b", "#e8a568", "#2d6a6e"],
@@ -423,8 +775,8 @@ export function createPolaroidTexture(
   ctx.fillStyle = grad;
   ctx.fillRect(sidePad, topPad, photoW, photoH);
 
-  // Matahari / cahaya sore
-  ctx.fillStyle = "rgba(255, 243, 214, 0.78)";
+  // Matahari / cahaya sore hangat
+  ctx.fillStyle = "rgba(255, 243, 214, 0.82)";
   ctx.beginPath();
   ctx.arc(
     sidePad + photoW * (0.3 + rand() * 0.4),
@@ -449,7 +801,7 @@ export function createPolaroidTexture(
   ctx.closePath();
   ctx.fill();
 
-  // Siluet 3-4 teman berfoto bersama
+  // Siluet 3-4 sahabat berfoto bersama
   const peopleCount = 3 + (opts.seed % 3);
   for (let p = 0; p < peopleCount; p++) {
     const px =
@@ -464,26 +816,46 @@ export function createPolaroidTexture(
     ctx.fill();
   }
 
-  // Garis cetak tua di tepi foto
-  ctx.strokeStyle = "rgba(43, 33, 24, 0.38)";
+  // Efek Kilau Satin Kertas Foto Asli (Diagonal Gloss Reflection Sheen)
+  const sheenGrad = ctx.createLinearGradient(
+    sidePad,
+    topPad,
+    sidePad + photoW,
+    topPad + photoH
+  );
+  sheenGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+  sheenGrad.addColorStop(0.42, "rgba(255, 255, 255, 0.02)");
+  sheenGrad.addColorStop(0.5, "rgba(255, 252, 245, 0.22)");
+  sheenGrad.addColorStop(0.58, "rgba(255, 255, 255, 0.03)");
+  sheenGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = sheenGrad;
+  ctx.fillRect(sidePad, topPad, photoW, photoH);
+
+  // Garis tepi dalam emulsi foto
+  ctx.strokeStyle = "rgba(43, 33, 24, 0.42)";
   ctx.lineWidth = 2.5;
   ctx.strokeRect(sidePad, topPad, photoW, photoH);
 
-  // Caption jelas di bagian bawah Polaroid (jauh dari jepitan atas)
-  ctx.fillStyle = "#170e06";
-  ctx.font = "bold 30px Georgia, serif";
+  // Caption Tulisan Tangan Spidol Asli di dagu bawah kertas Polaroid (sedikit miring alami)
+  ctx.save();
+  ctx.translate(width / 2, topPad + photoH + 68);
+  ctx.rotate(((opts.seed % 5) - 2) * 0.012);
+
+  ctx.fillStyle = "#1c130b";
+  ctx.font = `700 42px ${handFont}`;
   ctx.textAlign = "center";
   const shortCap =
-    opts.caption.length > 32 ? `${opts.caption.slice(0, 30)}...` : opts.caption;
-  ctx.fillText(shortCap, width / 2, topPad + photoH + 68);
+    opts.caption.length > 34 ? `${opts.caption.slice(0, 32)}...` : opts.caption;
+  ctx.fillText(shortCap, 0, 0);
 
-  ctx.fillStyle = "#6e4e32";
-  ctx.font = "bold 20px sans-serif";
+  ctx.fillStyle = "#8c4a27";
+  ctx.font = `700 28px ${handFont}`;
   ctx.fillText(
-    `Kelas ${opts.phase} · ${opts.category}`,
-    width / 2,
-    topPad + photoH + 112
+    `~ Kelas ${opts.phase} · ${opts.category} (${opts.dateStr || "2026"}) ~`,
+    0,
+    46
   );
+  ctx.restore();
 
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
 }
@@ -730,7 +1102,7 @@ function drawWaxSeal(
   ctx.font = "bold 20px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("PPLG", 0, 1);
+  ctx.fillText("UNO", 0, 1);
   ctx.restore();
 }
 
@@ -763,7 +1135,7 @@ function drawPostageStamp(
   ctx.textAlign = "center";
   ctx.fillText("MAKN", 0, -20);
   ctx.font = "bold 22px Georgia, serif";
-  ctx.fillText("XII", 0, 8);
+  ctx.fillText("UNO", 0, 8);
 
   ctx.fillStyle = "#2b190d";
   ctx.font = "bold 14px monospace";
@@ -858,9 +1230,139 @@ function drawBuntingFlags(
 }
 
 /**
+ * Menggambar kotak kertas catatan dengan 5 gaya bentuk acak (Torn Spiral, Dog-Eared Card, Pinned Note, Dual Washi Memo, Postcard Cutout)
+ */
+function drawRandomScrapbookBox(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  styleVariant: number,
+  paperColor: string,
+  tapeColor: string
+) {
+  // Bayangan kertas timbul
+  ctx.fillStyle = "rgba(35, 22, 12, 0.16)";
+  ctx.fillRect(-w / 2 + 6, -h / 2 + 8, w, h);
+
+  ctx.fillStyle = paperColor;
+  ctx.strokeStyle = "#5c4026";
+  ctx.lineWidth = 3;
+
+  const v = Math.abs(styleVariant) % 5;
+
+  if (v === 0) {
+    // Gaya 0: Kertas Buku Spiral Sobek di Tepi Atas + Washi Tape Miring
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2 + 12);
+    for (let tx = -w / 2; tx < w / 2; tx += 22) {
+      ctx.lineTo(tx + 11, -h / 2 + 4);
+      ctx.lineTo(Math.min(w / 2, tx + 22), -h / 2 + 12);
+    }
+    ctx.lineTo(w / 2, h / 2);
+    ctx.lineTo(-w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Garis buku tipis
+    ctx.strokeStyle = "rgba(66, 118, 168, 0.18)";
+    ctx.lineWidth = 1.5;
+    for (let ly = -h / 2 + 54; ly < h / 2 - 22; ly += 42) {
+      ctx.beginPath();
+      ctx.moveTo(-w / 2 + 24, ly);
+      ctx.lineTo(w / 2 - 24, ly);
+      ctx.stroke();
+    }
+
+    // Washi tape miring di kiri & kanan atas
+    ctx.save();
+    ctx.translate(-w / 2 + 42, -h / 2 + 8);
+    ctx.rotate(-0.24);
+    ctx.fillStyle = tapeColor;
+    ctx.fillRect(-46, -13, 92, 26);
+    ctx.restore();
+  } else if (v === 1) {
+    // Gaya 1: Dog-Eared Index Card (Sudut Kanan Atas Terlipat) + Peniti Merah
+    const fold = 38;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2);
+    ctx.lineTo(w / 2 - fold, -h / 2);
+    ctx.lineTo(w / 2, -h / 2 + fold);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.lineTo(-w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Segitiga lipatan sudut
+    ctx.fillStyle = "#e6d5bc";
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - fold, -h / 2);
+    ctx.lineTo(w / 2 - fold, -h / 2 + fold);
+    ctx.lineTo(w / 2, -h / 2 + fold);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Paku pin bulat di tengah atas
+    ctx.fillStyle = "#c83e32";
+    ctx.beginPath();
+    ctx.arc(0, -h / 2 + 12, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.beginPath();
+    ctx.arc(-4, -h / 2 + 8, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (v === 2) {
+    // Gaya 2: Grid Engineer Memo + Dua Selotip Sudut
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+    ctx.strokeStyle = "rgba(45, 106, 110, 0.13)";
+    ctx.lineWidth = 1.2;
+    for (let gx = -w / 2 + 28; gx < w / 2; gx += 32) {
+      ctx.beginPath();
+      ctx.moveTo(gx, -h / 2 + 10);
+      ctx.lineTo(gx, h / 2 - 10);
+      ctx.stroke();
+    }
+    for (let gy = -h / 2 + 28; gy < h / 2; gy += 32) {
+      ctx.beginPath();
+      ctx.moveTo(-w / 2 + 10, gy);
+      ctx.lineTo(w / 2 - 10, gy);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = tapeColor;
+    ctx.fillRect(-72, -h / 2 - 14, 144, 28);
+  } else if (v === 3) {
+    // Gaya 3: Kertas Diary Berbingkai Ganda + Paperclip Metalik di Kiri Atas
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.strokeStyle = "rgba(168, 66, 50, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(-w / 2 + 12, -h / 2 + 12, w - 24, h - 24);
+    ctx.setLineDash([]);
+
+    // Paperclip di atas kiri
+    ctx.strokeStyle = "#6e7681";
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.roundRect(-w / 2 + 48, -h / 2 - 18, 22, 52, 10);
+    ctx.stroke();
+  } else {
+    // Gaya 4: Kartu Pos Kraft Vintage + Segel Lilin Kecil
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    drawWaxSeal(ctx, w / 2 - 42, -h / 2 + 12, 22, "#9e2a2b");
+  }
+}
+
+/**
  * Tekstur halaman Buku Kenangan 1024x1280 bergaya DIY Scrapbook Ring-Binder Kreatif
- * Memiliki 12 Tema Visual Berbeda + 5 Variasi Tata Letak Bingkai Foto + 4 Variasi Tata Letak Pesan Sahabat
- * sehingga setiap siswa memiliki halaman buku kenangan yang unik dan hidup seperti dunia nyata.
+ * Memiliki 12 Tema Visual Berbeda + Tata Letak Kotak Teks Acak di Setiap Halaman +
+ * Font Tulisan Tangan Asli (Caveat) + Stiker Meme Perpisahan Lucu di Setiap Lembar.
  */
 export function createBookPageTexture(
   page: BookPageData,
@@ -872,20 +1374,23 @@ export function createBookPageTexture(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+  const handFont = getHandwritingFont();
 
   const isLeftPage = page.pageNumber % 2 === 1;
   const rand = seededRandom(page.decorSeed || page.pageNumber * 97);
   const spreadNumber = Math.floor((page.pageNumber - 1) / 2);
 
-  // 12 Tema DIY Scrapbook Berbeda (setiap lembar & sisi punya nuansa unik)
+  // 12 Tema DIY Scrapbook Berbeda
   const themeIdx = (spreadNumber + (isLeftPage ? 0 : 1)) % 12;
   const photoLayout = (spreadNumber + Math.floor((page.decorSeed || 1) / 13)) % 5;
   const msgLayout = (spreadNumber + Math.floor((page.decorSeed || 1) / 7)) % 4;
 
+  // Warna tinta pena tulisan tangan yang bervariasi alami
+  const penInks = ["#182542", "#241409", "#3b1712", "#142e24"];
+
   // 1. Latar Kertas Berdasarkan 12 Tema Scrapbook
   switch (themeIdx) {
     case 0: {
-      // Tema 1: Kraft Vintage Herbarium + Bercak Gesso Putih
       const grad = ctx.createLinearGradient(0, 0, width, height);
       grad.addColorStop(0, "#c89f72");
       grad.addColorStop(0.5, "#be9364");
@@ -901,7 +1406,6 @@ export function createBookPageTexture(
       break;
     }
     case 1: {
-      // Tema 2: Kertas Kuning Polka-Dot Ceria + Lembar Kertas Krem Sobek
       ctx.fillStyle = "#f2c86b";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "rgba(255, 244, 212, 0.58)";
@@ -918,7 +1422,6 @@ export function createBookPageTexture(
       break;
     }
     case 2: {
-      // Tema 3: Midnight Navy Starlight + Kertas Kotak-Kotak (Graph Paper)
       ctx.fillStyle = "#1a2b42";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#f5efe2";
@@ -945,7 +1448,6 @@ export function createBookPageTexture(
       break;
     }
     case 3: {
-      // Tema 4: Sage Botanical Herbarium (Hijau Daun Kering & Kertas Linen)
       ctx.fillStyle = "#7a9478";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#faf6ec";
@@ -956,7 +1458,6 @@ export function createBookPageTexture(
       break;
     }
     case 4: {
-      // Tema 5: Sunset Terracotta Ende & Ornamen Tenun Ikat
       ctx.fillStyle = "#cb6a47";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#fdf7ed";
@@ -974,7 +1475,6 @@ export function createBookPageTexture(
       break;
     }
     case 5: {
-      // Tema 6: Kartu Pos Airmail Vintage (Garis Merah-Biru Diagonal di Pinggir)
       ctx.fillStyle = "#f7eedb";
       ctx.fillRect(0, 0, width, height);
       const stripeW = 36;
@@ -990,10 +1490,8 @@ export function createBookPageTexture(
       break;
     }
     case 6: {
-      // Tema 7: Darkroom 35mm Film Strip & Sepia Collage
       ctx.fillStyle = "#221c18";
       ctx.fillRect(0, 0, width, height);
-      // Perforasi film 35mm di tepi atas & bawah
       ctx.fillStyle = "#f2e5ce";
       for (let fx = 48; fx < width - 48; fx += 46) {
         ctx.fillRect(fx, 18, 26, 18);
@@ -1004,7 +1502,6 @@ export function createBookPageTexture(
       break;
     }
     case 7: {
-      // Tema 8: Picnic Gingham Checkered & Pastel Rose
       ctx.fillStyle = "#f4e1dc";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "rgba(212, 128, 136, 0.24)";
@@ -1019,7 +1516,6 @@ export function createBookPageTexture(
       break;
     }
     case 8: {
-      // Tema 9: Buku Catatan Sekolah Bergaris & Margin Merah
       ctx.fillStyle = "#fcf7eb";
       ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = "rgba(66, 118, 168, 0.24)";
@@ -1039,7 +1535,6 @@ export function createBookPageTexture(
       break;
     }
     case 9: {
-      // Tema 10: Coastal Teal Ende & Gelombang Laut
       ctx.fillStyle = "#26595c";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "#faf3e3";
@@ -1055,7 +1550,6 @@ export function createBookPageTexture(
       break;
     }
     case 10: {
-      // Tema 11: Archival Parchment & Noda Cangkir Kopi Hangat
       const grad = ctx.createRadialGradient(
         width / 2,
         height / 2,
@@ -1069,7 +1563,6 @@ export function createBookPageTexture(
       grad.addColorStop(1, "#d9bf96");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
-      // Coffee ring stain di pojok
       ctx.strokeStyle = "rgba(128, 78, 36, 0.18)";
       ctx.lineWidth = 8;
       ctx.beginPath();
@@ -1082,7 +1575,6 @@ export function createBookPageTexture(
       break;
     }
     default: {
-      // Tema 12: Festival Bunting Banner & Dot Grid Journal
       ctx.fillStyle = "#faf4e6";
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = "rgba(110, 86, 60, 0.26)";
@@ -1110,55 +1602,72 @@ export function createBookPageTexture(
     drawBuntingFlags(ctx, width, 64);
     drawRansomWord(
       ctx,
-      isLeftPage ? "MEMORIES" : "FRIENDS",
-      isLeftPage ? 225 : 250,
+      isLeftPage ? "MEMORIES" : "UNO PPLG",
+      isLeftPage ? 225 : 235,
       128,
       46
     );
 
     ctx.fillStyle = "#1f1208";
-    ctx.font = "bold 44px Georgia, serif";
+    ctx.font = `700 50px ${handFont}`;
     ctx.textAlign = "center";
-    ctx.fillText("Daftar Isi Scrapbook XII PPLG 1", width / 2, 202);
+    ctx.fillText("Daftar Isi Buku Kenangan UNO · XII PPLG 1", width / 2, 204);
 
     ctx.fillStyle = "#8c3b2b";
-    ctx.font = "bold 26px Georgia, serif";
-    ctx.fillText("MAKN Ende · Angkatan 2024—2027", width / 2, 242);
+    ctx.font = `700 32px ${handFont}`;
+    ctx.fillText("MAKN Ende · Angkatan 2024—2027", width / 2, 246);
 
     ctx.textAlign = "left";
     const entries = page.tocEntries ?? [];
     entries.forEach((entry, idx) => {
-      const y = 306 + idx * 68;
-      if (y > height - 125) return;
+      const y = 304 + idx * 64;
+      if (y > height - 220) return;
+
+      const rowTilt = ((idx % 3) - 1) * 0.008;
+      const rowShiftX = ((idx * 17) % 24) - 12;
+
+      ctx.save();
+      ctx.translate(width / 2 + rowShiftX, y - 16);
+      ctx.rotate(rowTilt);
 
       ctx.fillStyle =
         idx % 2 === 0 ? "rgba(255, 252, 245, 0.94)" : "rgba(244, 232, 209, 0.94)";
-      ctx.fillRect(84, y - 42, width - 168, 54);
+      ctx.fillRect(-(width - 180) / 2, -26, width - 180, 52);
       ctx.strokeStyle = "rgba(92, 64, 38, 0.35)";
       ctx.lineWidth = 2;
-      ctx.strokeRect(84, y - 42, width - 168, 54);
+      ctx.strokeRect(-(width - 180) / 2, -26, width - 180, 52);
 
-      ctx.fillStyle = "#170d05";
-      ctx.font = "bold 30px Georgia, serif";
+      ctx.fillStyle = penInks[idx % penInks.length]!;
+      ctx.font = `700 35px ${handFont}`;
+      ctx.textAlign = "left";
       ctx.fillText(
-        `${String(entry.spreadIndex).padStart(2, "0")}. ${entry.name.slice(0, 24)}`,
-        104,
-        y - 6
+        `${String(entry.spreadIndex).padStart(2, "0")}. ${entry.name.slice(0, 26)}`,
+        -(width - 216) / 2,
+        10
       );
 
       ctx.textAlign = "right";
       ctx.fillStyle = "#a84232";
-      ctx.font = "bold 25px sans-serif";
-      ctx.fillText(`Lembar #${entry.spreadIndex}`, width - 104, y - 6);
-      ctx.textAlign = "left";
+      ctx.font = `700 30px ${handFont}`;
+      ctx.fillText(`Hal. ${entry.spreadIndex * 2} →`, (width - 216) / 2, 10);
+      ctx.restore();
     });
 
     drawPressedFlower(ctx, 118, 134, 34, "#f7f3e8", "#d99b4e", 8);
     drawScrapbookButterfly(ctx, width - 122, 138, 0.95, 0.28, "#d99b4e", "#8c4a27");
+
+    // Stiker Meme Perpisahan Lucu di bagian bawah Daftar Isi
+    drawFarewellMemeSticker(
+      ctx,
+      isLeftPage ? width - 250 : 250,
+      height - 168,
+      0.92,
+      isLeftPage ? -0.05 : 0.05,
+      isLeftPage ? 0 : 7
+    );
   } else if (page.type === "student-left") {
     // Ornamen atas sesuai variasi layout siswa (5 gaya berbeda)
     if (photoLayout === 0) {
-      // Gaya 1: Mini Music Player Card + Ribbon Bow
       ctx.save();
       ctx.translate(width - 235, 138);
       ctx.rotate(0.06);
@@ -1170,36 +1679,32 @@ export function createBookPageTexture(
       ctx.fillStyle = "#c86d3b";
       ctx.fillRect(-114, -32, 56, 56);
       ctx.fillStyle = "#fbf6ec";
-      ctx.font = "bold 18px sans-serif";
+      ctx.font = `700 24px ${handFont}`;
       ctx.textAlign = "left";
-      ctx.fillText("XII PPLG 1 Track", -46, -10);
-      ctx.font = "15px sans-serif";
+      ctx.fillText("UNO · XII PPLG 1 Track", -46, -8);
+      ctx.font = `700 20px ${handFont}`;
       ctx.fillStyle = "#d6c7b2";
-      ctx.fillText("MAKN Ende — Memories", -46, 12);
+      ctx.fillText("MAKN Ende — Memories", -46, 16);
       ctx.fillStyle = "#fbf6ec";
-      ctx.fillRect(-46, 24, 150, 4);
+      ctx.fillRect(-46, 26, 150, 4);
       ctx.restore();
       drawRibbonBow(ctx, 210, 130, 0.95, "#f09cb0");
     } else if (photoLayout === 1) {
-      // Gaya 2: Stiker Kaset Pita Retro + Ransom "US CORE"
       drawCassetteSticker(
         ctx,
         215,
         136,
         -0.08,
-        (page.studentNickname || "PPLG").toUpperCase()
+        (page.studentNickname || "UNO").toUpperCase()
       );
       drawRansomWord(ctx, "US CORE", width - 365, 126, 36);
     } else if (photoLayout === 2) {
-      // Gaya 3: Perangko Pos Ende + Segel Lilin Merah
       drawPostageStamp(ctx, width - 170, 148, 0.1, "#2d6a6e", `ABSEN #${spreadNumber}`);
       drawWaxSeal(ctx, 168, 142, 38, "#9e2a2b");
     } else if (photoLayout === 3) {
-      // Gaya 4: Bunting Bendera Kecil + Kupu-kupu Kembar
       drawBuntingFlags(ctx, width, 72);
       drawScrapbookButterfly(ctx, 165, 158, 0.9, -0.22, "#e0a958", "#8c3b2b");
     } else {
-      // Gaya 5: Stiker "FAVORITE PERSON" Oval Kraft (seperti Ref 1) + Pita Biru
       ctx.save();
       ctx.translate(width - 220, 134);
       ctx.rotate(0.08);
@@ -1211,14 +1716,14 @@ export function createBookPageTexture(
       ctx.lineWidth = 3;
       ctx.stroke();
       ctx.fillStyle = "#2b190d";
-      ctx.font = "bold 24px Georgia, serif";
+      ctx.font = `700 32px ${handFont}`;
       ctx.textAlign = "center";
-      ctx.fillText("★ Favorite Friend ★", 0, 8);
+      ctx.fillText("★ Sahabat Sejati ★", 0, 10);
       ctx.restore();
       drawRibbonBow(ctx, 195, 132, 0.92, "#7ab8c8");
     }
 
-    // BINGKAI FOTO POTRET SISWA (5 Variasi Bentuk Berbeda!)
+    // BINGKAI FOTO POTRET SISWA (5 Variasi Bentuk + Posisi & Kemiringan Acak per Siswa)
     const portraitPalettes = [
       "#2d6a6e",
       "#8c3b2b",
@@ -1230,369 +1735,431 @@ export function createBookPageTexture(
     const portraitBg =
       portraitPalettes[(spreadNumber + photoLayout) % portraitPalettes.length]!;
 
+    const photoShiftX = (rand() - 0.5) * 76;
+    const photoRot = (rand() - 0.5) * 0.11;
+
     ctx.save();
-    ctx.translate(width / 2 - 10, 355);
-    ctx.rotate(((spreadNumber % 2 === 0 ? 1 : -1) * 0.03));
+    ctx.translate(width / 2 + photoShiftX, 345);
+    ctx.rotate(photoRot);
 
     if (photoLayout === 1) {
-      // Variasi Bingkai 1: Bingkai Cermin Oval Klasik Berulir (seperti gambar Ref 1)
       ctx.fillStyle = "#fcf6e8";
       ctx.beginPath();
-      ctx.ellipse(0, -10, 210, 218, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -10, 200, 208, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#3a2415";
       ctx.beginPath();
-      ctx.ellipse(0, -10, 196, 204, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -10, 186, 194, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = portraitBg;
       ctx.beginPath();
-      ctx.ellipse(0, -10, 168, 176, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -10, 160, 168, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Siluet potret siswa di dalam oval
       ctx.fillStyle = "rgba(243, 202, 130, 0.3)";
       ctx.beginPath();
-      ctx.arc(0, -35, 84, 0, Math.PI * 2);
+      ctx.arc(0, -35, 80, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#fbf6ec";
       ctx.beginPath();
-      ctx.arc(0, -56, 48, 0, Math.PI * 2);
+      ctx.arc(0, -54, 46, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(0, 74, 86, 72, 0, Math.PI, 0, false);
+      ctx.ellipse(0, 70, 82, 68, 0, Math.PI, 0, false);
       ctx.fill();
 
-      // Pita nama di bawah oval
       ctx.fillStyle = "#fffdf7";
-      ctx.fillRect(-165, 148, 330, 56);
+      ctx.fillRect(-160, 140, 320, 54);
       ctx.strokeStyle = "#2b190d";
       ctx.lineWidth = 3;
-      ctx.strokeRect(-165, 148, 330, 56);
+      ctx.strokeRect(-160, 140, 320, 54);
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = "bold 36px Georgia, serif";
-      ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 187);
+      ctx.font = `700 42px ${handFont}`;
+      ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 179);
     } else if (photoLayout === 2) {
-      // Variasi Bingkai 2: 35mm Darkroom Film Frame dengan Lubang Sprocket
       ctx.fillStyle = "#181412";
-      ctx.fillRect(-215, -205, 430, 415);
+      ctx.fillRect(-205, -195, 410, 395);
       ctx.strokeStyle = "#e0a958";
       ctx.lineWidth = 3;
-      ctx.strokeRect(-215, -205, 430, 415);
+      ctx.strokeRect(-205, -195, 410, 395);
 
-      // Lubang sprocket kiri & kanan
       ctx.fillStyle = "#fbf5e8";
-      for (let sy = -182; sy <= 178; sy += 36) {
-        ctx.fillRect(-202, sy, 18, 22);
-        ctx.fillRect(184, sy, 18, 22);
+      for (let sy = -172; sy <= 168; sy += 36) {
+        ctx.fillRect(-192, sy, 16, 20);
+        ctx.fillRect(176, sy, 16, 20);
       }
 
       ctx.fillStyle = portraitBg;
-      ctx.fillRect(-166, -176, 332, 294);
+      ctx.fillRect(-158, -168, 316, 280);
 
       ctx.fillStyle = "#fbf6ec";
       ctx.beginPath();
-      ctx.arc(0, -64, 52, 0, Math.PI * 2);
+      ctx.arc(0, -60, 50, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(0, 76, 94, 80, 0, Math.PI, 0, false);
+      ctx.ellipse(0, 72, 90, 76, 0, Math.PI, 0, false);
       ctx.fill();
 
       ctx.fillStyle = "#f3ca82";
       ctx.textAlign = "center";
-      ctx.font = "bold 34px monospace";
-      ctx.fillText(`KODAK 400 · ${page.studentNickname || "PPLG"}`, 0, 172);
+      ctx.font = `700 38px ${handFont}`;
+      ctx.fillText(`KODAK 400 · ${page.studentNickname || "UNO"}`, 0, 164);
     } else if (photoLayout === 3) {
-      // Variasi Bingkai 3: Vintage Archival Photo dengan Siku Photo-Corners Hitam
       ctx.fillStyle = "#f6ebd8";
-      ctx.fillRect(-200, -202, 400, 415);
+      ctx.fillRect(-192, -195, 384, 395);
       ctx.strokeStyle = "#6e4e32";
       ctx.lineWidth = 3;
-      ctx.strokeRect(-200, -202, 400, 415);
+      ctx.strokeRect(-192, -195, 384, 395);
 
       ctx.fillStyle = portraitBg;
-      ctx.fillRect(-170, -174, 340, 292);
+      ctx.fillRect(-162, -168, 324, 280);
 
-      // 4 Siku Photo-Corner Hitam Klasik
       ctx.fillStyle = "#1c1510";
       const corners: [number, number, number, number][] = [
-        [-176, -180, 1, 1],
-        [176, -180, -1, 1],
-        [-176, 124, 1, -1],
-        [176, 124, -1, -1],
+        [-168, -174, 1, 1],
+        [168, -174, -1, 1],
+        [-168, 118, 1, -1],
+        [168, 118, -1, -1],
       ];
       corners.forEach(([cx, cy, sx, sy]) => {
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + sx * 44, cy);
-        ctx.lineTo(cx, cy + sy * 44);
+        ctx.lineTo(cx + sx * 42, cy);
+        ctx.lineTo(cx, cy + sy * 42);
         ctx.closePath();
         ctx.fill();
       });
 
       ctx.fillStyle = "#fbf6ec";
       ctx.beginPath();
-      ctx.arc(0, -62, 54, 0, Math.PI * 2);
+      ctx.arc(0, -58, 52, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(0, 78, 96, 82, 0, Math.PI, 0, false);
+      ctx.ellipse(0, 74, 92, 78, 0, Math.PI, 0, false);
       ctx.fill();
 
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = "italic bold 38px Georgia, serif";
-      ctx.fillText(`"${page.studentNickname || "Sahabat"}"`, 0, 176);
+      ctx.font = `700 44px ${handFont}`;
+      ctx.fillText(`"${page.studentNickname || "Sahabat"}"`, 0, 168);
     } else {
-      // Variasi Bingkai 0 & 4: Polaroid Tebal dengan Washi Tape Polkadot / Silang
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(-195, -202, 390, 415);
+      ctx.fillRect(-188, -195, 376, 395);
       ctx.strokeStyle = "#8c6d46";
       ctx.lineWidth = 4;
-      ctx.strokeRect(-195, -202, 390, 415);
+      ctx.strokeRect(-188, -195, 376, 395);
 
-      // Washi tape di bagian atas
       ctx.fillStyle =
         photoLayout === 0 ? "rgba(200, 109, 59, 0.8)" : "rgba(45, 106, 110, 0.78)";
-      ctx.fillRect(-105, -228, 210, 38);
-      ctx.fillStyle = "rgba(255, 250, 240, 0.55)";
-      for (let wx = -85; wx <= 85; wx += 28) {
-        ctx.beginPath();
-        ctx.arc(wx, -209, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.fillRect(-100, -220, 200, 36);
 
       ctx.fillStyle = portraitBg;
-      ctx.fillRect(-168, -176, 336, 290);
+      ctx.fillRect(-160, -168, 320, 278);
 
       ctx.fillStyle = "rgba(243, 202, 130, 0.28)";
       ctx.beginPath();
-      ctx.arc(0, -45, 92, 0, Math.PI * 2);
+      ctx.arc(0, -45, 88, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#fbf6ec";
       ctx.beginPath();
-      ctx.arc(0, -64, 54, 0, Math.PI * 2);
+      ctx.arc(0, -60, 52, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(0, 78, 96, 82, 0, Math.PI, 0, false);
+      ctx.ellipse(0, 74, 92, 78, 0, Math.PI, 0, false);
       ctx.fill();
 
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = "bold 40px Georgia, serif";
-      ctx.fillText(`★ ${page.studentNickname || "Sahabat"} ★`, 0, 174);
+      ctx.font = `700 44px ${handFont}`;
+      ctx.fillText(`★ ${page.studentNickname || "Sahabat"} ★`, 0, 166);
     }
     ctx.restore();
 
-    // Stiker Bunga & Kupu-Kupu dengan warna bervariasi per siswa
-    const flowerPalette = ["#d9534f", "#e08499", "#e5a93c", "#6ba38b", "#c86d3b"];
-    drawPressedFlower(
-      ctx,
-      144,
-      495,
-      42,
-      flowerPalette[spreadNumber % flowerPalette.length]!,
-      "#f9d466",
-      6 + (spreadNumber % 4)
-    );
-    drawScrapbookButterfly(
-      ctx,
-      width - 144,
-      470,
-      1.05,
-      -0.25,
-      flowerPalette[(spreadNumber + 2) % flowerPalette.length]!,
-      "#2d6a6e"
-    );
+    // KOTAK NAMA SISWA DENGAN POSISI & KEMIRINGAN ACAK
+    const nameShiftX = (rand() - 0.5) * 68;
+    const nameRot = (rand() - 0.5) * 0.065;
+    ctx.save();
+    ctx.translate(width / 2 + nameShiftX, 622);
+    ctx.rotate(nameRot);
 
-    // Strip Kertas Nama Lengkap Siswa
+    const nameBoxW = width - 210 - Math.floor(rand() * 50);
     ctx.fillStyle = themeIdx % 2 === 0 ? "#fffdf7" : "#231912";
-    ctx.fillRect(92, 580, width - 184, 118);
+    ctx.fillRect(-nameBoxW / 2, -54, nameBoxW, 108);
     ctx.strokeStyle = "#d99b4e";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(92, 580, width - 184, 118);
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(-nameBoxW / 2, -54, nameBoxW, 108);
 
     ctx.textAlign = "center";
     ctx.fillStyle = themeIdx % 2 === 0 ? "#140b04" : "#fbf5e8";
-    ctx.font = "bold 45px Georgia, serif";
-    ctx.fillText(page.studentName || "Siswa XII PPLG 1", width / 2, 636);
+    ctx.font = `700 50px ${handFont}`;
+    ctx.fillText(page.studentName || "Siswa XII PPLG 1", 0, -4);
 
     ctx.fillStyle = themeIdx % 2 === 0 ? "#a84232" : "#f3ca82";
-    ctx.font = "bold 27px sans-serif";
+    ctx.font = `700 31px ${handFont}`;
     ctx.fillText(
       page.studentRole || "Pengembangan Perangkat Lunak & Gim",
-      width / 2,
-      680
+      0,
+      38
+    );
+    ctx.restore();
+
+    // KOTAK BIO SISWA DENGAN TATA LETAK, BENTUK KERTAS & KEMIRINGAN ACAK
+    const bioShiftX = (rand() - 0.5) * 74;
+    const bioRot = (rand() - 0.5) * 0.075;
+    const bioW = width - 190 - Math.floor(rand() * 65);
+    const bioH = 268;
+    const bioVariant = spreadNumber + Math.floor(rand() * 5);
+    const bioPapers = ["#fffaf0", "#fef9e7", "#f4fbf7", "#fdf2e9", "#f8f4ec"];
+
+    ctx.save();
+    ctx.translate(width / 2 + bioShiftX, 845);
+    ctx.rotate(bioRot);
+
+    drawRandomScrapbookBox(
+      ctx,
+      bioW,
+      bioH,
+      bioVariant,
+      bioPapers[bioVariant % bioPapers.length]!,
+      "rgba(200, 109, 59, 0.65)"
     );
 
-    // Kotak Bio Siswa
-    ctx.fillStyle = "#fffaf0";
-    ctx.strokeStyle = "#6e4e32";
-    ctx.lineWidth = 3.5;
-    ctx.fillRect(86, 725, width - 172, 310);
-    ctx.strokeRect(86, 725, width - 172, 310);
-
-    ctx.fillStyle = "rgba(200, 109, 59, 0.52)";
-    ctx.fillRect(72, 712, 78, 26);
-    ctx.fillRect(width - 150, 712, 78, 26);
-
-    ctx.fillStyle = "#170d05";
-    ctx.font = "bold 35px Georgia, serif";
+    ctx.fillStyle = penInks[spreadNumber % penInks.length]!;
+    ctx.font = `700 42px ${handFont}`;
+    ctx.textAlign = "center";
     const bioWords = (
       page.studentBio ||
       "Terima kasih untuk tiga tahun cerita dan persaudaraan hangat di MAKN Ende."
     ).split(" ");
     let line = "";
-    let y = 792;
+    let y = -58;
     for (const w of bioWords) {
       const test = line ? `${line} ${w}` : w;
-      if (ctx.measureText(test).width > width - 224) {
-        ctx.fillText(line, width / 2, y);
+      if (ctx.measureText(test).width > bioW - 72) {
+        ctx.fillText(line, 0, y);
         line = w;
-        y += 52;
+        y += 50;
       } else {
         line = test;
       }
     }
-    if (line) ctx.fillText(line, width / 2, y);
+    if (line) ctx.fillText(line, 0, y);
 
     if (page.studentTags && page.studentTags.length > 0) {
-      ctx.fillStyle = "#1c1613";
-      ctx.fillRect(140, 1064, width - 280, 56);
-      ctx.fillStyle = "#f7efe2";
-      ctx.font = "bold 26px sans-serif";
+      ctx.fillStyle = "#a84232";
+      ctx.font = `700 28px ${handFont}`;
       ctx.fillText(
-        `✦ ${page.studentTags.join("  ·  ")} ✦`,
-        width / 2,
-        1100
+        `#${page.studentTags.join("   #")}`,
+        0,
+        bioH / 2 - 24
       );
     }
+    ctx.restore();
+
+    // STIKER MEME PERPISAHAN LUCU DI SETIAP HALAMAN KIRI
+    const leftMemeX = spreadNumber % 2 === 0 ? 235 : width - 235;
+    const leftMemeRot = spreadNumber % 2 === 0 ? -0.065 : 0.065;
+    drawFarewellMemeSticker(
+      ctx,
+      leftMemeX,
+      1088,
+      0.92,
+      leftMemeRot,
+      spreadNumber * 2 + 1
+    );
+
+    // Bunga & Kupu-kupu di sudut berlawanan dari meme sticker
+    drawPressedFlower(
+      ctx,
+      spreadNumber % 2 === 0 ? width - 145 : 145,
+      1085,
+      36,
+      "#e08499",
+      "#f9d466",
+      7
+    );
   } else {
-    // Halaman Kanan: Surat & Catatan Sahabat dengan 4 Variasi Header & Kartu
-    const headerWords = ["FRIENDS", "MEMORIES", "OUR CORE", "FOREVER"];
+    // HALAMAN KANAN: SURAT & CATATAN SAHABAT DENGAN KOTAK TEKS ACAK + TULISAN TANGAN + STIKER MEME
+    const headerWords = ["FRIENDS", "MEMORIES", "OUR CORE", "UNO PPLG"];
+    const hdrShift = (rand() - 0.5) * 40;
     drawRansomWord(
       ctx,
       headerWords[msgLayout % headerWords.length]!,
-      108,
-      108,
-      39
+      104 + hdrShift,
+      106,
+      38
     );
 
+    ctx.save();
+    ctx.translate(650, 108);
+    ctx.rotate((rand() - 0.5) * 0.06);
     ctx.fillStyle = "#fffdf7";
-    ctx.fillRect(425, 78, width - 510, 62);
+    ctx.fillRect(-210, -32, 420, 64);
     ctx.strokeStyle = "#2b190d";
     ctx.lineWidth = 3;
-    ctx.strokeRect(425, 78, width - 510, 62);
+    ctx.strokeRect(-210, -32, 420, 64);
 
     ctx.fillStyle = "#1f1208";
-    ctx.font = "bold 31px Georgia, serif";
+    ctx.font = `700 38px ${handFont}`;
     ctx.textAlign = "center";
     ctx.fillText(
-      `Untuk ${page.studentNickname || page.studentName || "Sahabat"}`,
-      425 + (width - 510) / 2,
-      118
+      `Surat Sahabat utk ${page.studentNickname || page.studentName || "Kamu"} ♥`,
+      0,
+      11
     );
+    ctx.restore();
 
     const msgs = page.messages ?? [];
-    let curY = 178;
-    msgs.slice(0, 3).forEach((m, idx) => {
-      const boxPalettes = [
-        ["#fffdf5", "#f3faf7", "#fdf4ed"],
-        ["#fef9e7", "#f5eef8", "#e8f8f5"],
-        ["#fdf2e9", "#eaf2f8", "#f9ebea"],
-        ["#fcf8e8", "#eef6f0", "#f8efe6"],
-      ];
-      const boxColors = boxPalettes[msgLayout % boxPalettes.length]!;
-      const tapeColors = [
-        "rgba(200, 109, 59, 0.68)",
-        "rgba(45, 106, 110, 0.64)",
-        "rgba(168, 66, 50, 0.64)",
-      ];
+    const boxPalettes = [
+      ["#fffdf5", "#f3faf7", "#fdf4ed"],
+      ["#fef9e7", "#f5eef8", "#e8f8f5"],
+      ["#fdf2e9", "#eaf2f8", "#f9ebea"],
+      ["#fcf8e8", "#eef6f0", "#f8efe6"],
+    ];
+    const boxColors = boxPalettes[msgLayout % boxPalettes.length]!;
+    const tapeColors = [
+      "rgba(200, 109, 59, 0.68)",
+      "rgba(45, 106, 110, 0.64)",
+      "rgba(168, 66, 50, 0.64)",
+    ];
+
+    let curY = 172;
+    if (msgs.length === 0) {
+      const boxW = width - 230;
+      const boxH = 248;
       ctx.save();
+      ctx.translate(width / 2, curY + boxH / 2 + 40);
+      ctx.rotate((rand() - 0.5) * 0.05);
+      drawRandomScrapbookBox(
+        ctx,
+        boxW,
+        boxH,
+        msgLayout,
+        boxColors[0]!,
+        tapeColors[0]!
+      );
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#6e5a47";
+      ctx.font = `700 40px ${handFont}`;
+      ctx.fillText(
+        "Belum ada pesan kenangan di database",
+        0,
+        -12
+      );
+      ctx.fillText(
+        "untuk halaman sahabat ini.",
+        0,
+        42
+      );
+      ctx.restore();
+    }
+    msgs.slice(0, 3).forEach((m, idx) => {
+      const mRand = seededRandom((m.seed || 101) + idx * 53 + page.pageNumber * 17);
+      // Setiap kotak teks memiliki lebar, posisi horizontal, dan sudut kemiringan acak yang unik!
+      const boxW = width - 210 - Math.floor(mRand() * 90);
+      const boxH = 248;
+      const offsetX = (mRand() - 0.5) * 110;
+      const rot = (mRand() - 0.5) * 0.095;
+      const styleVariant = Math.floor(mRand() * 5) + idx;
 
-      ctx.translate(width / 2, curY + 148);
-      ctx.rotate(((idx % 2 === 0 ? 1 : -1) * (0.01 + (msgLayout % 3) * 0.005)));
+      ctx.save();
+      ctx.translate(width / 2 + offsetX, curY + boxH / 2);
+      ctx.rotate(rot);
 
-      ctx.fillStyle = boxColors[idx % boxColors.length]!;
-      ctx.strokeStyle = "#5c4026";
-      ctx.lineWidth = 3.5;
-      ctx.fillRect(-(width - 172) / 2, -144, width - 172, 288);
-      ctx.strokeRect(-(width - 172) / 2, -144, width - 172, 288);
+      drawRandomScrapbookBox(
+        ctx,
+        boxW,
+        boxH,
+        styleVariant,
+        boxColors[idx % boxColors.length]!,
+        tapeColors[(idx + msgLayout) % tapeColors.length]!
+      );
 
-      // Garis buku tipis pada kartu pesan bila msgLayout ganjil
-      if (msgLayout % 2 === 1) {
-        ctx.strokeStyle = "rgba(110, 86, 60, 0.14)";
-        ctx.lineWidth = 1.5;
-        for (let ly = -90; ly <= 90; ly += 45) {
-          ctx.beginPath();
-          ctx.moveTo(-(width - 210) / 2, ly);
-          ctx.lineTo((width - 210) / 2, ly);
-          ctx.stroke();
-        }
-      }
-
-      // Washi tape atau segel lilin di atas kartu pesan
-      if (msgLayout === 2 && idx === 0) {
-        drawWaxSeal(ctx, 0, -142, 26, "#9e2a2b");
-      } else {
-        ctx.fillStyle = tapeColors[(idx + msgLayout) % tapeColors.length]!;
-        ctx.fillRect(-75, -158, 150, 28);
-      }
-
+      // Teks Pesan Sahabat dengan Font Tulisan Tangan Asli (Bukan Ketikan)
       ctx.textAlign = "left";
-      ctx.fillStyle = "#140b04";
-      ctx.font = "bold 35px Georgia, serif";
+      ctx.fillStyle = penInks[(idx + spreadNumber) % penInks.length]!;
+      ctx.font = `700 40px ${handFont}`;
       const words = m.text.split(" ");
       let line = "";
-      let ly = -82;
-      const maxLineW = width - 235;
+      let ly = -boxH / 2 + 66;
+      const maxLineW = boxW - 68;
       for (const w of words) {
         const test = line ? `${line} ${w}` : w;
         if (ctx.measureText(test).width > maxLineW) {
-          ctx.fillText(line, -(width - 220) / 2, ly);
+          ctx.fillText(line, -boxW / 2 + 34, ly);
           line = w;
-          ly += 48;
-          if (ly > 64) break;
+          ly += 46;
+          if (ly > boxH / 2 - 54) break;
         } else {
           line = test;
         }
       }
-      if (line && ly <= 64) ctx.fillText(line, -(width - 220) / 2, ly);
+      if (line && ly <= boxH / 2 - 54) {
+        ctx.fillText(line, -boxW / 2 + 34, ly);
+      }
 
+      // Nama Pengirim dengan Tulisan Tangan Miring di Sudut Kanan Bawah Kotak
       ctx.fillStyle = "#a84232";
-      ctx.font = "bold 28px sans-serif";
+      ctx.font = `700 32px ${handFont}`;
       ctx.textAlign = "right";
-      ctx.fillText(`— Dari: ${m.author} ♥`, (width - 220) / 2, 114);
+      ctx.fillText(`~ Dari: ${m.author} ♥`, boxW / 2 - 28, boxH / 2 - 22);
       ctx.restore();
 
-      curY += 326;
+      curY += 282;
     });
 
+    // STIKER MEME PERPISAHAN LUCU DI SETIAP HALAMAN KANAN
+    const rightMemeX = spreadNumber % 2 === 0 ? width - 245 : 245;
+    const rightMemeRot = spreadNumber % 2 === 0 ? 0.055 : -0.055;
+    drawFarewellMemeSticker(
+      ctx,
+      rightMemeX,
+      1092,
+      0.94,
+      rightMemeRot,
+      spreadNumber * 2 + 2
+    );
+
     if (msgLayout % 2 === 0) {
-      drawScrapbookButterfly(ctx, width - 116, 195, 0.88, 0.32, "#d99b4e", "#2d6a6e");
-      drawPressedFlower(ctx, 118, height - 122, 34, "#fff9e6", "#d9822b", 9);
+      drawScrapbookButterfly(
+        ctx,
+        spreadNumber % 2 === 0 ? 140 : width - 140,
+        1088,
+        0.9,
+        0.28,
+        "#d99b4e",
+        "#2d6a6e"
+      );
     } else {
-      drawPostageStamp(ctx, width - 132, height - 148, -0.12, "#8c3b2b", `PAGE #${page.pageNumber}`);
-      drawRibbonBow(ctx, 126, height - 120, 0.85, "#e5a93c");
+      drawPostageStamp(
+        ctx,
+        spreadNumber % 2 === 0 ? 150 : width - 150,
+        1085,
+        -0.1,
+        "#8c3b2b",
+        `HAL #${page.pageNumber}`
+      );
     }
   }
 
   // Lubang 6 Ring Binder di tepi punggung tengah
   drawBinderHoles(ctx, isLeftPage, height);
 
-  // Nomor halaman + Badge Tema Unik di bagian bawah
+  // Nomor halaman dengan tulisan tangan di bagian bawah
   ctx.fillStyle = "#2b190d";
-  ctx.fillRect(width / 2 - 175, height - 96, 350, 44);
+  ctx.fillRect(width / 2 - 165, height - 92, 330, 42);
   ctx.fillStyle = "#fbf5e8";
-  ctx.font = "bold 23px Georgia, serif";
+  ctx.font = `700 28px ${handFont}`;
   ctx.textAlign = "center";
   ctx.fillText(
-    `— Hal ${page.pageNumber} · Template #${themeIdx + 1} —`,
+    `~ Lembar ${page.pageNumber} · UNO Scrapbook ~`,
     width / 2,
-    height - 66
+    height - 62
   );
 
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);

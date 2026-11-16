@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Send, X, CheckCircle2 } from "lucide-react";
+import { motion } from "motion/react";
+import { Send, X, CheckCircle2, Pin } from "lucide-react";
 import {
   DreamBoardSection,
   type ExtendedStudentRecord,
@@ -40,7 +41,7 @@ export function DreamBoardClient({
     React.useState<DreamRow | null>(null);
   const [cheerAuthor, setCheerAuthor] = React.useState("");
   const [cheerMessage, setCheerMessage] = React.useState("");
-  const [cheerCode, setCheerCode] = React.useState("XIIPPLG1-2027");
+  const [cheerCode, setCheerCode] = React.useState("XIIPPLG1");
   const [cheerSubmitting, setCheerSubmitting] = React.useState(false);
   const [cheerFeedback, setCheerFeedback] = React.useState<string | null>(null);
 
@@ -54,26 +55,20 @@ export function DreamBoardClient({
   const [dreamColor, setDreamColor] = React.useState(
     DREAM_PAPER_PALETTE[0]?.hex ?? "#FFF7D6"
   );
-  const [dreamCode, setDreamCode] = React.useState("XIIPPLG1-2027");
+  const [dreamCode, setDreamCode] = React.useState("XIIPPLG1");
   const [dreamSubmitting, setDreamSubmitting] = React.useState(false);
   const [dreamFeedback, setDreamFeedback] = React.useState<string | null>(null);
 
   const handleOpenCheerForStudent = React.useCallback(
     (st: ExtendedStudentRecord) => {
       const matched =
-        dreams.find((d) => d.student_id === st.id) ?? {
-          id: `dream-${st.id}`,
-          student_id: st.id,
-          student_name: st.name,
-          student_nickname: st.nickname || st.name.split(" ")[0] || st.name,
-          dream: st.dream_title,
-          reason: st.dream_reason,
-          paper_color: st.dream_paper_color || "#FFF7D6",
-          status: "approved",
-          cheers: [],
-        };
-      setCheerTargetDream(matched);
-      setCheerFeedback(null);
+        dreams.find(
+          (d) => d.id === st.dream_id || d.student_id === st.id
+        ) ?? null;
+      if (matched) {
+        setCheerTargetDream(matched);
+        setCheerFeedback(null);
+      }
     },
     [dreams]
   );
@@ -162,62 +157,75 @@ export function DreamBoardClient({
         }}
       />
 
-      {/* Modal Kirim Semangat untuk Siswa */}
+      {/* Modal Lembar Doa & Semangat untuk Sahabat (Bersih, Rapi, Bergaya Kertas Catatan Tulis) */}
       {cheerTargetDream && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="dream-cheer-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
         >
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 340, damping: 26 }}
+            style={{
+              borderTopColor: cheerTargetDream.paper_color || "#e09f4c",
+            }}
+            className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border border-t-[6px] bg-card p-6 text-card-foreground shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Doa &amp; Semangat Sahabat XII PPLG 1
+                <p className="font-hand text-xl font-bold text-[var(--color-accent-warm)]">
+                  Lembar Doa &amp; Semangat Sahabat UNO
                 </p>
                 <h2
                   id="dream-cheer-title"
-                  className="mt-1 font-serif text-xl font-bold text-foreground"
+                  className="mt-0.5 font-serif text-2xl font-bold text-foreground"
                 >
                   Untuk {cheerTargetDream.student_name}
                 </h2>
+                <p className="mt-1 font-hand text-xl text-muted-foreground">
+                  Cita-cita: &ldquo;{cheerTargetDream.dream}&rdquo;
+                </p>
               </div>
-              <button
+              <motion.button
                 type="button"
-                aria-label="Tutup form kirim semangat"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
+                aria-label="Tutup lembar doa"
                 onClick={() => setCheerTargetDream(null)}
                 className="inline-flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="size-4" />
-              </button>
+              </motion.button>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 max-h-52 space-y-2.5 overflow-y-auto pr-1">
               {cheerTargetDream.cheers && cheerTargetDream.cheers.length > 0 ? (
                 cheerTargetDream.cheers.map((c) => (
                   <div
                     key={c.id}
-                    className="rounded-xl border border-border bg-background p-3"
+                    className="border-b border-dashed border-border pb-2.5 last:border-b-0"
                   >
-                    <p className="font-hand text-xl text-foreground">
+                    <p className="font-hand text-2xl leading-snug text-foreground">
                       &ldquo;{c.message}&rdquo;
                     </p>
-                    <p className="mt-1 text-right text-xs font-semibold text-[var(--color-accent-warm)]">
-                      — {c.author_name}
+                    <p className="mt-0.5 text-right font-hand text-lg font-bold text-[var(--color-accent-warm)]">
+                      ~ {c.author_name}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-xs italic text-muted-foreground">
-                  Belum ada pesan semangat. Jadilah yang pertama mendoakan!
+                <p className="py-2 font-hand text-xl text-muted-foreground">
+                  Belum ada catatan doa di lembar ini. Tuliskan doa pertamamu di bawah!
                 </p>
               )}
             </div>
 
             <form
               onSubmit={handleSendCheer}
-              className="mt-4 space-y-3 border-t border-border pt-4"
+              className="mt-4 space-y-3.5 border-t border-border pt-4"
             >
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -260,7 +268,7 @@ export function DreamBoardClient({
                   htmlFor="ch-msg"
                   className="block text-xs font-semibold text-foreground"
                 >
-                  Pesan Semangat
+                  Tulisan Doa &amp; Semangat
                 </label>
                 <textarea
                   id="ch-msg"
@@ -271,7 +279,7 @@ export function DreamBoardClient({
                   value={cheerMessage}
                   onChange={(e) => setCheerMessage(e.target.value)}
                   placeholder="Bismillah, semoga tercapai ya..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-2xl text-foreground"
                 />
               </div>
 
@@ -285,7 +293,7 @@ export function DreamBoardClient({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setCheerTargetDream(null)}
@@ -293,51 +301,61 @@ export function DreamBoardClient({
                 >
                   Tutup
                 </button>
-                <button
+                <motion.button
                   type="submit"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   disabled={cheerSubmitting}
                   className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
                 >
                   <Send className="size-3.5" />
                   <span>
-                    {cheerSubmitting ? "Mengirim..." : "Kirim Semangat"}
+                    {cheerSubmitting ? "Mengirim..." : "Tempel Doa"}
                   </span>
-                </button>
+                </motion.button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
 
-      {/* Modal Tempel / Perbarui Cita-Cita Siswa */}
+      {/* Modal Tulis Kertas Cita-Cita Siswa (Rapi & Bersih Tanpa Ornamen AI) */}
       {newDreamOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-dream-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl">
-            <div className="flex items-start justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 340, damping: 26 }}
+            style={{ borderTopColor: dreamColor }}
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border border-t-[6px] bg-card p-6 text-card-foreground shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">
-                  Satu Siswa Satu Note Utama di Papan Tulis
+                <p className="font-hand text-xl font-bold text-[var(--color-accent-warm)]">
+                  Lembar Catatan Papan Cita-Cita UNO
                 </p>
                 <h2
                   id="new-dream-title"
-                  className="mt-1 font-serif text-xl font-bold text-foreground"
+                  className="mt-0.5 font-serif text-2xl font-bold text-foreground"
                 >
-                  Tempel / Perbarui Cita-Cita
+                  Tulis &amp; Tempel Cita-Cita
                 </h2>
               </div>
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
                 aria-label="Tutup form cita-cita"
                 onClick={() => setNewDreamOpen(false)}
                 className="inline-flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
               >
                 <X className="size-4" />
-              </button>
+              </motion.button>
             </div>
 
             <form onSubmit={handleSendDream} className="mt-4 space-y-3.5">
@@ -369,7 +387,7 @@ export function DreamBoardClient({
                   htmlFor="dr-text"
                   className="block text-xs font-semibold text-foreground"
                 >
-                  Cita-Cita Kamu
+                  Cita-Cita Kamu (Ditampilkan dengan Tulisan Tangan)
                 </label>
                 <input
                   id="dr-text"
@@ -380,7 +398,7 @@ export function DreamBoardClient({
                   value={dreamText}
                   onChange={(e) => setDreamText(e.target.value)}
                   placeholder="Mis. Menjadi Software Architect & Dosen di NTT"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-2xl font-bold text-foreground"
                 />
               </div>
 
@@ -389,7 +407,7 @@ export function DreamBoardClient({
                   htmlFor="dr-reason"
                   className="block text-xs font-semibold text-foreground"
                 >
-                  Alasan Memilih Cita-Cita Ini
+                  Alasan &amp; Harapan di Balik Mimpi Ini
                 </label>
                 <textarea
                   id="dr-reason"
@@ -400,7 +418,7 @@ export function DreamBoardClient({
                   value={dreamReason}
                   onChange={(e) => setDreamReason(e.target.value)}
                   placeholder="Ceritakan alasan di balik mimpimu..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
                 />
               </div>
 
@@ -410,7 +428,7 @@ export function DreamBoardClient({
                     htmlFor="dr-col"
                     className="block text-xs font-semibold text-foreground"
                   >
-                    Warna Kertas Note
+                    Warna Kertas Catatan
                   </label>
                   <select
                     id="dr-col"
@@ -460,19 +478,21 @@ export function DreamBoardClient({
                 >
                   Batal
                 </button>
-                <button
+                <motion.button
                   type="submit"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   disabled={dreamSubmitting}
                   className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
                 >
-                  <Sparkles className="size-4" />
+                  <Pin className="size-4" />
                   <span>
-                    {dreamSubmitting ? "Mengirim..." : "Tempel ke Papan"}
+                    {dreamSubmitting ? "Menempel..." : "Tempel ke Papan"}
                   </span>
-                </button>
+                </motion.button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>

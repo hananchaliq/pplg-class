@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import {
+  createPollAdmin,
+  deleteModeratedItem,
+  deletePollAdmin,
   deleteStudentAdmin,
   deleteTeacherAdmin,
   getAdminDashboardData,
@@ -17,17 +20,38 @@ import type { ContentStatus } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const ADMIN_COOKIE = "xii_pplg1_admin_session";
+const ADMIN_SESSION_TOKEN = "authenticated_admin_xiipplg1";
 
 function getExpectedPasscode(): string {
   return (process.env.ADMIN_PASSCODE || "ADMIN-MAKN-ENDE").trim();
 }
 
-function isAuthorizedAdmin(req: NextRequest): boolean {
+function isAuthorizedAdmin(req: NextRequest, bodyToken?: string): boolean {
   const cookieVal = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (cookieVal === "authenticated_admin_xiipplg1") return true;
-  const headerCode = req.headers.get("x-admin-passcode");
-  if (headerCode && headerCode.trim() === getExpectedPasscode()) return true;
+  if (cookieVal === ADMIN_SESSION_TOKEN) return true;
+
+  const sessionHeader = req.headers.get("x-admin-session")?.trim();
+  if (sessionHeader === ADMIN_SESSION_TOKEN) return true;
+
+  const authHeader = req.headers.get("authorization")?.trim();
+  if (authHeader === `Bearer ${ADMIN_SESSION_TOKEN}`) return true;
+
+  const headerCode = req.headers.get("x-admin-passcode")?.trim();
+  if (headerCode && headerCode === getExpectedPasscode()) return true;
+
+  if (bodyToken && bodyToken.trim() === ADMIN_SESSION_TOKEN) return true;
+
   return false;
+}
+
+function setAdminSessionCookie(res: NextResponse) {
+  res.cookies.set(ADMIN_COOKIE, ADMIN_SESSION_TOKEN, {
+    httpOnly: true,
+    path: "/",
+    sameSite: "none",
+    secure: true,
+    maxAge: 60 * 60 * 12,
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -61,18 +85,20 @@ export async function POST(req: NextRequest) {
       if (isSupabaseConfigured() && email && password) {
         const supabase = getSupabaseAdminClient();
         if (supabase) {
-          const { data: authData, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (!error && authData.user) {
-            const res = NextResponse.json({ ok: true, authenticated: true });
-            res.cookies.set(ADMIN_COOKIE, "authenticated_admin_xiipplg1", {
-              httpOnly: true,
-              path: "/",
-              sameSite: "lax",
-              maxAge: 60 * 60 * 12,
+          const { data: authData, error } =
+            await supabase.auth.signInWithPassword({
+              email,
+              password,
             });
+          if (!error && authData.user) {
+            const data = await getAdminDashboardData();
+            const res = NextResponse.json({
+              ok: true,
+              authenticated: true,
+              token: ADMIN_SESSION_TOKEN,
+              data,
+            });
+            setAdminSessionCookie(res);
             return res;
           }
         }
@@ -80,13 +106,14 @@ export async function POST(req: NextRequest) {
 
       // 2. Verifikasi kode admin server
       if (password === getExpectedPasscode()) {
-        const res = NextResponse.json({ ok: true, authenticated: true });
-        res.cookies.set(ADMIN_COOKIE, "authenticated_admin_xiipplg1", {
-          httpOnly: true,
-          path: "/",
-          sameSite: "lax",
-          maxAge: 60 * 60 * 12,
+        const data = await getAdminDashboardData();
+        const res = NextResponse.json({
+          ok: true,
+          authenticated: true,
+          token: ADMIN_SESSION_TOKEN,
+          data,
         });
+        setAdminSessionCookie(res);
         return res;
       }
 
@@ -94,7 +121,7 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error:
-            "Kredensial admin tidak valid. Untuk mode pratinjau gunakan kode sandi admin (default: ADMIN-MAKN-ENDE).",
+            "Kredensial admin tidak valid. Gunakan kode sandi admin (default: ADMIN-MAKN-ENDE).",
         },
         { status: 401 }
       );
@@ -106,8 +133,7 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // Semua aksi di bawah wajib terautentikasi sebagai Admin
-    if (!isAuthorizedAdmin(req)) {
+    if (!isAuthorizedAdmin(req, body?.sessionToken)) {
       return NextResponse.json(
         { ok: false, error: "Akses ditolak. Silakan login terlebih dahulu." },
         { status: 401 }
@@ -122,6 +148,15 @@ export async function POST(req: NextRequest) {
         typeof body.updatedText === "string" ? body.updatedText : undefined;
 
       const success = await moderateItem(table, id, status, updatedText);
+      revalidatePath("/", "layout");
+      const data = await getAdminDashboardData();
+      return NextResponse.json({ ok: success, data });
+    }
+
+    if (action === "delete_moderated_item") {
+      const table = body.table as ModeratableTable;
+      const id = String(body.id || "");
+      const success = await deleteModeratedItem(table, id);
       revalidatePath("/", "layout");
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: success, data });
@@ -165,14 +200,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok, data });
     }
 
+    if (action === "create_poll") {
+      const question = String(body.question || "");
+      const options = Array.isArray(body.options)
+        ? body.options.map(String)
+        : [];
+      await createPollAdmin(question, options);
+      revalidatePath("/", "layout");
+      const data = await getAdminDashboardData();
+      return NextResponse.json({ ok: true, data });
+    }
+
+    if (action === "delete_poll") {
+      const id = String(body.id || "");
+      const ok = await deletePollAdmin(id);
+      revalidatePath("/", "layout");
+      const data = await getAdminDashboardData();
+      return NextResponse.json({ ok, data });
+    }
+
     return NextResponse.json(
       { ok: false, error: "Aksi admin tidak dikenali." },
       { status: 400 }
     );
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "Terjadi kesalahan pada server admin." },
-      { status: 500 }
-    );
+  } catch (err) {
+    const msg =
+      err instanceof Error
+        ? err.message
+        : "Terjadi kesalahan pada server admin.";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }

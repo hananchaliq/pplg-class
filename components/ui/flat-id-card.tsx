@@ -94,6 +94,27 @@ export function FlatIdCardRail({
   const activePerson = items[activeIndex] ?? null;
   const isShowingBack = activePerson && flippedId === activePerson.id;
 
+  if (items.length === 0) {
+    return (
+      <section
+        aria-label={heading ?? "Daftar Kartu Identitas"}
+        className="relative w-full overflow-hidden rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center"
+      >
+        {eyebrow && (
+          <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+        )}
+        {heading && (
+          <h2 className="mt-1 font-serif text-xl font-bold text-foreground">
+            {heading}
+          </h2>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Belum ada data kartu ID di database Supabase untuk kategori ini (0 data). Silakan tambahkan data melalui Dasbor Admin.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label={heading ?? "Daftar Kartu Identitas"}

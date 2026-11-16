@@ -252,7 +252,9 @@ export function AnggotaClient({
           const active = filter === tab.id;
           return (
             <motion.button
+              whileHover={{ y: -2, scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 380, damping: 24 }}
               key={tab.id}
               role="tab"
               type="button"
@@ -484,14 +486,18 @@ export function AnggotaClient({
                 )}
 
                 <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
                     type="button"
                     onClick={() => setModalStudent(null)}
                     className="min-h-[44px] rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
                   >
                     Tutup
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.96 }}
                     type="submit"
                     disabled={submitting}
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -500,7 +506,7 @@ export function AnggotaClient({
                     <span>
                       {submitting ? "Mengirim..." : "Kirim ke Buku Kenangan"}
                     </span>
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>

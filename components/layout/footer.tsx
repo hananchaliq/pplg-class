@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Moon,
   Sun,
@@ -16,7 +15,10 @@ import { SITE_CONTENT } from "@/lib/content";
 import { useTheme } from "@/lib/theme";
 import { useVisualTier } from "@/lib/visual-tier";
 import { useSadAudio, SAD_TIKTOK_TRACKS } from "@/lib/sad-audio";
-import { useLivePublicData } from "@/lib/use-public-data";
+import {
+  useLivePublicData,
+  notifyRouteTransitionStart,
+} from "@/lib/use-public-data";
 
 export function Footer() {
   const { theme, toggleTheme } = useTheme();
@@ -25,13 +27,36 @@ export function Footer() {
     useSadAudio();
   const { data: liveData } = useLivePublicData();
 
+  const handleNavigate = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    targetHref: string
+  ) => {
+    if (
+      e.defaultPrevented ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    ) {
+      return;
+    }
+    e.preventDefault();
+    notifyRouteTransitionStart();
+    if (window.location.pathname === targetHref) {
+      window.location.reload();
+    } else {
+      window.location.assign(targetHref);
+    }
+  };
+
   const homeroomTeacherName = React.useMemo(() => {
     if (liveData?.teachers?.length) {
       const hr =
         liveData.teachers.find((t) => t.is_homeroom) ?? liveData.teachers[0];
       if (hr?.full_name) return hr.full_name;
     }
-    return "Ibu Hajra, S.Pd.";
+    return "Belum Ditentukan";
   }, [liveData]);
 
   return (
@@ -39,16 +64,25 @@ export function Footer() {
       <div className="ikat-divider" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {/* Kolom 1: Identitas Kelas & Madrasah (Tanpa info login admin) */}
+          {/* Kolom 1: Identitas Kelas & Logo Hangat UNO */}
           <div>
-            <p className="font-serif text-xl font-bold tracking-tight text-foreground">
-              {SITE_CONTENT.school.className} — {SITE_CONTENT.school.shortSchool}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <motion.span
+                aria-hidden="true"
+                whileHover={{ scale: 1.08, rotate: -4 }}
+                className="inline-flex h-9 w-11 items-center justify-center rounded-xl border-2 border-[#f3ca82] bg-gradient-to-br from-[#d97736] via-[#b84a27] to-[#872b19] font-serif text-xs font-black tracking-wider text-[#fff8ec] shadow-xs"
+              >
+                UNO
+              </motion.span>
+              <p className="font-serif text-xl font-bold tracking-tight text-foreground">
+                UNO · {SITE_CONTENT.school.className} — {SITE_CONTENT.school.shortSchool}
+              </p>
+            </div>
+            <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
               {SITE_CONTENT.school.majorFull}, {SITE_CONTENT.school.schoolName}.{" "}
               {SITE_CONTENT.school.city}.
             </p>
-            <p className="mt-3 font-hand text-lg text-foreground/90">
+            <p className="mt-3 font-hand text-xl text-foreground/90">
               &ldquo;Tiga tahun merajut logika, seumur hidup menjaga saudara.&rdquo;
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -67,21 +101,27 @@ export function Footer() {
             <ul className="mt-3 grid grid-cols-2 gap-2 text-sm">
               {SITE_CONTENT.nav.links.map((l) => (
                 <li key={l.href}>
-                  <Link
+                  <motion.a
                     href={l.href}
-                    className="inline-block py-1 text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap"
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={(e) => handleNavigate(e, l.href)}
+                    className="inline-block py-1 text-muted-foreground transition-colors hover:text-[var(--color-accent-warm)] whitespace-nowrap"
                   >
                     {l.label}
-                  </Link>
+                  </motion.a>
                 </li>
               ))}
               <li>
-                <Link
+                <motion.a
                   href="/main"
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={(e) => handleNavigate(e, "/main")}
                   className="inline-block py-1 font-semibold text-[var(--color-accent-warm)] transition-opacity hover:opacity-80 whitespace-nowrap"
                 >
                   Main (Kuis & Polling)
-                </Link>
+                </motion.a>
               </li>
             </ul>
           </div>
@@ -226,12 +266,13 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <span>Ende, Flores — NTT</span>
             <span aria-hidden="true">·</span>
-            <Link
+            <a
               href="/main"
+              onClick={(e) => handleNavigate(e, "/main")}
               className="hover:text-foreground underline underline-offset-4 whitespace-nowrap"
             >
               Kuis & Polling Kelas
-            </Link>
+            </a>
           </div>
         </div>
       </div>

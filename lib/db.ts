@@ -1,1380 +1,859 @@
-import fs from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { generateInitialSeedData } from "@/lib/seed-data";
-import {
-  maskTimeCapsuleForPublic,
-  sanitizeText,
-  type SubmitPayload,
-} from "@/lib/domain-logic";
-import type {
-  ContentStatus,
-  DreamCheerRow,
-  DreamRow,
-  MemoryEntryRow,
-  MomentRow,
-  PollWithOptions,
-  StudentRow,
-  TeacherRow,
-  ThanksRow,
-  TimeCapsuleRow,
-  WorkRow,
-} from "@/lib/types";
+import { ensureDatabaseSchema, getConfiguredDatabaseUrl } from "@/lib/db-schema";
+import { maskTimeCapsuleForPublic, sanitizeText, type SubmitPayload } from "@/lib/domain-logic";
+import type { ContentStatus, DreamCheerRow, DreamRow, MemoryEntryRow, MomentRow, PollWithOptions, StudentRow, TeacherRow, ThanksRow, TimeCapsuleRow, WorkRow } from "@/lib/types";
 
 export interface RawTimeCapsuleStoreRow {
-  id: string;
-  author_name: string;
-  recipient_label: string;
-  message: string;
-  unlock_at: string;
-  status: ContentStatus;
-  created_at?: string;
+   id: string;
+   author_name: string;
+   recipient_label: string;
+   message: string;
+   unlock_at: string;
+   status: ContentStatus;
+   created_at?: string;
 }
 
-interface StoreShape {
-  students: StudentRow[];
-  teachers: TeacherRow[];
-  moments: MomentRow[];
-  dreams: DreamRow[];
-  dreamCheers: DreamCheerRow[];
-  memoryEntries: MemoryEntryRow[];
-  rawTimeCapsules: RawTimeCapsuleStoreRow[];
-  thanksList: ThanksRow[];
-  works: WorkRow[];
-  polls: PollWithOptions[];
-  pollVoterHashes: Record<string, string[]>;
-  settings: {
-    graduation_date: string;
-  };
-  updatedAt?: number;
+interface DatabaseSnapshot {
+   students: StudentRow[];
+   teachers: TeacherRow[];
+   moments: MomentRow[];
+   dreams: DreamRow[];
+   dreamCheers: DreamCheerRow[];
+   memoryEntries: MemoryEntryRow[];
+   rawTimeCapsules: RawTimeCapsuleStoreRow[];
+   thanksList: ThanksRow[];
+   works: WorkRow[];
+   polls: PollWithOptions[];
+   settings: {
+      graduation_date: string;
+   };
+   dbConnected: boolean;
+   missingTables: boolean;
+   dbError: string | null;
+   updatedAt: number;
 }
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const PRIMARY_STORE_PATH = path.join(DATA_DIR, "xii-pplg1-makn-ende-store.json");
-const FALLBACK_STORE_PATH = "/tmp/xii-pplg1-makn-ende-store.json";
+const DEFAULT_GRADUATION_DATE = "2026-05-15T08:00:00+08:00";
 
-declare global {
-  var __xiiPplgStore: StoreShape | undefined;
-  var __xiiPplgStoreMtime: number | undefined;
-  var __xiiPplgSupabaseSeeded: boolean | undefined;
+export function invalidatePublicDataCache() {
+   // Data selalu diambil langsung secara real-time dari Supabase PostgreSQL (no-store)
 }
 
-function getStorePath(): string {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    return PRIMARY_STORE_PATH;
-  } catch {
-    return FALLBACK_STORE_PATH;
-  }
+export function getSupabaseConfig(): {
+   url: string;
+   key: string;
+   configured: boolean;
+} {
+   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+   const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+
+   const configured = Boolean(url && key && url.startsWith("https://") && !url.includes("your-project-id") && !key.includes("your-supabase"));
+
+   return { url, key, configured };
 }
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = (
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    ""
-  ).trim();
-  return Boolean(
-    url &&
-      key &&
-      url.startsWith("https://") &&
-      !url.includes("your-project-id") &&
-      !key.includes("your-supabase")
-  );
+   return getSupabaseConfig().configured;
 }
 
 export function getSupabaseAdminClient(): SupabaseClient | null {
-  if (!isSupabaseConfigured()) return null;
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-    (
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    ).trim(),
-    {
-      auth: { persistSession: false },
-    }
-  );
+   const { url, key, configured } = getSupabaseConfig();
+   if (!configured) return null;
+   return createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+         fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
+   });
 }
 
 /**
- * Buat UUID deterministik dari string ID agar ID seed (mis. "student-l-1") kompatibel
- * dengan kolom bertipe UUID di PostgreSQL Supabase.
+ * Buat UUID deterministik dari string ID apabila input belum berformat UUID standar.
  */
 export function toDeterministicUuid(input: string): string {
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      input
-    )
-  ) {
-    return input.toLowerCase();
-  }
-  const hash = crypto.createHash("sha256").update(`xiipplg1:${input}`).digest("hex");
-  return [
-    hash.slice(0, 8),
-    hash.slice(8, 12),
-    `4${hash.slice(13, 16)}`,
-    `a${hash.slice(17, 20)}`,
-    hash.slice(20, 32),
-  ].join("-");
+   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input)) {
+      return input.toLowerCase();
+   }
+   const hash = crypto.createHash("sha256").update(`xiipplg1:${input}`).digest("hex");
+   return [hash.slice(0, 8), hash.slice(8, 12), `4${hash.slice(13, 16)}`, `a${hash.slice(17, 20)}`, hash.slice(20, 32)].join("-");
 }
 
-/**
- * Selalu muat data terbaru dari disk jika file berubah (menghindari bug stale cache antar worker Next.js).
- */
-function loadStore(): StoreShape {
-  const storePath = getStorePath();
-  try {
-    if (fs.existsSync(storePath)) {
-      const stat = fs.statSync(storePath);
-      if (
-        global.__xiiPplgStore &&
-        global.__xiiPplgStoreMtime !== undefined &&
-        global.__xiiPplgStoreMtime >= stat.mtimeMs
-      ) {
-        return global.__xiiPplgStore;
-      }
-      const raw = fs.readFileSync(storePath, "utf8");
-      const parsed = JSON.parse(raw) as StoreShape;
-      global.__xiiPplgStore = parsed;
-      global.__xiiPplgStoreMtime = stat.mtimeMs;
-      return parsed;
-    }
-    if (storePath !== FALLBACK_STORE_PATH && fs.existsSync(FALLBACK_STORE_PATH)) {
-      const stat = fs.statSync(FALLBACK_STORE_PATH);
-      const raw = fs.readFileSync(FALLBACK_STORE_PATH, "utf8");
-      const parsed = JSON.parse(raw) as StoreShape;
-      global.__xiiPplgStore = parsed;
-      global.__xiiPplgStoreMtime = stat.mtimeMs;
-      return parsed;
-    }
-  } catch {
-    if (global.__xiiPplgStore) return global.__xiiPplgStore;
-  }
-
-  const seed = generateInitialSeedData();
-  const initial: StoreShape = {
-    students: seed.students,
-    teachers: seed.teachers,
-    moments: seed.moments,
-    dreams: seed.dreams,
-    dreamCheers: seed.dreamCheers,
-    memoryEntries: seed.memoryEntries,
-    rawTimeCapsules: seed.rawTimeCapsules.map((c) => ({ ...c })),
-    thanksList: seed.thanksList,
-    works: seed.works,
-    polls: seed.polls,
-    pollVoterHashes: {},
-    settings: seed.settings,
-    updatedAt: Date.now(),
-  };
-  saveStore(initial);
-  return initial;
+function deterministicSeedFromId(id: string): number {
+   let h = 0;
+   for (let i = 0; i < id.length; i++) {
+      h = (h * 31 + id.charCodeAt(i)) >>> 0;
+   }
+   return (h % 900) + 100;
 }
 
-function saveStore(store: StoreShape) {
-  store.updatedAt = Date.now();
-  global.__xiiPplgStore = store;
-  const serialized = JSON.stringify(store, null, 2);
-  const storePath = getStorePath();
-  try {
-    fs.writeFileSync(storePath, serialized, "utf8");
-    const stat = fs.statSync(storePath);
-    global.__xiiPplgStoreMtime = stat.mtimeMs;
-  } catch {
-    try {
-      fs.writeFileSync(FALLBACK_STORE_PATH, serialized, "utf8");
-      const stat = fs.statSync(FALLBACK_STORE_PATH);
-      global.__xiiPplgStoreMtime = stat.mtimeMs;
-    } catch {
-      // Ignore read-only filesystem errors
-    }
-  }
-}
-
-/**
- * Pastikan database Supabase sudah memiliki data awal bila tabel students masih kosong.
- */
-export async function ensureSupabaseSeeded(
-  supabase: SupabaseClient
-): Promise<boolean> {
-  if (global.__xiiPplgSupabaseSeeded) return true;
-  try {
-    const { count, error } = await supabase
-      .from("students")
-      .select("id", { count: "exact", head: true });
-    if (error) {
-      return false;
-    }
-    if (count && count > 0) {
-      global.__xiiPplgSupabaseSeeded = true;
-      return true;
-    }
-
-    const store = loadStore();
-
-    // 1. Seed Students
-    const studentRows = store.students.map((s) => ({
-      id: toDeterministicUuid(s.id),
-      slug: s.slug,
-      full_name: s.full_name,
-      nickname: s.nickname,
-      gender: s.gender,
-      is_active: s.is_active,
-      show_photo: s.show_photo,
-      photo_url: s.photo_url,
-      bio: s.bio,
-      tags: s.tags,
-      links: s.links,
-      tone: s.tone,
-      rail_group: s.rail_group,
-      sort_order: s.sort_order,
-    }));
-    await supabase.from("students").upsert(studentRows, { onConflict: "id" });
-
-    // 2. Seed Teachers
-    const teacherRows = store.teachers.map((t) => ({
-      id: toDeterministicUuid(t.id),
-      full_name: t.full_name,
-      title: t.title,
-      grp: t.grp,
-      is_homeroom: t.is_homeroom,
-      photo_url: t.photo_url,
-      message: t.message,
-      tone: t.tone,
-      sort_order: t.sort_order,
-    }));
-    await supabase.from("teachers").upsert(teacherRows, { onConflict: "id" });
-
-    // 3. Seed Moments
-    const momentRows = store.moments.map((m) => ({
-      id: toDeterministicUuid(m.id),
-      image_url: m.image_url,
-      caption: m.caption,
-      taken_at: m.taken_at,
-      category: m.category,
-      phase: m.phase,
-      uploader_name: m.uploader_name,
-      featured: m.featured,
-      status: m.status,
-    }));
-    await supabase.from("moments").upsert(momentRows, { onConflict: "id" });
-
-    // 4. Seed Dreams
-    const dreamRows = store.dreams.map((d) => ({
-      id: toDeterministicUuid(d.id),
-      student_id: toDeterministicUuid(d.student_id),
-      dream: d.dream,
-      reason: d.reason,
-      paper_color: d.paper_color,
-      status: d.status,
-    }));
-    await supabase.from("dreams").upsert(dreamRows, { onConflict: "student_id" });
-
-    // 5. Seed Dream Cheers
-    const cheerRows = store.dreamCheers.map((c) => ({
-      id: toDeterministicUuid(c.id),
-      dream_id: toDeterministicUuid(c.dream_id),
-      author_name: c.author_name,
-      message: c.message,
-      status: c.status,
-    }));
-    await supabase.from("dream_cheers").upsert(cheerRows, { onConflict: "id" });
-
-    // 6. Seed Memory Entries
-    const memoryRows = store.memoryEntries.map((m) => ({
-      id: toDeterministicUuid(m.id),
-      student_id: toDeterministicUuid(m.student_id),
-      author_name: m.author_name,
-      message: m.message,
-      decor_seed: m.decor_seed,
-      status: m.status,
-    }));
-    await supabase.from("memory_entries").upsert(memoryRows, { onConflict: "id" });
-
-    // 7. Seed Time Capsules
-    const capsuleRows = store.rawTimeCapsules.map((c) => ({
-      id: toDeterministicUuid(c.id),
-      author_name: c.author_name,
-      recipient_label: c.recipient_label,
-      message: c.message,
-      unlock_at: c.unlock_at,
-      status: c.status,
-    }));
-    await supabase.from("time_capsules").upsert(capsuleRows, { onConflict: "id" });
-
-    // 8. Seed Thanks
-    const thanksRows = store.thanksList.map((th) => ({
-      id: toDeterministicUuid(th.id),
-      from_name: th.from_name,
-      to_name: th.to_name,
-      message: th.message,
-      status: th.status,
-    }));
-    await supabase.from("thanks").upsert(thanksRows, { onConflict: "id" });
-
-    // 9. Seed Works
-    const workRows = store.works.map((w) => ({
-      id: toDeterministicUuid(w.id),
-      student_id: toDeterministicUuid(w.student_id),
-      title: w.title,
-      description: w.description,
-      tags: w.tags,
-      image_url: w.image_url,
-      demo_url: w.demo_url,
-      repo_url: w.repo_url || "",
-      status: w.status,
-    }));
-    await supabase.from("works").upsert(workRows, { onConflict: "student_id" });
-
-    // 10. Seed Polls & Options
-    for (const poll of store.polls) {
-      const pollUuid = toDeterministicUuid(poll.id);
-      await supabase.from("polls").upsert(
-        {
-          id: pollUuid,
-          question: poll.question,
-          is_open: poll.is_open,
-        },
-        { onConflict: "id" }
-      );
-      for (const opt of poll.options) {
-        const optUuid = toDeterministicUuid(opt.id);
-        await supabase.from("poll_options").upsert(
-          {
-            id: optUuid,
-            poll_id: pollUuid,
-            label: opt.label,
-          },
-          { onConflict: "id" }
-        );
-      }
-    }
-
-    // 11. Seed Site Settings
-    await supabase.from("site_settings").upsert(
-      {
-        key: "graduation_date",
-        value: { graduation_date: store.settings.graduation_date },
-        updated_at: new Date().toISOString(),
+function createDisconnectedSnapshot(dbError: string, missingTables = false): DatabaseSnapshot {
+   return {
+      students: [],
+      teachers: [],
+      moments: [],
+      dreams: [],
+      dreamCheers: [],
+      memoryEntries: [],
+      rawTimeCapsules: [],
+      thanksList: [],
+      works: [],
+      polls: [],
+      settings: {
+         graduation_date: DEFAULT_GRADUATION_DATE,
       },
-      { onConflict: "key" }
-    );
-
-    global.__xiiPplgSupabaseSeeded = true;
-    return true;
-  } catch {
-    return false;
-  }
+      dbConnected: false,
+      missingTables,
+      dbError,
+      updatedAt: Date.now(),
+   };
 }
 
 /**
- * Ambil seluruh data dari Supabase PostgreSQL bila terhubung.
- * Mengembalikan null bila Supabase belum dikonfigurasi atau tabel belum dimigrasi.
+ * Ambil seluruh data murni langsung dari Supabase PostgreSQL menggunakan Service Role Key tanpa data JS / dummy.
  */
-async function fetchAllFromSupabase(): Promise<StoreShape | null> {
-  const supabase = getSupabaseAdminClient();
-  if (!supabase) return null;
+async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      return createDisconnectedSnapshot("Konfigurasi NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY belum lengkap.", false);
+   }
 
-  const ready = await ensureSupabaseSeeded(supabase);
-  if (!ready) return null;
+   if (getConfiguredDatabaseUrl()) {
+      await ensureDatabaseSchema();
+   }
 
-  try {
-    const [
-      stuRes,
-      teaRes,
-      momRes,
-      drmRes,
-      chrRes,
-      memRes,
-      capRes,
-      thkRes,
-      wrkRes,
-      polRes,
-      optRes,
-      votRes,
-      setRes,
-    ] = await Promise.all([
-      supabase.from("students").select("*").order("sort_order", { ascending: true }),
-      supabase.from("teachers").select("*").order("sort_order", { ascending: true }),
-      supabase.from("moments").select("*").order("created_at", { ascending: false }),
-      supabase.from("dreams").select("*").order("created_at", { ascending: false }),
-      supabase.from("dream_cheers").select("*").order("created_at", { ascending: false }),
-      supabase.from("memory_entries").select("*").order("created_at", { ascending: false }),
-      supabase.from("time_capsules").select("*").order("created_at", { ascending: false }),
-      supabase.from("thanks").select("*").order("created_at", { ascending: false }),
-      supabase.from("works").select("*").order("created_at", { ascending: false }),
-      supabase.from("polls").select("*").order("created_at", { ascending: true }),
-      supabase.from("poll_options").select("*"),
-      supabase.from("poll_votes").select("*"),
-      supabase.from("site_settings").select("*").eq("key", "graduation_date").maybeSingle(),
-    ]);
+   try {
+      const [stuRes, teaRes, momRes, drmRes, chrRes, memRes, capRes, thkRes, wrkRes, polRes, optRes, votRes, setRes] = await Promise.all([
+         supabase.from("students").select("*").order("sort_order", { ascending: true }),
+         supabase.from("teachers").select("*").order("sort_order", { ascending: true }),
+         supabase.from("moments").select("*").order("created_at", { ascending: false }),
+         supabase.from("dreams").select("*").order("created_at", { ascending: false }),
+         supabase.from("dream_cheers").select("*").order("created_at", { ascending: false }),
+         supabase.from("memory_entries").select("*").order("created_at", { ascending: false }),
+         supabase.from("time_capsules").select("*").order("created_at", { ascending: false }),
+         supabase.from("thanks").select("*").order("created_at", { ascending: false }),
+         supabase.from("works").select("*").order("created_at", { ascending: false }),
+         supabase.from("polls").select("*").order("created_at", { ascending: true }),
+         supabase.from("poll_options").select("*"),
+         supabase.from("poll_votes").select("*"),
+         supabase.from("site_settings").select("*").limit(1).maybeSingle(),
+      ]);
 
-    if (stuRes.error || teaRes.error) {
-      return null;
-    }
+      const firstError = stuRes.error || teaRes.error || momRes.error || drmRes.error || chrRes.error || memRes.error || capRes.error || thkRes.error || wrkRes.error || polRes.error || optRes.error || votRes.error;
 
-    const students: StudentRow[] = (stuRes.data ?? []).map((s) => ({
-      id: String(s.id),
-      slug: String(s.slug || ""),
-      full_name: String(s.full_name || ""),
-      nickname: String(s.nickname || s.full_name?.split(" ")[0] || ""),
-      gender: (s.gender === "P" ? "P" : "L") as StudentRow["gender"],
-      is_active: Boolean(s.is_active ?? true),
-      show_photo: Boolean(s.show_photo ?? true),
-      photo_url: String(s.photo_url || ""),
-      bio: String(s.bio || ""),
-      tags: Array.isArray(s.tags) ? s.tags.map(String) : [],
-      links: Array.isArray(s.links) ? s.links : [],
-      tone: (Number(s.tone || 1) as 1 | 2 | 3 | 4 | 5),
-      rail_group: (s.rail_group || (s.is_active === false ? "moved" : s.gender === "P" ? "P1" : "L")) as StudentRow["rail_group"],
-      sort_order: Number(s.sort_order ?? 0),
-    }));
+      if (firstError) {
+         const code = String(firstError.code || "");
+         const msg = String(firstError.message || "");
+         const isMissingTable = code === "PGRST205" || code === "42P01" || msg.includes("Could not find the table") || msg.includes("does not exist");
 
-    const studentMap = new Map(students.map((s) => [s.id, s]));
+         if (isMissingTable && getConfiguredDatabaseUrl()) {
+            const mig = await ensureDatabaseSchema(getConfiguredDatabaseUrl());
+            if (mig.ok) {
+               return fetchAllFromSupabase();
+            }
+         }
 
-    const teachers: TeacherRow[] = (teaRes.data ?? []).map((t) => ({
-      id: String(t.id),
-      full_name: String(t.full_name || ""),
-      title: String(t.title || ""),
-      grp: (t.grp || "kejuruan") as TeacherRow["grp"],
-      is_homeroom: Boolean(t.is_homeroom ?? false),
-      photo_url: String(t.photo_url || ""),
-      message: String(t.message || ""),
-      tone: (Number(t.tone || 1) as 1 | 2 | 3 | 4 | 5),
-      sort_order: Number(t.sort_order ?? 0),
-    }));
+         return createDisconnectedSnapshot(isMissingTable ? `Tabel database belum dibuat di Supabase (${msg}). Gunakan fitur Inisialisasi Tabel Otomatis di halaman ini.` : `Gagal terhubung ke tabel Supabase: ${msg} (${code})`, isMissingTable);
+      }
 
-    const moments: MomentRow[] = (momRes.data ?? []).map((m) => ({
-      id: String(m.id),
-      image_url: String(m.image_url || ""),
-      caption: String(m.caption || ""),
-      taken_at: String(m.taken_at || ""),
-      category: String(m.category || "Momen lucu"),
-      phase: (m.phase || "XII") as MomentRow["phase"],
-      uploader_name: String(m.uploader_name || "Siswa"),
-      featured: Boolean(m.featured ?? true),
-      status: (m.status || "pending") as ContentStatus,
-      created_at: m.created_at ? String(m.created_at) : undefined,
-    }));
+      const students: StudentRow[] = (stuRes.data ?? []).map(s => ({
+         id: String(s.id),
+         slug: String(s.slug || ""),
+         full_name: String(s.full_name || ""),
+         nickname: String(s.nickname || s.full_name?.split(" ")[0] || ""),
+         gender: (s.gender === "P" ? "P" : "L") as StudentRow["gender"],
+         is_active: Boolean(s.is_active ?? true),
+         show_photo: Boolean(s.show_photo ?? true),
+         photo_url: String(s.photo_url || ""),
+         bio: String(s.bio || ""),
+         tags: Array.isArray(s.tags) ? s.tags.map(String) : [],
+         links: Array.isArray(s.links) ? s.links : [],
+         tone: Number(s.tone || 1) as 1 | 2 | 3 | 4 | 5,
+         rail_group: (s.rail_group || (s.is_active === false ? "moved" : s.gender === "P" ? "P1" : "L")) as StudentRow["rail_group"],
+         sort_order: Number(s.sort_order ?? 0),
+      }));
 
-    const dreamCheers: DreamCheerRow[] = (chrRes.data ?? []).map((c) => ({
-      id: String(c.id),
-      dream_id: String(c.dream_id || ""),
-      author_name: String(c.author_name || "Sahabat"),
-      message: String(c.message || ""),
-      status: (c.status || "pending") as ContentStatus,
-      created_at: c.created_at ? String(c.created_at) : undefined,
-    }));
+      const studentMap = new Map(students.map(s => [s.id, s]));
 
-    const dreams: DreamRow[] = (drmRes.data ?? []).map((d) => {
-      const stu = studentMap.get(String(d.student_id));
-      return {
-        id: String(d.id),
-        student_id: String(d.student_id),
-        student_name: stu?.full_name ?? "Siswa XII PPLG 1",
-        student_nickname: stu?.nickname ?? "Sahabat",
-        dream: String(d.dream || ""),
-        reason: String(d.reason || ""),
-        paper_color: String(d.paper_color || "#FFF7D6"),
-        status: (d.status || "pending") as ContentStatus,
-        cheers: dreamCheers.filter(
-          (c) => c.dream_id === String(d.id) && c.status === "approved"
-        ),
-      };
-    });
+      const teachers: TeacherRow[] = (teaRes.data ?? []).map(t => ({
+         id: String(t.id),
+         full_name: String(t.full_name || ""),
+         title: String(t.title || ""),
+         grp: (t.grp || "kejuruan") as TeacherRow["grp"],
+         is_homeroom: Boolean(t.is_homeroom ?? false),
+         photo_url: String(t.photo_url || ""),
+         message: String(t.message || ""),
+         tone: Number(t.tone || 1) as 1 | 2 | 3 | 4 | 5,
+         sort_order: Number(t.sort_order ?? 0),
+      }));
 
-    const memoryEntries: MemoryEntryRow[] = (memRes.data ?? []).map((m) => ({
-      id: String(m.id),
-      student_id: String(m.student_id || ""),
-      author_name: String(m.author_name || "Sahabat"),
-      message: String(m.message || ""),
-      decor_seed: Number(m.decor_seed ?? 100),
-      status: (m.status || "pending") as ContentStatus,
-      created_at: m.created_at ? String(m.created_at) : undefined,
-    }));
+      // Mendukung kedua skema kolom moments (grade/title/date_label maupun phase/category/taken_at/uploader_name/status)
+      const moments: MomentRow[] = (momRes.data ?? []).map(m => {
+         const rawTitle = String(m.title || "");
+         const titleParts = rawTitle.includes(" | ") ? rawTitle.split(" | ") : [rawTitle, ""];
+         const sortNum = Number(m.sort_order ?? 0);
+         const inferredStatus: ContentStatus = m.status ? (String(m.status) as ContentStatus) : sortNum === -1 ? "pending" : sortNum <= -2 ? "rejected" : "approved";
 
-    const rawTimeCapsules: RawTimeCapsuleStoreRow[] = (capRes.data ?? []).map((c) => ({
-      id: String(c.id),
-      author_name: String(c.author_name || "Sahabat"),
-      recipient_label: String(c.recipient_label || "Untuk Kelas XII PPLG 1"),
-      message: String(c.message || ""),
-      unlock_at: String(c.unlock_at || new Date().toISOString()),
-      status: (c.status || "pending") as ContentStatus,
-      created_at: c.created_at ? String(c.created_at) : undefined,
-    }));
+         return {
+            id: String(m.id),
+            image_url: String(m.image_url || ""),
+            caption: String(m.caption || ""),
+            taken_at: String(m.taken_at || m.date_label || ""),
+            category: String(m.category || titleParts[0] || "Momen Kelas"),
+            phase: (m.phase || m.grade || "XII") as MomentRow["phase"],
+            uploader_name: String(m.uploader_name || titleParts[1] || "Siswa XII PPLG 1"),
+            featured: Boolean(m.featured ?? true),
+            status: inferredStatus,
+            created_at: m.created_at ? String(m.created_at) : undefined,
+         };
+      });
 
-    const thanksList: ThanksRow[] = (thkRes.data ?? []).map((th) => ({
-      id: String(th.id),
-      from_name: String(th.from_name || "Sahabat"),
-      to_name: String(th.to_name || "Keluarga XII PPLG 1"),
-      message: String(th.message || ""),
-      status: (th.status || "pending") as ContentStatus,
-      created_at: th.created_at ? String(th.created_at) : undefined,
-    }));
+      // Mendukung kedua skema kolom dream_cheers (sender_name maupun author_name)
+      const dreamCheers: DreamCheerRow[] = (chrRes.data ?? []).map(c => ({
+         id: String(c.id),
+         dream_id: String(c.dream_id || ""),
+         author_name: String(c.sender_name || c.author_name || ""),
+         message: String(c.message || ""),
+         status: (c.status || "approved") as ContentStatus,
+         created_at: c.created_at ? String(c.created_at) : undefined,
+      }));
 
-    const works: WorkRow[] = (wrkRes.data ?? []).map((w) => {
-      const stu = studentMap.get(String(w.student_id));
-      return {
-        id: String(w.id),
-        student_id: String(w.student_id),
-        student_name: stu?.full_name ?? "Siswa XII PPLG 1",
-        title: String(w.title || ""),
-        description: String(w.description || ""),
-        tags: Array.isArray(w.tags) ? w.tags.map(String) : [],
-        image_url: String(w.image_url || ""),
-        demo_url: String(w.demo_url || ""),
-        repo_url: String(w.repo_url || ""),
-        status: (w.status || "pending") as ContentStatus,
-      };
-    });
+      // Mendukung kedua skema kolom dreams (dream_title/author_name/pin_color maupun dream/paper_color)
+      const dreams: DreamRow[] = (drmRes.data ?? []).map(d => {
+         const stu = d.student_id ? studentMap.get(String(d.student_id)) : undefined;
+         const authorFallback = String(d.author_name || "");
+         return {
+            id: String(d.id),
+            student_id: String(d.student_id || d.id),
+            student_name: stu?.full_name || authorFallback || "",
+            student_nickname: stu?.nickname || authorFallback.split(" ")[0] || "",
+            dream: String(d.dream_title ?? d.dream ?? ""),
+            reason: String(d.reason ?? ""),
+            paper_color: String(d.pin_color ?? d.paper_color ?? "#FFF7D6"),
+            status: (d.status || "approved") as ContentStatus,
+            cheers: dreamCheers.filter(c => c.dream_id === String(d.id) && c.status === "approved"),
+         };
+      });
 
-    const localFallback = loadStore();
-    const voteRows = votRes.data ?? [];
-    const optionRows = optRes.data ?? [];
-    const pollRows = polRes.data ?? [];
+      const memoryEntries: MemoryEntryRow[] = (memRes.data ?? []).map(m => {
+         const idStr = String(m.id);
+         return {
+            id: idStr,
+            student_id: String(m.student_id || ""),
+            author_name: String(m.author_name || ""),
+            message: String(m.message || ""),
+            decor_seed: Number(m.decor_seed ?? deterministicSeedFromId(idStr)),
+            status: (m.status || "pending") as ContentStatus,
+            created_at: m.created_at ? String(m.created_at) : undefined,
+         };
+      });
 
-    const polls: PollWithOptions[] =
-      pollRows.length > 0
-        ? pollRows.map((p) => {
-            const pid = String(p.id);
-            const opts = optionRows
-              .filter((o) => String(o.poll_id) === pid)
-              .map((o) => {
-                const oid = String(o.id);
-                const count = voteRows.filter((v) => String(v.option_id) === oid).length;
-                return {
+      const rawTimeCapsules: RawTimeCapsuleStoreRow[] = (capRes.data ?? []).map(c => ({
+         id: String(c.id),
+         author_name: String(c.author_name || ""),
+         recipient_label: String(c.recipient_label || ""),
+         message: String(c.message || ""),
+         unlock_at: String(c.unlock_at || new Date().toISOString()),
+         status: (c.status || "pending") as ContentStatus,
+         created_at: c.created_at ? String(c.created_at) : undefined,
+      }));
+
+      // Mendukung kedua skema kolom thanks (author_name/to_target maupun from_name/to_name)
+      const thanksList: ThanksRow[] = (thkRes.data ?? []).map(th => ({
+         id: String(th.id),
+         from_name: String(th.author_name ?? th.from_name ?? ""),
+         to_name: String(th.to_target ?? th.to_name ?? ""),
+         message: String(th.message || ""),
+         status: (th.status || "pending") as ContentStatus,
+         created_at: th.created_at ? String(th.created_at) : undefined,
+      }));
+
+      const works: WorkRow[] = (wrkRes.data ?? []).map(w => {
+         const stu = studentMap.get(String(w.student_id));
+         return {
+            id: String(w.id),
+            student_id: String(w.student_id),
+            student_name: stu?.full_name ?? "",
+            title: String(w.title || ""),
+            description: String(w.description || ""),
+            tags: Array.isArray(w.tags) ? w.tags.map(String) : [],
+            image_url: String(w.image_url || ""),
+            demo_url: String(w.demo_url || ""),
+            repo_url: String(w.repo_url || ""),
+            status: (w.status || "approved") as ContentStatus,
+         };
+      });
+
+      const voteRows = votRes.data ?? [];
+      const optionRows = optRes.data ?? [];
+      const pollRows = polRes.data ?? [];
+
+      const polls: PollWithOptions[] = pollRows.map(p => {
+         const pid = String(p.id);
+         const opts = optionRows
+            .filter(o => String(o.poll_id) === pid)
+            .map(o => {
+               const oid = String(o.id);
+               const countFromVotes = voteRows.filter(v => String(v.option_id) === oid).length;
+               const countFromCol = Number(o.votes_count ?? 0);
+               const count = Math.max(countFromVotes, countFromCol);
+               return {
                   id: oid,
                   poll_id: pid,
                   label: String(o.label || ""),
                   votes: count,
-                };
-              });
-            const totalVotes = opts.reduce((acc, o) => acc + o.votes, 0);
-            return {
-              id: pid,
-              question: String(p.question || ""),
-              is_open: Boolean(p.is_open ?? true),
-              options: opts,
-              total_votes: totalVotes,
-            };
-          })
-        : localFallback.polls;
+               };
+            });
+         const totalVotes = opts.reduce((acc, o) => acc + o.votes, 0);
+         return {
+            id: pid,
+            question: String(p.question || ""),
+            is_open: Boolean(p.is_open ?? true),
+            options: opts,
+            total_votes: totalVotes,
+         };
+      });
 
-    const gradDateFromDb =
-      (setRes.data?.value as { graduation_date?: string } | null)?.graduation_date ||
-      localFallback.settings.graduation_date;
+      const rawSetData = setRes.data as Record<string, unknown> | null;
+      const gradDateFromDb = (typeof rawSetData?.graduation_date === "string" && rawSetData.graduation_date ? rawSetData.graduation_date : (rawSetData?.value as { graduation_date?: string } | null)?.graduation_date) || DEFAULT_GRADUATION_DATE;
 
-    return {
-      students,
-      teachers,
-      moments,
-      dreams,
-      dreamCheers,
-      memoryEntries,
-      rawTimeCapsules,
-      thanksList,
-      works,
-      polls,
-      pollVoterHashes: localFallback.pollVoterHashes,
-      settings: {
-        graduation_date: gradDateFromDb,
-      },
-      updatedAt: Date.now(),
-    };
-  } catch {
-    return null;
-  }
+      return {
+         students,
+         teachers,
+         moments,
+         dreams,
+         dreamCheers,
+         memoryEntries,
+         rawTimeCapsules,
+         thanksList,
+         works,
+         polls,
+         settings: {
+            graduation_date: gradDateFromDb,
+         },
+         dbConnected: true,
+         missingTables: false,
+         dbError: null,
+         updatedAt: Date.now(),
+      };
+   } catch (err) {
+      const msg = err instanceof Error ? err.message : "Tidak dapat menghubungi server database Supabase.";
+      return createDisconnectedSnapshot(msg, false);
+   }
 }
 
 /**
- * Ambil semua data publik yang sudah berstatus 'approved' (dan sembunyikan pesan kapsul waktu yang belum terbuka).
- * Semua halaman Frontend mengandalkan fungsi ini sebagai Single Source of Truth.
+ * Ambil semua data publik yang sudah berstatus 'approved' langsung dari Supabase.
  */
-export async function getPublicAppData() {
-  const supabaseStore = await fetchAllFromSupabase();
-  const store = supabaseStore ?? loadStore();
-  const nowMs = Date.now();
+export async function getPublicAppData(_bypassCache = false) {
+   const store = await fetchAllFromSupabase();
+   const nowMs = Date.now();
 
-  const approvedCheers = store.dreamCheers.filter((c) => c.status === "approved");
-  const dreamsWithCheers: DreamRow[] = store.dreams
-    .filter((d) => d.status === "approved")
-    .map((d) => {
-      const stu = store.students.find((s) => s.id === d.student_id);
-      return {
-        ...d,
-        student_name: stu?.full_name ?? d.student_name ?? "Siswa XII PPLG 1",
-        student_nickname: stu?.nickname ?? d.student_nickname ?? "Sahabat",
-        cheers: approvedCheers.filter((c) => c.dream_id === d.id),
-      };
-    });
+   const approvedCheers = store.dreamCheers.filter(c => c.status === "approved");
+   const dreamsWithCheers: DreamRow[] = store.dreams
+      .filter(d => d.status === "approved")
+      .map(d => {
+         const stu = store.students.find(s => s.id === d.student_id);
+         return {
+            ...d,
+            student_name: stu?.full_name || d.student_name || "",
+            student_nickname: stu?.nickname || d.student_nickname || "",
+            cheers: approvedCheers.filter(c => c.dream_id === d.id),
+         };
+      });
 
-  const maskedCapsules: TimeCapsuleRow[] = store.rawTimeCapsules
-    .filter((c) => c.status === "approved")
-    .map((c) => maskTimeCapsuleForPublic(c, nowMs));
+   const maskedCapsules: TimeCapsuleRow[] = store.rawTimeCapsules.filter(c => c.status === "approved").map(c => maskTimeCapsuleForPublic(c, nowMs));
 
-  const approvedWorks: WorkRow[] = store.works
-    .filter((w) => w.status === "approved")
-    .map((w) => {
-      const stu = store.students.find((s) => s.id === w.student_id);
-      return {
-        ...w,
-        student_name: stu?.full_name ?? w.student_name ?? "Siswa XII PPLG 1",
-      };
-    });
+   const approvedWorks: WorkRow[] = store.works
+      .filter(w => w.status === "approved")
+      .map(w => {
+         const stu = store.students.find(s => s.id === w.student_id);
+         return {
+            ...w,
+            student_name: stu?.full_name || w.student_name || "",
+         };
+      });
 
-  const sortedStudents = [...store.students].sort(
-    (a, b) => a.sort_order - b.sort_order
-  );
-  const sortedTeachers = [...store.teachers].sort(
-    (a, b) => (b.is_homeroom ? 1 : 0) - (a.is_homeroom ? 1 : 0) || a.sort_order - b.sort_order
-  );
+   const sortedStudents = [...store.students].sort((a, b) => a.sort_order - b.sort_order);
+   const sortedTeachers = [...store.teachers].sort((a, b) => (b.is_homeroom ? 1 : 0) - (a.is_homeroom ? 1 : 0) || a.sort_order - b.sort_order);
 
-  return {
-    students: sortedStudents,
-    teachers: sortedTeachers,
-    moments: store.moments.filter((m) => m.status === "approved"),
-    dreams: dreamsWithCheers,
-    memoryEntries: store.memoryEntries.filter((m) => m.status === "approved"),
-    timeCapsules: maskedCapsules,
-    thanksList: store.thanksList.filter((t) => t.status === "approved"),
-    works: approvedWorks,
-    polls: store.polls,
-    settings: store.settings,
-    supabaseConnected: Boolean(supabaseStore) || isSupabaseConfigured(),
-    updatedAt: store.updatedAt ?? nowMs,
-  };
+   return {
+      students: sortedStudents,
+      teachers: sortedTeachers,
+      moments: store.moments.filter(m => m.status === "approved"),
+      dreams: dreamsWithCheers,
+      memoryEntries: store.memoryEntries.filter(m => m.status === "approved"),
+      timeCapsules: maskedCapsules,
+      thanksList: store.thanksList.filter(t => t.status === "approved"),
+      works: approvedWorks,
+      polls: store.polls,
+      settings: store.settings,
+      supabaseConnected: store.dbConnected,
+      dbConnected: store.dbConnected,
+      missingTables: store.missingTables,
+      dbError: store.dbError,
+      updatedAt: store.updatedAt,
+   };
 }
 
 /**
- * Simpan kiriman publik baru dengan status = 'pending' agar dimoderasi admin terlebih dahulu.
+ * Simpan kiriman publik baru ke Supabase sesuai skema tabel database.
  */
 export async function createPendingSubmission(payload: SubmitPayload) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
-  const id = crypto.randomUUID();
-  const nowIso = new Date().toISOString();
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Database Supabase belum terhubung.");
+   }
 
-  switch (payload.type) {
-    case "memory": {
-      const entry: MemoryEntryRow = {
-        id,
-        student_id: payload.studentId,
-        author_name: sanitizeText(payload.authorName),
-        message: sanitizeText(payload.message),
-        decor_seed: Math.floor(Math.random() * 900) + 100,
-        status: "pending",
-        created_at: nowIso,
-      };
-      store.memoryEntries.unshift(entry);
-      saveStore(store);
+   const id = crypto.randomUUID();
+   const nowIso = new Date().toISOString();
 
-      if (supabase) {
-        await supabase.from("memory_entries").insert({
-          id,
-          student_id: toDeterministicUuid(payload.studentId),
-          author_name: entry.author_name,
-          message: entry.message,
-          decor_seed: entry.decor_seed,
-          status: "pending",
-        });
-      }
-      return { id, type: payload.type, status: "pending" as const };
-    }
-
-    case "dream": {
-      const stu = store.students.find((s) => s.id === payload.studentId);
-      const existingIdx = store.dreams.findIndex(
-        (d) => d.student_id === payload.studentId && d.status === "pending"
-      );
-      const dreamEntry: DreamRow = {
-        id,
-        student_id: payload.studentId,
-        student_name: stu?.full_name ?? "Siswa XII PPLG 1",
-        student_nickname: stu?.nickname ?? "Sahabat",
-        dream: sanitizeText(payload.dream),
-        reason: sanitizeText(payload.reason),
-        paper_color: payload.paperColor || "#FFF7D6",
-        status: "pending",
-        cheers: [],
-      };
-      if (existingIdx >= 0) {
-        store.dreams[existingIdx] = dreamEntry;
-      } else {
-        store.dreams.unshift(dreamEntry);
-      }
-      saveStore(store);
-
-      if (supabase) {
-        await supabase.from("dreams").upsert(
-          {
+   switch (payload.type) {
+      case "memory": {
+         const { error } = await supabase.from("memory_entries").insert({
             id,
             student_id: toDeterministicUuid(payload.studentId),
-            dream: dreamEntry.dream,
-            reason: dreamEntry.reason,
-            paper_color: dreamEntry.paper_color,
+            author_name: sanitizeText(payload.authorName),
+            message: sanitizeText(payload.message),
             status: "pending",
-          },
-          { onConflict: "student_id" }
-        );
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
       }
-      return { id, type: payload.type, status: "pending" as const };
-    }
 
-    case "dream_cheer": {
-      const cheer: DreamCheerRow = {
-        id,
-        dream_id: payload.dreamId,
-        author_name: sanitizeText(payload.authorName),
-        message: sanitizeText(payload.message),
-        status: "pending",
-        created_at: nowIso,
-      };
-      store.dreamCheers.unshift(cheer);
-      saveStore(store);
+      case "dream": {
+         const stuUuid = toDeterministicUuid(payload.studentId);
+         const { data: stuRow } = await supabase.from("students").select("full_name").eq("id", stuUuid).maybeSingle();
+         const authorName = stuRow?.full_name || "Siswa XII PPLG 1";
 
-      if (supabase) {
-        await supabase.from("dream_cheers").insert({
-          id,
-          dream_id: toDeterministicUuid(payload.dreamId),
-          author_name: cheer.author_name,
-          message: cheer.message,
-          status: "pending",
-        });
-      }
-      return { id, type: payload.type, status: "pending" as const };
-    }
+         const { data: existingDream } = await supabase.from("dreams").select("id").eq("student_id", stuUuid).maybeSingle();
 
-    case "time_capsule": {
-      const unlockIso = new Date(payload.unlockAt).toISOString();
-      const recipientLabel = sanitizeText(
-        payload.recipientLabel || "Untuk Kelas XII PPLG 1"
-      );
-      const cleanAuthor = sanitizeText(payload.authorName);
-      const cleanMessage = sanitizeText(payload.message);
+         if (existingDream?.id) {
+            const { error } = await supabase
+               .from("dreams")
+               .update({
+                  author_name: authorName,
+                  dream_title: sanitizeText(payload.dream),
+                  reason: sanitizeText(payload.reason),
+                  pin_color: payload.paperColor || "#FFF7D6",
+                  status: "pending",
+               })
+               .eq("id", existingDream.id);
+            if (error) throw new Error(error.message);
+            return {
+               id: String(existingDream.id),
+               type: payload.type,
+               status: "pending" as const,
+            };
+         }
 
-      store.rawTimeCapsules.unshift({
-        id,
-        author_name: cleanAuthor,
-        recipient_label: recipientLabel,
-        message: cleanMessage,
-        unlock_at: unlockIso,
-        status: "pending",
-        created_at: nowIso,
-      });
-      saveStore(store);
-
-      if (supabase) {
-        await supabase.from("time_capsules").insert({
-          id,
-          author_name: cleanAuthor,
-          recipient_label: recipientLabel,
-          message: cleanMessage,
-          unlock_at: unlockIso,
-          status: "pending",
-        });
-      }
-      return { id, type: payload.type, status: "pending" as const };
-    }
-
-    case "thanks": {
-      const item: ThanksRow = {
-        id,
-        from_name: sanitizeText(payload.fromName),
-        to_name: sanitizeText(payload.toName),
-        message: sanitizeText(payload.message),
-        status: "pending",
-        created_at: nowIso,
-      };
-      store.thanksList.unshift(item);
-      saveStore(store);
-
-      if (supabase) {
-        await supabase.from("thanks").insert({
-          id,
-          from_name: item.from_name,
-          to_name: item.to_name,
-          message: item.message,
-          status: "pending",
-        });
-      }
-      return { id, type: payload.type, status: "pending" as const };
-    }
-
-    case "moment": {
-      const seedNum = (store.moments.length % 100) + 1;
-      const imageUrl =
-        payload.imageDataUrl && payload.imageDataUrl.startsWith("data:image/")
-          ? payload.imageDataUrl
-          : `/api/moment-illustration?seed=${seedNum}`;
-      const moment: MomentRow = {
-        id,
-        image_url: imageUrl,
-        caption: sanitizeText(payload.caption),
-        taken_at: payload.takenAt || nowIso.slice(0, 10),
-        category: sanitizeText(payload.category),
-        phase: payload.phase,
-        uploader_name: sanitizeText(payload.uploaderName),
-        featured: true,
-        status: "pending",
-        created_at: nowIso,
-      };
-      store.moments.unshift(moment);
-      saveStore(store);
-
-      if (supabase) {
-        await supabase.from("moments").insert({
-          id,
-          image_url: moment.image_url,
-          caption: moment.caption,
-          taken_at: moment.taken_at,
-          category: moment.category,
-          phase: moment.phase,
-          uploader_name: moment.uploader_name,
-          featured: true,
-          status: "pending",
-        });
-      }
-      return { id, type: payload.type, status: "pending" as const };
-    }
-
-    case "work": {
-      const stu = store.students.find((s) => s.id === payload.studentId);
-      const work: WorkRow = {
-        id,
-        student_id: payload.studentId,
-        student_name: stu?.full_name ?? "Siswa XII PPLG 1",
-        title: sanitizeText(payload.title),
-        description: sanitizeText(payload.description),
-        tags: payload.tags.map((t) => sanitizeText(t)),
-        image_url: "",
-        demo_url: payload.demoUrl || "",
-        repo_url: payload.repoUrl || "",
-        status: "pending",
-      };
-      store.works.unshift(work);
-      saveStore(store);
-
-      if (supabase) {
-        await supabase.from("works").upsert(
-          {
+         const { error } = await supabase.from("dreams").insert({
             id,
-            student_id: toDeterministicUuid(payload.studentId),
-            title: work.title,
-            description: work.description,
-            tags: work.tags,
-            image_url: work.image_url,
-            demo_url: work.demo_url,
-            repo_url: work.repo_url,
+            student_id: stuUuid,
+            author_name: authorName,
+            dream_title: sanitizeText(payload.dream),
+            reason: sanitizeText(payload.reason),
+            target_place: "MAKN Ende",
+            pin_color: payload.paperColor || "#FFF7D6",
             status: "pending",
-          },
-          { onConflict: "student_id" }
-        );
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
       }
-      return { id, type: payload.type, status: "pending" as const };
-    }
-  }
+
+      case "dream_cheer": {
+         const { error } = await supabase.from("dream_cheers").insert({
+            id,
+            dream_id: toDeterministicUuid(payload.dreamId),
+            sender_name: sanitizeText(payload.authorName),
+            message: sanitizeText(payload.message),
+            status: "pending",
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
+      }
+
+      case "time_capsule": {
+         const unlockIso = new Date(payload.unlockAt).toISOString();
+         const recipientLabel = sanitizeText(payload.recipientLabel || "Untuk Kelas XII PPLG 1");
+         const { error } = await supabase.from("time_capsules").insert({
+            id,
+            author_name: sanitizeText(payload.authorName),
+            recipient_label: recipientLabel,
+            message: sanitizeText(payload.message),
+            unlock_at: unlockIso,
+            status: "pending",
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
+      }
+
+      case "thanks": {
+         const { error } = await supabase.from("thanks").insert({
+            id,
+            author_name: sanitizeText(payload.fromName),
+            to_target: sanitizeText(payload.toName),
+            message: sanitizeText(payload.message),
+            status: "pending",
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
+      }
+
+      case "moment": {
+         const seedNum = Math.floor(Math.random() * 99) + 1;
+         const imageUrl = payload.imageDataUrl && payload.imageDataUrl.startsWith("data:image/") ? payload.imageDataUrl : `/api/moment-illustration?seed=${seedNum}`;
+         const { error } = await supabase.from("moments").insert({
+            id,
+            grade: payload.phase,
+            title: `${sanitizeText(payload.category)} | ${sanitizeText(payload.uploaderName)}`,
+            caption: sanitizeText(payload.caption),
+            date_label: payload.takenAt || nowIso.slice(0, 10),
+            image_url: imageUrl,
+            sort_order: -1, // -1 menandakan status 'pending'
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
+      }
+
+      case "work": {
+         const stuUuid = toDeterministicUuid(payload.studentId);
+         const { data: existingWork } = await supabase.from("works").select("id").eq("student_id", stuUuid).maybeSingle();
+
+         if (existingWork?.id) {
+            const { error } = await supabase
+               .from("works")
+               .update({
+                  title: sanitizeText(payload.title),
+                  description: sanitizeText(payload.description),
+                  tags: payload.tags.map(t => sanitizeText(t)),
+                  demo_url: payload.demoUrl || "",
+                  repo_url: payload.repoUrl || "",
+                  status: "pending",
+               })
+               .eq("id", existingWork.id);
+            if (error) throw new Error(error.message);
+            return {
+               id: String(existingWork.id),
+               type: payload.type,
+               status: "pending" as const,
+            };
+         }
+
+         const { error } = await supabase.from("works").insert({
+            id,
+            student_id: stuUuid,
+            title: sanitizeText(payload.title),
+            description: sanitizeText(payload.description),
+            tags: payload.tags.map(t => sanitizeText(t)),
+            image_url: "",
+            demo_url: payload.demoUrl || "",
+            repo_url: payload.repoUrl || "",
+            status: "pending",
+         });
+         if (error) throw new Error(error.message);
+         return { id, type: payload.type, status: "pending" as const };
+      }
+   }
 }
 
 /**
- * Rekam suara polling kelas dengan pencegahan duplikat (1 perangkat 1 suara per poll via voter_hash).
+ * Rekam suara polling kelas langsung ke Supabase dengan pencegahan duplikat (1 perangkat 1 suara per poll).
  */
-export async function voteOnPoll(
-  pollId: string,
-  optionId: string,
-  voterHash: string
-): Promise<{ ok: boolean; error?: string; poll?: PollWithOptions }> {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
+export async function voteOnPoll(pollId: string, optionId: string, voterHash: string): Promise<{ ok: boolean; error?: string; poll?: PollWithOptions }> {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      return { ok: false, error: "Database Supabase belum terhubung." };
+   }
 
-  const poll = store.polls.find(
-    (p) => p.id === pollId || toDeterministicUuid(p.id) === pollId
-  );
-  if (!poll || !poll.is_open) {
-    return { ok: false, error: "Polling tidak ditemukan atau sudah ditutup." };
-  }
-  const opt = poll.options.find(
-    (o) => o.id === optionId || toDeterministicUuid(o.id) === optionId
-  );
-  if (!opt) {
-    return { ok: false, error: "Pilihan suara tidak valid." };
-  }
+   const store = await fetchAllFromSupabase();
+   const poll = store.polls.find(p => p.id === pollId || toDeterministicUuid(p.id) === pollId);
+   if (!poll || !poll.is_open) {
+      return { ok: false, error: "Polling tidak ditemukan atau sudah ditutup." };
+   }
+   const opt = poll.options.find(o => o.id === optionId || toDeterministicUuid(o.id) === optionId);
+   if (!opt) {
+      return { ok: false, error: "Pilihan suara tidak valid." };
+   }
 
-  const existingVoters = store.pollVoterHashes[poll.id] ?? [];
-  if (existingVoters.includes(voterHash)) {
-    return {
-      ok: false,
-      error: "Perangkat ini sudah memberikan suara pada polling ini.",
-      poll,
-    };
-  }
+   const { data: existingVotes } = await supabase.from("poll_votes").select("id").eq("poll_id", poll.id).eq("voter_fingerprint", voterHash);
 
-  if (supabase) {
-    const optUuid = toDeterministicUuid(opt.id);
-    const { error: voteErr } = await supabase.from("poll_votes").insert({
-      option_id: optUuid,
-      voter_hash: voterHash,
-    });
-    if (voteErr && voteErr.code === "23505") {
+   if (existingVotes && existingVotes.length > 0) {
       return {
-        ok: false,
-        error: "Perangkat ini sudah memberikan suara pada polling ini.",
-        poll,
+         ok: false,
+         error: "Perangkat ini sudah memberikan suara pada polling ini.",
+         poll,
       };
-    }
-  }
+   }
 
-  opt.votes += 1;
-  poll.total_votes += 1;
-  store.pollVoterHashes[poll.id] = [...existingVoters, voterHash];
-  saveStore(store);
+   const { error: voteErr } = await supabase.from("poll_votes").insert({
+      poll_id: poll.id,
+      option_id: opt.id,
+      voter_fingerprint: voterHash,
+   });
 
-  return { ok: true, poll };
+   if (voteErr) {
+      if (voteErr.code === "23505") {
+         return {
+            ok: false,
+            error: "Perangkat ini sudah memberikan suara pada polling ini.",
+            poll,
+         };
+      }
+      return { ok: false, error: `Gagal menyimpan suara: ${voteErr.message}` };
+   }
+
+   await supabase
+      .from("poll_options")
+      .update({ votes_count: opt.votes + 1 })
+      .eq("id", opt.id);
+
+   const updatedStore = await fetchAllFromSupabase();
+   const updatedPoll = updatedStore.polls.find(p => p.id === poll.id) ?? poll;
+
+   return { ok: true, poll: updatedPoll };
 }
 
 /**
- * Data lengkap untuk dasbor Admin (termasuk antrean moderasi 'pending' dan 'rejected').
+ * Data lengkap untuk dasbor Admin langsung dari Supabase.
  */
 export async function getAdminDashboardData() {
-  const supabaseStore = await fetchAllFromSupabase();
-  const store = supabaseStore ?? loadStore();
-  return {
-    students: [...store.students].sort((a, b) => a.sort_order - b.sort_order),
-    teachers: [...store.teachers].sort(
-      (a, b) => (b.is_homeroom ? 1 : 0) - (a.is_homeroom ? 1 : 0) || a.sort_order - b.sort_order
-    ),
-    moments: store.moments,
-    dreams: store.dreams,
-    dreamCheers: store.dreamCheers,
-    memoryEntries: store.memoryEntries,
-    timeCapsules: store.rawTimeCapsules,
-    thanksList: store.thanksList,
-    works: store.works,
-    settings: store.settings,
-    supabaseConnected: Boolean(supabaseStore) || isSupabaseConfigured(),
-  };
+   const store = await fetchAllFromSupabase();
+   return {
+      students: [...store.students].sort((a, b) => a.sort_order - b.sort_order),
+      teachers: [...store.teachers].sort((a, b) => (b.is_homeroom ? 1 : 0) - (a.is_homeroom ? 1 : 0) || a.sort_order - b.sort_order),
+      moments: store.moments,
+      dreams: store.dreams,
+      dreamCheers: store.dreamCheers,
+      memoryEntries: store.memoryEntries,
+      timeCapsules: store.rawTimeCapsules,
+      thanksList: store.thanksList,
+      works: store.works,
+      polls: store.polls,
+      settings: store.settings,
+      supabaseConnected: store.dbConnected,
+      dbConnected: store.dbConnected,
+      missingTables: store.missingTables,
+      dbError: store.dbError,
+   };
 }
 
-export type ModeratableTable =
-  | "moments"
-  | "dreams"
-  | "dreamCheers"
-  | "memoryEntries"
-  | "timeCapsules"
-  | "thanksList"
-  | "works";
+export type ModeratableTable = "moments" | "dreams" | "dreamCheers" | "memoryEntries" | "timeCapsules" | "thanksList" | "works";
 
 const SUPABASE_TABLE_MAP: Record<ModeratableTable, string> = {
-  moments: "moments",
-  dreams: "dreams",
-  dreamCheers: "dream_cheers",
-  memoryEntries: "memory_entries",
-  timeCapsules: "time_capsules",
-  thanksList: "thanks",
-  works: "works",
+   moments: "moments",
+   dreams: "dreams",
+   dreamCheers: "dream_cheers",
+   memoryEntries: "memory_entries",
+   timeCapsules: "time_capsules",
+   thanksList: "thanks",
+   works: "works",
 };
 
-export async function moderateItem(
-  table: ModeratableTable,
-  id: string,
-  status: ContentStatus,
-  updatedText?: string
-) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
+export async function moderateItem(table: ModeratableTable, id: string, status: ContentStatus, updatedText?: string) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) return false;
 
-  const listMap: Record<ModeratableTable, Array<{ id: string; status: ContentStatus }>> = {
-    moments: store.moments,
-    dreams: store.dreams,
-    dreamCheers: store.dreamCheers,
-    memoryEntries: store.memoryEntries,
-    timeCapsules: store.rawTimeCapsules,
-    thanksList: store.thanksList,
-    works: store.works,
-  };
+   const sbTable = SUPABASE_TABLE_MAP[table];
+   const targetUuid = toDeterministicUuid(id);
+   const updatePayload: Record<string, unknown> =
+      table === "moments"
+         ? {
+              sort_order: status === "approved" ? 1 : status === "rejected" ? -2 : -1,
+           }
+         : { status };
 
-  const list = listMap[table];
-  const item = list?.find(
-    (x) => x.id === id || toDeterministicUuid(x.id) === id
-  ) as Record<string, unknown> | undefined;
+   const cleanText = updatedText !== undefined && updatedText.trim().length > 0 ? sanitizeText(updatedText) : undefined;
 
-  const cleanText =
-    updatedText !== undefined && updatedText.trim().length > 0
-      ? sanitizeText(updatedText)
-      : undefined;
-
-  if (item) {
-    item.status = status;
-    if (cleanText !== undefined) {
-      if ("message" in item) item.message = cleanText;
-      else if ("caption" in item) item.caption = cleanText;
-      else if ("dream" in item) item.dream = cleanText;
-      else if ("description" in item) item.description = cleanText;
-    }
-
-    // Jika work atau dream disetujui untuk student_id yang sama, arsipkan yang lama agar 1 siswa = 1 karya/dream utama
-    if (status === "approved" && (table === "works" || table === "dreams")) {
-      const studentId = item.student_id as string;
-      for (const other of list as Array<Record<string, unknown>>) {
-        if (
-          other.id !== item.id &&
-          (other.student_id === studentId ||
-            toDeterministicUuid(String(other.student_id)) ===
-              toDeterministicUuid(studentId)) &&
-          other.status === "approved"
-        ) {
-          other.status = "rejected";
-        }
-      }
-    }
-    saveStore(store);
-  }
-
-  if (supabase) {
-    const sbTable = SUPABASE_TABLE_MAP[table];
-    const targetUuid = toDeterministicUuid(id);
-    const updatePayload: Record<string, unknown> = { status };
-    if (cleanText !== undefined) {
-      if (
-        table === "memoryEntries" ||
-        table === "dreamCheers" ||
-        table === "timeCapsules" ||
-        table === "thanksList"
-      ) {
-        updatePayload.message = cleanText;
+   if (cleanText !== undefined) {
+      if (table === "memoryEntries" || table === "dreamCheers" || table === "timeCapsules" || table === "thanksList") {
+         updatePayload.message = cleanText;
       } else if (table === "moments") {
-        updatePayload.caption = cleanText;
+         updatePayload.caption = cleanText;
       } else if (table === "dreams") {
-        updatePayload.dream = cleanText;
+         updatePayload.dream_title = cleanText;
       } else if (table === "works") {
-        updatePayload.description = cleanText;
+         updatePayload.description = cleanText;
       }
-    }
-    await supabase.from(sbTable).update(updatePayload).eq("id", targetUuid);
-    return true;
-  }
+   }
 
-  return Boolean(item);
+   const { error } = await supabase.from(sbTable).update(updatePayload).eq("id", targetUuid);
+
+   return !error;
+}
+
+export async function deleteModeratedItem(table: ModeratableTable, id: string) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) return false;
+   const sbTable = SUPABASE_TABLE_MAP[table];
+   const targetUuid = toDeterministicUuid(id);
+   const { error } = await supabase.from(sbTable).delete().eq("id", targetUuid);
+   return !error;
 }
 
 export async function updateSiteSettings(graduationDate: string) {
-  const store = loadStore();
-  store.settings.graduation_date = graduationDate;
-  saveStore(store);
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Database Supabase belum terhubung.");
+   }
 
-  const supabase = getSupabaseAdminClient();
-  if (supabase) {
-    await supabase.from("site_settings").upsert(
+   const dateOnly = graduationDate.slice(0, 10);
+   const { error } = await supabase.from("site_settings").upsert(
       {
-        key: "graduation_date",
-        value: { graduation_date: graduationDate },
-        updated_at: new Date().toISOString(),
+         id: 1,
+         graduation_date: dateOnly,
+         updated_at: new Date().toISOString(),
       },
-      { onConflict: "key" }
-    );
-  }
+      { onConflict: "id" }
+   );
 
-  return store.settings;
+   if (error) {
+      throw new Error(error.message);
+   }
+
+   return { graduation_date: graduationDate };
 }
 
-export async function upsertStudentAdmin(
-  student: Partial<StudentRow> & { full_name: string }
-) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
+export async function upsertStudentAdmin(student: Partial<StudentRow> & { full_name: string }) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Database Supabase belum terhubung.");
+   }
 
-  const cleanFullName = sanitizeText(student.full_name);
-  const cleanNickname = sanitizeText(
-    student.nickname || student.full_name.split(" ")[0] || "Siswa"
-  );
-  const cleanBio = sanitizeText(
-    student.bio || "Keluarga besar XII PPLG 1 MAKN Ende."
-  );
-  const cleanTags =
-    student.tags && student.tags.length > 0
-      ? student.tags.map((t) => sanitizeText(t)).filter(Boolean)
-      : ["Frontend", "PPLG"];
-  const railGroup =
-    student.rail_group ?? (student.gender === "P" ? "P1" : "L");
-  const isActive =
-    student.is_active !== undefined ? student.is_active : railGroup !== "moved";
-  const gender: StudentRow["gender"] =
-    student.gender || (railGroup === "P1" || railGroup === "P2" ? "P" : "L");
+   const currentStore = await fetchAllFromSupabase();
+   const existing = student.id ? currentStore.students.find(s => s.id === student.id || toDeterministicUuid(s.id) === toDeterministicUuid(student.id!)) : undefined;
 
-  let savedStudent: StudentRow;
+   const cleanFullName = sanitizeText(student.full_name);
+   const cleanNickname = sanitizeText(student.nickname || student.full_name.split(" ")[0] || "");
+   const cleanBio = sanitizeText(student.bio ?? existing?.bio ?? "");
+   const cleanTags = student.tags !== undefined ? student.tags.map(t => sanitizeText(t)).filter(Boolean) : (existing?.tags ?? []);
+   const railGroup = student.rail_group ?? existing?.rail_group ?? (student.gender === "P" ? "P1" : "L");
+   const isActive = student.is_active !== undefined ? student.is_active : railGroup !== "moved";
+   const gender: StudentRow["gender"] = student.gender || existing?.gender || (railGroup === "P1" || railGroup === "P2" ? "P" : "L");
 
-  if (student.id) {
-    const idx = store.students.findIndex(
-      (s) =>
-        s.id === student.id ||
-        toDeterministicUuid(s.id) === toDeterministicUuid(student.id!)
-    );
-    if (idx >= 0) {
-      const existing = store.students[idx]!;
-      savedStudent = {
-        ...existing,
-        ...student,
-        full_name: cleanFullName,
-        nickname: cleanNickname,
-        bio: cleanBio,
-        tags: cleanTags,
-        gender,
-        is_active: isActive,
-        rail_group: railGroup,
-        show_photo: student.show_photo ?? existing.show_photo,
-        photo_url:
-          student.photo_url !== undefined ? student.photo_url : existing.photo_url,
-      };
-      store.students[idx] = savedStudent;
+   const stuUuid = student.id ? toDeterministicUuid(student.id) : crypto.randomUUID();
 
-      // Sinkronkan nama siswa pada Dream Board dan Karya Siswa
-      for (const d of store.dreams) {
-        if (
-          d.student_id === existing.id ||
-          toDeterministicUuid(d.student_id) === toDeterministicUuid(existing.id)
-        ) {
-          d.student_name = savedStudent.full_name;
-          d.student_nickname = savedStudent.nickname;
-        }
-      }
-      for (const w of store.works) {
-        if (
-          w.student_id === existing.id ||
-          toDeterministicUuid(w.student_id) === toDeterministicUuid(existing.id)
-        ) {
-          w.student_name = savedStudent.full_name;
-        }
-      }
-    } else {
-      savedStudent = {
-        id: student.id,
-        slug: `${cleanNickname.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
-        full_name: cleanFullName,
-        nickname: cleanNickname,
-        gender,
-        is_active: isActive,
-        show_photo: student.show_photo ?? true,
-        photo_url: student.photo_url || "",
-        bio: cleanBio,
-        tags: cleanTags,
-        links: student.links ?? [{ label: "Karya Kelas", href: "/karya" }],
-        tone: student.tone ?? (isActive ? 1 : 5),
-        rail_group: railGroup,
-        sort_order: store.students.length + 1,
-      };
-      store.students.push(savedStudent);
-    }
-  } else {
-    const newId = crypto.randomUUID();
-    savedStudent = {
-      id: newId,
-      slug: `${cleanNickname.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
+   const slug = existing?.slug || student.slug || `${cleanNickname.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${stuUuid.slice(0, 6)}`;
+
+   const payload = {
+      id: stuUuid,
+      slug,
       full_name: cleanFullName,
       nickname: cleanNickname,
       gender,
       is_active: isActive,
-      show_photo: student.show_photo ?? true,
-      photo_url: student.photo_url || "",
+      show_photo: student.show_photo ?? existing?.show_photo ?? true,
+      photo_url: student.photo_url !== undefined ? student.photo_url : (existing?.photo_url ?? ""),
       bio: cleanBio,
       tags: cleanTags,
-      links: student.links ?? [{ label: "Karya Kelas", href: "/karya" }],
-      tone: student.tone ?? (isActive ? 1 : 5),
+      links: student.links ?? existing?.links ?? [],
+      tone: (student.tone ?? existing?.tone ?? (isActive ? 1 : 5)) as 1 | 2 | 3 | 4 | 5,
       rail_group: railGroup,
-      sort_order: store.students.length + 1,
-    };
-    store.students.push(savedStudent);
+      sort_order: existing?.sort_order ?? currentStore.students.length + 1,
+   };
 
-    // Jika siswa aktif baru belum punya kartu Dream Board, buatkan otomatis agar langsung tampil di Dream Board
-    if (isActive) {
-      store.dreams.push({
-        id: `dream-${newId}`,
-        student_id: newId,
-        student_name: savedStudent.full_name,
-        student_nickname: savedStudent.nickname,
-        dream: `Inovator Teknologi & Spesialis ${cleanTags[0] || "PPLG"}`,
-        reason: cleanBio,
-        paper_color: "#FFF7D6",
-        status: "approved",
-        cheers: [],
-      });
-    }
-  }
+   const { error } = await supabase.from("students").upsert(payload, { onConflict: "id" });
 
-  saveStore(store);
+   if (error) {
+      throw new Error(error.message);
+   }
 
-  if (supabase) {
-    const stuUuid = toDeterministicUuid(savedStudent.id);
-    await supabase.from("students").upsert(
-      {
-        id: stuUuid,
-        slug: savedStudent.slug,
-        full_name: savedStudent.full_name,
-        nickname: savedStudent.nickname,
-        gender: savedStudent.gender,
-        is_active: savedStudent.is_active,
-        show_photo: savedStudent.show_photo,
-        photo_url: savedStudent.photo_url,
-        bio: savedStudent.bio,
-        tags: savedStudent.tags,
-        links: savedStudent.links,
-        tone: savedStudent.tone,
-        rail_group: savedStudent.rail_group,
-        sort_order: savedStudent.sort_order,
-      },
-      { onConflict: "id" }
-    );
-  }
-
-  return savedStudent;
+   return payload;
 }
 
 export async function deleteStudentAdmin(id: string) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
-
-  const targetUuid = toDeterministicUuid(id);
-  store.students = store.students.filter(
-    (s) => s.id !== id && toDeterministicUuid(s.id) !== targetUuid
-  );
-  store.dreams = store.dreams.filter(
-    (d) =>
-      d.student_id !== id && toDeterministicUuid(d.student_id) !== targetUuid
-  );
-  store.works = store.works.filter(
-    (w) =>
-      w.student_id !== id && toDeterministicUuid(w.student_id) !== targetUuid
-  );
-  store.memoryEntries = store.memoryEntries.filter(
-    (m) =>
-      m.student_id !== id && toDeterministicUuid(m.student_id) !== targetUuid
-  );
-  saveStore(store);
-
-  if (supabase) {
-    await supabase.from("students").delete().eq("id", targetUuid);
-  }
-  return true;
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) return false;
+   const targetUuid = toDeterministicUuid(id);
+   const { error } = await supabase.from("students").delete().eq("id", targetUuid);
+   return !error;
 }
 
-export async function upsertTeacherAdmin(
-  teacher: Partial<TeacherRow> & { full_name: string; title: string }
-) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
+export async function upsertTeacherAdmin(teacher: Partial<TeacherRow> & { full_name: string; title: string }) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Database Supabase belum terhubung.");
+   }
 
-  const cleanFullName = sanitizeText(teacher.full_name);
-  const cleanTitle = sanitizeText(teacher.title);
-  const cleanMessage = sanitizeText(
-    teacher.message ||
-      "Terima kasih atas bimbingan dan doa untuk kelas XII PPLG 1."
-  );
-  const isHomeroom = Boolean(teacher.is_homeroom ?? false);
+   const currentStore = await fetchAllFromSupabase();
+   const existing = teacher.id ? currentStore.teachers.find(t => t.id === teacher.id || toDeterministicUuid(t.id) === toDeterministicUuid(teacher.id!)) : undefined;
 
-  // Jika guru ini dijadikan Wali Kelas, nonaktifkan flag is_homeroom pada guru lain agar tidak ganda
-  if (isHomeroom) {
-    for (const t of store.teachers) {
-      t.is_homeroom = false;
-    }
-    if (supabase) {
-      await supabase
-        .from("teachers")
-        .update({ is_homeroom: false })
-        .eq("is_homeroom", true);
-    }
-  }
+   const cleanFullName = sanitizeText(teacher.full_name);
+   const cleanTitle = sanitizeText(teacher.title);
+   const cleanMessage = sanitizeText(teacher.message ?? existing?.message ?? "");
+   const isHomeroom = Boolean(teacher.is_homeroom ?? existing?.is_homeroom ?? false);
 
-  let savedTeacher: TeacherRow;
+   if (isHomeroom) {
+      await supabase.from("teachers").update({ is_homeroom: false }).eq("is_homeroom", true);
+   }
 
-  if (teacher.id) {
-    const idx = store.teachers.findIndex(
-      (t) =>
-        t.id === teacher.id ||
-        toDeterministicUuid(t.id) === toDeterministicUuid(teacher.id!)
-    );
-    if (idx >= 0) {
-      const existing = store.teachers[idx]!;
-      savedTeacher = {
-        ...existing,
-        ...teacher,
-        full_name: cleanFullName,
-        title: cleanTitle,
-        message: cleanMessage,
-        is_homeroom: isHomeroom,
-        grp: teacher.grp || existing.grp,
-        photo_url:
-          teacher.photo_url !== undefined
-            ? teacher.photo_url
-            : existing.photo_url,
-      };
-      store.teachers[idx] = savedTeacher;
-    } else {
-      savedTeacher = {
-        id: teacher.id,
-        full_name: cleanFullName,
-        title: cleanTitle,
-        grp: teacher.grp || "kejuruan",
-        is_homeroom: isHomeroom,
-        photo_url: teacher.photo_url || "",
-        message: cleanMessage,
-        tone: teacher.tone ?? (isHomeroom ? 3 : 1),
-        sort_order: isHomeroom ? 0 : store.teachers.length + 1,
-      };
-      store.teachers.push(savedTeacher);
-    }
-  } else {
-    savedTeacher = {
-      id: crypto.randomUUID(),
+   const teaUuid = teacher.id ? toDeterministicUuid(teacher.id) : crypto.randomUUID();
+
+   const payload = {
+      id: teaUuid,
       full_name: cleanFullName,
       title: cleanTitle,
-      grp: teacher.grp || "kejuruan",
+      grp: (teacher.grp || existing?.grp || "kejuruan") as TeacherRow["grp"],
       is_homeroom: isHomeroom,
-      photo_url: teacher.photo_url || "",
+      photo_url: teacher.photo_url !== undefined ? teacher.photo_url : (existing?.photo_url ?? ""),
       message: cleanMessage,
-      tone: teacher.tone ?? (isHomeroom ? 3 : 1),
-      sort_order: isHomeroom ? 0 : store.teachers.length + 1,
-    };
-    store.teachers.push(savedTeacher);
-  }
+      tone: (teacher.tone ?? existing?.tone ?? (isHomeroom ? 3 : 1)) as 1 | 2 | 3 | 4 | 5,
+      sort_order: isHomeroom ? 0 : (existing?.sort_order ?? currentStore.teachers.length + 1),
+   };
 
-  saveStore(store);
+   const { error } = await supabase.from("teachers").upsert(payload, { onConflict: "id" });
 
-  if (supabase) {
-    const teaUuid = toDeterministicUuid(savedTeacher.id);
-    await supabase.from("teachers").upsert(
-      {
-        id: teaUuid,
-        full_name: savedTeacher.full_name,
-        title: savedTeacher.title,
-        grp: savedTeacher.grp,
-        is_homeroom: savedTeacher.is_homeroom,
-        photo_url: savedTeacher.photo_url,
-        message: savedTeacher.message,
-        tone: savedTeacher.tone,
-        sort_order: savedTeacher.sort_order,
-      },
-      { onConflict: "id" }
-    );
-  }
+   if (error) {
+      throw new Error(error.message);
+   }
 
-  return savedTeacher;
+   return payload;
 }
 
 export async function deleteTeacherAdmin(id: string) {
-  const store = loadStore();
-  const supabase = getSupabaseAdminClient();
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) return false;
+   const targetUuid = toDeterministicUuid(id);
+   const { error } = await supabase.from("teachers").delete().eq("id", targetUuid);
+   return !error;
+}
 
-  const targetUuid = toDeterministicUuid(id);
-  store.teachers = store.teachers.filter(
-    (t) => t.id !== id && toDeterministicUuid(t.id) !== targetUuid
-  );
-  saveStore(store);
+export async function createPollAdmin(question: string, options: string[]) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Database Supabase belum terhubung.");
+   }
+   const cleanQuestion = sanitizeText(question);
+   const cleanOptions = options.map(o => sanitizeText(o)).filter(o => o.length > 0);
+   if (!cleanQuestion || cleanOptions.length < 2) {
+      throw new Error("Pertanyaan dan minimal 2 pilihan jawaban wajib diisi.");
+   }
 
-  if (supabase) {
-    await supabase.from("teachers").delete().eq("id", targetUuid);
-  }
-  return true;
+   const pollId = crypto.randomUUID();
+   const { error: pollErr } = await supabase.from("polls").insert({
+      id: pollId,
+      question: cleanQuestion,
+      category: "Momen Kelas",
+      sort_order: 0,
+   });
+   if (pollErr) throw new Error(pollErr.message);
+
+   const optionRows = cleanOptions.map(label => ({
+      id: crypto.randomUUID(),
+      poll_id: pollId,
+      label,
+      votes_count: 0,
+   }));
+   const { error: optErr } = await supabase.from("poll_options").insert(optionRows);
+   if (optErr) throw new Error(optErr.message);
+
+   return pollId;
+}
+
+export async function deletePollAdmin(pollId: string) {
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) return false;
+   const targetUuid = toDeterministicUuid(pollId);
+   const { error } = await supabase.from("polls").delete().eq("id", targetUuid);
+   return !error;
 }

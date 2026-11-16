@@ -52,10 +52,10 @@ export function setupWarmLightRig(
   pmremGenerator.dispose();
 
   // Fog matching warm horizon
-  scene.fog = new THREE.FogExp2(fogColor, 0.032);
+  scene.fog = new THREE.FogExp2(fogColor, 0.026);
 
   // 1. Warm Sunset Key Light
-  const keyLight = new THREE.DirectionalLight(0xffcf8b, 2.2);
+  const keyLight = new THREE.DirectionalLight(0xffcf8b, 2.5);
   keyLight.position.set(5, 7, 5);
   if (!isSoftwareGl) {
     keyLight.castShadow = true;
@@ -74,19 +74,25 @@ export function setupWarmLightRig(
   scene.add(keyLight);
 
   // 2. Cool/Warm Hemisphere Fill Light
-  const hemiLight = new THREE.HemisphereLight(0xfbe3b5, 0x3b2c20, 0.95);
+  const hemiLight = new THREE.HemisphereLight(0xfbe3b5, 0x4a3728, 1.2);
   hemiLight.position.set(0, 10, 0);
   scene.add(hemiLight);
 
   // 3. Rim / Backlight for cozy separation
-  const rimLight = new THREE.DirectionalLight(0xe08b4f, 1.1);
+  const rimLight = new THREE.DirectionalLight(0xe08b4f, 1.25);
   rimLight.position.set(-5, 4, -4);
   scene.add(rimLight);
+
+  // 4. Soft Front Fill Light so front surfaces are always well-lit and never dark
+  const frontFill = new THREE.DirectionalLight(0xfff1d6, 0.85);
+  frontFill.position.set(0, 3, 6);
+  scene.add(frontFill);
 
   return {
     keyLight,
     hemiLight,
     rimLight,
+    frontFill,
     dispose: () => {
       envTexture.dispose();
     },
@@ -139,7 +145,9 @@ export function SceneShell({
   }, [onSetup, downgradeToSimple]);
 
   const [progress, setProgressState] = React.useState(15);
-  const [progressLabel, setProgressLabel] = React.useState("Menyiapkan ruang kenangan 3D...");
+  const [progressLabel, setProgressLabel] = React.useState(
+    "Menyiapkan ruang kenangan 3D..."
+  );
   const [ready, setReady] = React.useState(false);
 
   const setProgress = React.useCallback((pct: number, label?: string) => {
@@ -161,7 +169,12 @@ export function SceneShell({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(clearColor);
 
-    const camera = new THREE.PerspectiveCamera(cameraFov, width / height, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(
+      cameraFov,
+      width / height,
+      0.1,
+      100
+    );
     camera.position.set(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
     camera.lookAt(0, 0, 0);
 
@@ -178,8 +191,10 @@ export function SceneShell({
 
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+    renderer.toneMappingExposure = 1.15;
+    renderer.setPixelRatio(
+      isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+    );
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = !isSoftwareGl;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -187,7 +202,12 @@ export function SceneShell({
     container.innerHTML = "";
     container.appendChild(renderer.domElement);
 
-    const lightRig = setupWarmLightRig(scene, renderer, isSoftwareGl, clearColor);
+    const lightRig = setupWarmLightRig(
+      scene,
+      renderer,
+      isSoftwareGl,
+      clearColor
+    );
 
     let isVisibleInViewport = true;
     let isTabVisible = !document.hidden;
@@ -253,11 +273,9 @@ export function SceneShell({
     if (!isSoftwareGl) {
       renderer.compile(scene, camera);
     }
-
     setProgress(100, "Siap ditampilkan");
 
     const clock = new THREE.Clock();
-    let lowFpsStreak = 0;
 
     function tick() {
       if (disposed) return;
@@ -265,19 +283,9 @@ export function SceneShell({
         timeoutId = window.setTimeout(tick, 200);
         return;
       }
+
       const dt = Math.min(0.1, clock.getDelta());
       const elapsed = clock.elapsedTime;
-
-      // Monitor FPS on hardware GPUs (never downgrade software GL in headless verification)
-      if (!isSoftwareGl && dt > 0.055) {
-        lowFpsStreak++;
-        if (lowFpsStreak > 45) {
-          downgradeRef.current("low-fps");
-          return;
-        }
-      } else {
-        lowFpsStreak = Math.max(0, lowFpsStreak - 1);
-      }
 
       userHooks.onTick?.(dt, elapsed);
       renderer.render(scene, camera);
@@ -294,6 +302,16 @@ export function SceneShell({
     } else {
       requestRender();
     }
+
+    const handleRouteTransitionStart = () => {
+      disposed = true;
+      cancelAnimationFrame(frameId);
+      clearTimeout(timeoutId);
+    };
+    window.addEventListener(
+      "app:route-transition-start",
+      handleRouteTransitionStart
+    );
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -337,6 +355,10 @@ export function SceneShell({
       observer.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener(
+        "app:route-transition-start",
+        handleRouteTransitionStart
+      );
       userHooks.onDispose?.();
       lightRig.dispose();
       disposeSceneGraph(scene);
@@ -371,7 +393,7 @@ export function SceneShell({
       {!ready && (
         <div
           aria-live="polite"
-          className=" absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#231912] px-6 text-center text-[#f2e6d5]"
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#231912] px-6 text-center text-[#f2e6d5]"
         >
           <p className="font-serif text-lg font-medium">{progressLabel}</p>
           <div className="mt-3 h-2 w-48 overflow-hidden rounded-full bg-[#3a2a1f]">
@@ -380,7 +402,9 @@ export function SceneShell({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-1.5 font-mono text-xs tabular-nums text-[#b8a38c]">{progress}%</p>
+          <p className="mt-1.5 font-mono text-xs tabular-nums text-[#b8a38c]">
+            {progress}%
+          </p>
         </div>
       )}
 

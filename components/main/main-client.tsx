@@ -192,17 +192,21 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
               )}
 
               <div className="mt-6 flex items-center justify-between">
-                <button
+                <motion.button
+                  whileHover={{ x: -2 }}
+                  whileTap={{ scale: 0.96 }}
                   type="button"
                   disabled={currentQ === 0}
                   onClick={() => setCurrentQ((p) => Math.max(0, p - 1))}
                   className="min-h-[44px] rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
                 >
                   ← Soal Sebelumnya
-                </button>
+                </motion.button>
 
                 {currentQ < questions.length - 1 ? (
-                  <button
+                  <motion.button
+                    whileHover={{ x: 2, scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
                     type="button"
                     disabled={selectedAnswerIdx === undefined}
                     onClick={() =>
@@ -211,16 +215,18 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     className="min-h-[44px] rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
                   >
                     Soal Berikutnya →
-                  </button>
+                  </motion.button>
                 ) : (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.96 }}
                     type="button"
                     disabled={selectedAnswerIdx === undefined}
                     onClick={() => setQuizFinished(true)}
                     className="min-h-[44px] rounded-lg bg-[var(--color-chart-2)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
                   >
                     Lihat Hasil Akhir
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </motion.div>
@@ -263,15 +269,30 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
           aria-labelledby="poll-heading"
           className="rounded-2xl border border-border bg-card p-6 sm:p-8 lg:col-span-6"
         >
-          {polls.map((poll) => {
-            const maxVotes = Math.max(
-              1,
-              ...poll.options.map((o) => o.votes)
-            );
-            const alreadyVoted = Boolean(votedPollIds[poll.id]);
+          {polls.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+              <Vote className="size-10 text-muted-foreground/60" />
+              <h2
+                id="poll-heading"
+                className="mt-3 font-serif text-xl font-bold text-foreground"
+              >
+                Polling Kelas Masih Kosong (0 Data)
+              </h2>
+              <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-muted-foreground">
+                Belum ada polling aktif di database Supabase. Pengurus kelas
+                dapat menambahkan pertanyaan polling melalui Dasbor Admin.
+              </p>
+            </div>
+          ) : (
+            polls.map((poll) => {
+              const maxVotes = Math.max(
+                1,
+                ...poll.options.map((o) => o.votes)
+              );
+              const alreadyVoted = Boolean(votedPollIds[poll.id]);
 
-            return (
-              <div key={poll.id}>
+              return (
+                <div key={poll.id}>
                 <div className="flex items-center justify-between border-b border-border pb-4">
                   <div>
                     <h2
@@ -335,7 +356,9 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                         </div>
 
                         <div className="mt-3 flex justify-end">
-                          <button
+                          <motion.button
+                            whileHover={{ y: -1.5, scale: 1.03 }}
+                            whileTap={{ scale: 0.95 }}
                             type="button"
                             disabled={voting || alreadyVoted}
                             onClick={() => handleVote(poll.id, opt.id)}
@@ -345,7 +368,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                             <span>
                               {alreadyVoted ? "Sudah Memilih" : "Pilih Momen Ini"}
                             </span>
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     );
@@ -363,7 +386,8 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                 )}
               </div>
             );
-          })}
+          })
+        )}
         </section>
       </div>
     </div>

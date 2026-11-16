@@ -3,156 +3,279 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Music } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { Moon, Sun, Sparkles, Compass, X, Loader2, Flame } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
-import { useSadAudio } from "@/lib/sad-audio";
+import { useTheme } from "@/lib/theme";
+import { notifyRouteTransitionStart } from "@/lib/use-public-data";
 
 export function Navbar() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-  const { playing, currentTrack, musicMenuOpen, toggleMusicMenu } = useSadAudio();
+  const { theme, toggleTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [pendingHref, setPendingHref] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    setMobileOpen(false);
+    setMobileMenuOpen(false);
+    setPendingHref(null);
   }, [pathname]);
 
+  const handleNavigate = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    targetHref: string
+  ) => {
+    if (
+      e.defaultPrevented ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    ) {
+      return;
+    }
+
+    e.preventDefault();
+    setPendingHref(targetHref);
+    setMobileMenuOpen(false);
+    notifyRouteTransitionStart();
+
+    if (window.location.pathname === targetHref) {
+      window.location.reload();
+    } else {
+      window.location.assign(targetHref);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-        {/* Zone 1: Single text element wordmark */}
+    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
+      <div className="ikat-divider" aria-hidden="true" />
+      {pendingHref && (
+        <div
+          role="progressbar"
+          aria-label="Memuat halaman..."
+          className="h-0.5 w-full overflow-hidden bg-muted"
+        >
+          <div className="h-full w-2/3 animate-pulse bg-[var(--color-accent-warm)]" />
+        </div>
+      )}
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+        {/* Identitas Kelas & Logo "UNO" yang Hidup & Hangat */}
         <Link
           href="/"
-          className="font-serif text-lg font-bold tracking-tight text-foreground whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          prefetch={false}
+          onClick={(e) => handleNavigate(e, "/")}
+          className="group flex items-center gap-3 rounded-xl py-1 pr-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring shrink-0"
         >
-          {SITE_CONTENT.nav.brand}
+          <motion.span
+            aria-hidden="true"
+            whileHover={{ scale: 1.08, rotate: -4 }}
+            whileTap={{ scale: 0.94, rotate: 2 }}
+            animate={{
+              boxShadow: [
+                "0 0 0 0px rgba(200, 109, 59, 0.22)",
+                "0 0 16px 3px rgba(224, 159, 76, 0.36)",
+                "0 0 0 0px rgba(200, 109, 59, 0.22)",
+              ],
+            }}
+            transition={{
+              boxShadow: { duration: 3.2, repeat: Infinity, ease: "easeInOut" },
+              type: "spring",
+              stiffness: 380,
+              damping: 18,
+            }}
+            className="relative flex h-10 w-12 items-center justify-center overflow-hidden rounded-xl border-2 border-[#f3ca82] bg-gradient-to-br from-[#d97736] via-[#b84a27] to-[#872b19] font-serif text-xs font-black tracking-wider text-[#fff8ec] shadow-sm"
+          >
+            {/* Cahaya Hangat Bergerak di Belakang Teks UNO */}
+            <motion.span
+              aria-hidden="true"
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+              className="pointer-events-none absolute -top-4 -right-4 size-8 rounded-full bg-[#ffd98e]/30 blur-xs"
+            />
+            <span className="relative z-10 drop-shadow-2xs">UNO</span>
+            <Flame
+              className="absolute right-1 bottom-0.5 size-2.5 text-[#ffe1a6] opacity-85 transition-transform duration-300 group-hover:scale-125"
+              strokeWidth={2.2}
+            />
+          </motion.span>
+          <div className="flex flex-col leading-tight">
+            <span className="flex items-center gap-1.5 font-serif text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-[var(--color-accent-warm)]">
+              <span>UNO · {SITE_CONTENT.school.className}</span>
+            </span>
+            <span className="font-hand text-sm font-bold text-muted-foreground">
+              {SITE_CONTENT.school.shortSchool} · Flores, NTT
+            </span>
+          </div>
         </Link>
 
-        {/* Zone 2: Clean single-line text navigation links with animated active underline */}
+        {/* Navigasi Desktop dengan Animasi Interaktif di Setiap Menu */}
         <nav
-          aria-label="Navigasi Utama"
-          className="hidden lg:flex items-center gap-6 text-sm font-medium text-muted-foreground"
+          aria-label="Navigasi Utama Album Kenangan"
+          className="hidden md:flex md:items-center md:gap-1"
         >
-          {SITE_CONTENT.nav.links.map((item) => {
-            const active =
-              item.href === "/"
+          {SITE_CONTENT.nav.links.map((link) => {
+            const isCurrentPath =
+              link.href === "/"
                 ? pathname === "/"
-                : pathname.startsWith(item.href);
+                : pathname.startsWith(link.href);
+            const isPending = pendingHref === link.href;
+            const isActive = pendingHref ? isPending : isCurrentPath;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`relative whitespace-nowrap shrink-0 py-1 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring ${
-                  active ? "text-foreground font-semibold" : ""
-                }`}
+              <motion.div
+                key={link.href}
+                whileHover={{ y: -2, scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 420, damping: 20 }}
               >
-                {item.label}
-                {active && (
-                  <motion.span
-                    layoutId="navbar-active-indicator"
-                    className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--color-accent-warm)]"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </Link>
+                <Link
+                  href={link.href}
+                  prefetch={false}
+                  onClick={(e) => handleNavigate(e, link.href)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`group relative inline-flex min-h-[40px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                    isActive
+                      ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] font-semibold shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  {isPending && <Loader2 className="size-3.5 animate-spin" />}
+                  <span className="relative z-10">{link.label}</span>
+                  {!isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute bottom-1.5 left-3.5 right-3.5 h-0.5 origin-left scale-x-0 rounded-full bg-[var(--color-accent-warm)] transition-transform duration-200 group-hover:scale-x-100"
+                    />
+                  )}
+                </Link>
+              </motion.div>
             );
           })}
         </nav>
 
-        {/* Zone 3: Compact Spinning Music Disc Icon + Primary CTA + Mobile Hamburger */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        {/* Kontrol Kanan: Toggle Tema Sore/Malam + Tombol Menu Mobile */}
+        <div className="flex items-center gap-2 shrink-0">
           <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.93 }}
             type="button"
-            data-testid="navbar-music-icon-btn"
-            onClick={toggleMusicMenu}
-            aria-expanded={musicMenuOpen}
-            aria-label={`Fitur Musik (${currentTrack.title})`}
-            title="Klik untuk membuka fitur pemutar musik kenangan"
-            className={`relative inline-flex size-10 items-center justify-center rounded-full border transition-all ${
-              playing
-                ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-md"
-                : musicMenuOpen
-                  ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)]/15 text-[var(--color-accent-warm)]"
-                  : "border-border bg-card text-foreground hover:border-[var(--color-accent-warm)]/60 hover:bg-muted"
-            }`}
+            whileHover={{ scale: 1.04, y: -1 }}
+            whileTap={{ scale: 0.94, rotate: -6 }}
+            onClick={toggleTheme}
+            aria-label={
+              theme === "light"
+                ? "Aktifkan Mode Malam (Kamar Lampu Kuning Hangat)"
+                : "Aktifkan Mode Sore (Kertas Hangat Terang)"
+            }
+            title={
+              theme === "light"
+                ? "Mode Sore Aktif — Klik untuk Mode Malam"
+                : "Mode Malam Aktif — Klik untuk Mode Sore"
+            }
+            className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground shadow-2xs transition-colors hover:border-[var(--color-accent-warm)]/50 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring whitespace-nowrap"
           >
-            <span
-              className={`inline-flex items-center justify-center rounded-full ${
-                playing
-                  ? "animate-spin [animation-duration:2.6s]"
-                  : "animate-spin [animation-duration:6s]"
-              }`}
-            >
-              <Music className="size-4" />
-            </span>
-            {playing && (
-              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-background" />
+            {theme === "light" ? (
+              <>
+                <Sun className="size-4 text-[var(--color-accent-warm)] transition-transform duration-300 hover:rotate-45" />
+                <span className="hidden sm:inline">Mode Sore</span>
+              </>
+            ) : (
+              <>
+                <Moon className="size-4 text-[var(--color-accent-warm)] transition-transform duration-300 hover:-rotate-12" />
+                <span className="hidden sm:inline">Mode Malam</span>
+              </>
             )}
           </motion.button>
 
-          <Link
-            href="/kenangan"
-            className="hidden sm:inline-flex min-h-[40px] items-center justify-center rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-xs transition-transform hover:scale-[1.02] hover:opacity-95 whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            Tulis Kenangan
-          </Link>
-
-          <button
+          {/* Tombol Menu Mobile */}
+          <motion.button
             type="button"
-            aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((prev) => !prev)}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-card text-foreground lg:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav-drawer"
+            aria-label={
+              mobileMenuOpen
+                ? "Tutup Peta Ruang Kenangan"
+                : "Buka Peta Ruang Kenangan"
+            }
+            className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border border-[var(--color-accent-warm)]/50 bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-muted md:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
+            {mobileMenuOpen ? (
+              <>
+                <X className="size-4 text-[var(--color-accent-warm)]" />
+                <span>Tutup</span>
+              </>
+            ) : (
+              <>
+                <Compass className="size-4 text-[var(--color-accent-warm)]" />
+                <span>Ruang Kelas</span>
+              </>
+            )}
+          </motion.button>
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Menu Mobile dengan Animasi Halus */}
       <AnimatePresence>
-        {mobileOpen && (
+        {mobileMenuOpen && (
           <motion.nav
+            id="mobile-nav-drawer"
+            aria-label="Navigasi Mobile Album Kenangan"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22 }}
-            aria-label="Navigasi Mobile"
-            className="overflow-hidden border-t border-border bg-card px-4 py-4 lg:hidden"
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden border-t border-border bg-card/95 backdrop-blur-md md:hidden"
           >
-            <ul className="grid grid-cols-2 gap-2">
-              {SITE_CONTENT.nav.links.map((item) => {
-                const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`flex min-h-[44px] items-center rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                        active
-                          ? "bg-muted text-foreground font-semibold"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                      }`}
+            <div className="mx-auto max-w-7xl px-4 py-3">
+              <div className="mb-2 flex items-center gap-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
+                <Sparkles className="size-3" />
+                <span>Pilih Sudut Kenangan UNO · XII PPLG 1</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SITE_CONTENT.nav.links.map((link, idx) => {
+                  const isCurrentPath =
+                    link.href === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(link.href);
+                  const isPending = pendingHref === link.href;
+                  const isActive = pendingHref ? isPending : isCurrentPath;
+
+                  return (
+                    <motion.div
+                      key={link.href}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      whileTap={{ scale: 0.96 }}
                     >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-              <li>
-                <Link
-                  href={SITE_CONTENT.nav.footerPlayLink.href}
-                  className="flex min-h-[44px] items-center rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground whitespace-nowrap"
-                >
-                  {SITE_CONTENT.nav.footerPlayLink.label}
-                </Link>
-              </li>
-            </ul>
+                      <Link
+                        href={link.href}
+                        prefetch={false}
+                        onClick={(e) => handleNavigate(e, link.href)}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`flex min-h-[44px] items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] font-semibold shadow-xs"
+                            : "border border-border/60 bg-background/70 text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span>{link.label}</span>
+                        {isPending ? (
+                          <Loader2 className="size-3.5 animate-spin text-[#fbf6ec]" />
+                        ) : isActive ? (
+                          <span
+                            aria-hidden="true"
+                            className="size-2 rounded-full bg-[#fbf6ec]"
+                          />
+                        ) : null}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>

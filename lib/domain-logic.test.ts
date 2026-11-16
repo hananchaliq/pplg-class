@@ -10,7 +10,7 @@ import {
   verifyClassCode,
   SubmitPayloadSchema,
 } from "./domain-logic";
-import { generateInitialSeedData } from "./seed-data";
+import { AUTO_MIGRATE_SQL } from "./db-sql";
 import type { StudentRow, TeacherRow, WorkRow } from "./types";
 
 describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
@@ -104,8 +104,9 @@ describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
         recipient_label: "Hari Ini",
         message: "Selamat berjuang di semester akhir!",
         unlock_at: "2025-07-01T00:00:00Z",
+        unlock_at_check: undefined,
         status: "approved",
-      },
+      } as never,
       nowMs
     );
     assert.equal(unlocked.is_unlocked, true);
@@ -198,20 +199,20 @@ describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
     assert.equal(botFilledHoneypot.success, false);
   });
 
-  it("generateInitialSeedData creates exact required counts (22 active + 2 moved students, 50 teachers, 100 moments, 22 works)", () => {
-    const seed = generateInitialSeedData();
-    const activeStudents = seed.students.filter((s) => s.is_active);
-    const movedStudents = seed.students.filter((s) => !s.is_active);
-    const maleActive = activeStudents.filter((s) => s.gender === "L");
-    const femaleActive = activeStudents.filter((s) => s.gender === "P");
-
-    assert.equal(activeStudents.length, 22);
-    assert.equal(maleActive.length, 8);
-    assert.equal(femaleActive.length, 14);
-    assert.equal(movedStudents.length, 2);
-    assert.equal(seed.teachers.length, 50);
-    assert.equal(seed.moments.length, 100);
-    assert.equal(seed.works.length, 22);
-    assert.equal(seed.dreams.length, 22);
+  it("AUTO_MIGRATE_SQL defines all 12 tables and relations with zero dummy INSERT rows", () => {
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.students"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.teachers"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.moments"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.dreams"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.dream_cheers"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.memory_entries"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.time_capsules"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.thanks"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.works"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.polls"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.poll_options"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.poll_votes"));
+    assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.site_settings"));
+    assert.equal(AUTO_MIGRATE_SQL.includes("INSERT INTO"), false);
   });
 });

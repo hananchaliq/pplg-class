@@ -113,7 +113,11 @@ export function GuruClient({
           <div className="ikat-divider" aria-hidden="true" />
           <div className="grid grid-cols-1 items-center gap-8 p-6 sm:p-10 lg:grid-cols-12">
             <div className="flex flex-col items-center text-center lg:col-span-4">
-              <div className="relative size-28 overflow-hidden rounded-full border-4 border-[var(--color-accent-warm)]/40 bg-muted shadow-md">
+              <motion.div
+                whileHover={{ scale: 1.06, rotate: -2 }}
+                transition={{ type: "spring", stiffness: 340, damping: 20 }}
+                className="relative size-28 overflow-hidden rounded-full border-4 border-[var(--color-accent-warm)]/40 bg-muted shadow-md"
+              >
                 {homeroomTeacher.photo_url ? (
                   <img
                     src={homeroomTeacher.photo_url}
@@ -122,7 +126,7 @@ export function GuruClient({
                     className="size-full object-cover"
                   />
                 ) : null}
-              </div>
+              </motion.div>
               <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
                 Wali Kelas XII PPLG 1
               </p>
@@ -178,7 +182,9 @@ export function GuruClient({
             const active = activeGroup === tab.id;
             return (
               <motion.button
+                whileHover={{ y: -2, scale: 1.02 }}
                 whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 380, damping: 24 }}
                 key={tab.id}
                 role="tab"
                 type="button"

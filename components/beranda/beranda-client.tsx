@@ -8,7 +8,7 @@ import { ArrowRight, BookOpen, Calendar, Music2, Sparkles, Users, Volume2 } from
 import { Adaptive } from "@/components/three/adaptive";
 import { SITE_CONTENT } from "@/lib/content";
 import { useSadAudio } from "@/lib/sad-audio";
-import { useLivePublicData } from "@/lib/use-public-data";
+import { notifyRouteTransitionStart, useLivePublicData } from "@/lib/use-public-data";
 
 const HeroDeskSceneHD = dynamic(
   () =>
@@ -96,7 +96,7 @@ function HeroDeskSimpleSVG() {
           {"const kelas = 'XII PPLG 1';"}
         </text>
         <text x="296" y="220" fill="#7dcfff" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"const wali = 'Ibu Hajra, S.Pd.';"}
+          {"const database = 'Supabase PostgreSQL';"}
         </text>
         <text x="296" y="238" fill="#9ece6a" fontSize="11" fontFamily="monospace" fontWeight="bold">
           {"const sekolah = 'MAKN Ende';"}
@@ -148,7 +148,7 @@ function HeroDeskSimpleSVG() {
 
 export function BerandaClient({
   graduationDate: initialGraduationDate,
-  homeroomTeacherName: initialHomeroomTeacherName = "Ibu Hajra, S.Pd.",
+  homeroomTeacherName: initialHomeroomTeacherName = "",
   stats: initialStats,
 }: {
   graduationDate: string;
@@ -174,7 +174,8 @@ export function BerandaClient({
     liveData?.settings?.graduation_date || initialGraduationDate;
 
   const homeroomTeacherName = React.useMemo(() => {
-    if (liveData?.teachers?.length) {
+    if (liveData?.teachers) {
+      if (liveData.teachers.length === 0) return "";
       const hr =
         liveData.teachers.find((t) => t.is_homeroom) ?? liveData.teachers[0];
       if (hr?.full_name) return hr.full_name;
@@ -219,8 +220,12 @@ export function BerandaClient({
       if (card.href === "/guru") {
         return {
           ...card,
-          subtitle: `${homeroomTeacherName} & ${stats.totalTeachers} Pendidik`,
-          description: `Ucapan terima kasih tulus untuk Wali Kelas kita, ${homeroomTeacherName}, serta kartu apresiasi untuk guru kejuruan, agama, dan akademik.`,
+          subtitle: homeroomTeacherName
+            ? `${homeroomTeacherName} & ${stats.totalTeachers} Pendidik`
+            : `${stats.totalTeachers} Pendidik`,
+          description: homeroomTeacherName
+            ? `Ucapan terima kasih tulus untuk Wali Kelas kita, ${homeroomTeacherName}, serta kartu apresiasi untuk guru kejuruan, agama, dan akademik.`
+            : `Kartu apresiasi dan ucapan terima kasih untuk para guru pembimbing di database.`,
         };
       }
       if (card.href === "/galeri") {
@@ -260,6 +265,29 @@ export function BerandaClient({
     computeDays();
   }, [graduationDate]);
 
+  const handleNavigate = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    targetHref: string
+  ) => {
+    if (
+      e.defaultPrevented ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    ) {
+      return;
+    }
+    e.preventDefault();
+    notifyRouteTransitionStart();
+    if (window.location.pathname === targetHref) {
+      window.location.reload();
+    } else {
+      window.location.assign(targetHref);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
       {/* HERO SECTION: Split / Full Viewport Presence dengan Meja Belajar Senja 3D & Hitung Mundur */}
@@ -291,9 +319,11 @@ export function BerandaClient({
             {SITE_CONTENT.hero.subtitle} — {SITE_CONTENT.school.schoolName}
           </p>
 
-          <p className="mt-2 text-xs font-semibold text-[var(--color-chart-2)]">
-            Wali Kelas Pembimbing: {homeroomTeacherName}
-          </p>
+          {homeroomTeacherName ? (
+            <p className="mt-2 text-xs font-semibold text-[var(--color-chart-2)]">
+              Wali Kelas Pembimbing: {homeroomTeacherName}
+            </p>
+          ) : null}
 
           <p className="mt-3 text-base leading-relaxed text-foreground/90">
             {SITE_CONTENT.school.tagline}
@@ -353,23 +383,25 @@ export function BerandaClient({
           {/* Tombol Aksi Utama */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Link
+              <a
                 href="/kenangan"
+                onClick={(e) => handleNavigate(e, "/kenangan")}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-accent-warm)] px-5 py-2.5 text-sm font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
               >
                 <BookOpen className="size-4" />
                 <span>{SITE_CONTENT.hero.ctaPrimary}</span>
-              </Link>
+              </a>
             </motion.div>
 
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Link
+              <a
                 href="/anggota"
+                onClick={(e) => handleNavigate(e, "/anggota")}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
               >
                 <Users className="size-4 text-[var(--color-chart-1)]" />
                 <span>{SITE_CONTENT.hero.ctaSecondary}</span>
-              </Link>
+              </a>
             </motion.div>
           </div>
         </motion.div>
@@ -414,13 +446,15 @@ export function BerandaClient({
             {stats.totalTeachers}
           </p>
           <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Guru & Wali Kelas ({homeroomTeacherName})
+            {homeroomTeacherName
+              ? `Guru & Wali Kelas (${homeroomTeacherName})`
+              : "Guru & Wali Kelas"}
           </p>
         </div>
 
         <div>
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.totalMoments}+
+            {stats.totalMoments}
           </p>
           <p className="mt-1 text-xs font-medium text-muted-foreground">
             Jepretan Polaroid Kelas X–XII
@@ -466,8 +500,9 @@ export function BerandaClient({
               transition={{ duration: 0.35, delay: idx * 0.05 }}
               whileHover={{ y: -4 }}
             >
-              <Link
+              <a
                 href={card.href}
+                onClick={(e) => handleNavigate(e, card.href)}
                 className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-colors hover:border-[var(--color-accent-warm)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <div>
@@ -495,7 +530,7 @@ export function BerandaClient({
                   <span>Masuk ke Halaman {card.title}</span>
                   <ArrowRight className="size-4 text-[var(--color-accent-warm)] transition-transform group-hover:translate-x-1" />
                 </div>
-              </Link>
+              </a>
             </motion.div>
           ))}
         </div>

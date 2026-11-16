@@ -40,6 +40,16 @@ export function SingleIronRailLanyard({
   const [innerFlipped, setInnerFlipped] = React.useState<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
+  const [isTransitioningOut, setIsTransitioningOut] = React.useState(false);
+
+  React.useEffect(() => {
+    const onRouteStart = () => {
+      setIsTransitioningOut(true);
+    };
+    window.addEventListener("app:route-transition-start", onRouteStart);
+    return () =>
+      window.removeEventListener("app:route-transition-start", onRouteStart);
+  }, []);
 
   const active =
     controlledActive !== undefined ? controlledActive : innerActive;
@@ -92,7 +102,6 @@ export function SingleIronRailLanyard({
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   };
 
-  // Track pointer down on [data-badge] so clicking ANY card reliably flips it on first click
   const clickTrackerRef = React.useRef<{
     badgeIdx: number;
     startX: number;
@@ -141,7 +150,6 @@ export function SingleIronRailLanyard({
     if (tracker.badgeIdx < 0) return;
 
     const target = e.target as HTMLElement | null;
-    // Ignore clicks on actual anchor links on the back of a flipped card
     if (target?.closest?.("a")) return;
 
     const dist = Math.hypot(
@@ -162,10 +170,28 @@ export function SingleIronRailLanyard({
     }
   };
 
-  // Pastikan lebar stage cukup agar TeamLanyardRail selalu berada dalam mode 1 Gagang Besi Utuh ("rail", bukan carousel)
-  // dengan jarak antar kartu lega (150px per kartu) sehingga kartu tampil besar dan mudah diklik untuk flip.
   const railMinWidth =
     items.length <= 5 ? "100%" : `${Math.max(920, items.length * 150 + 96)}px`;
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
+        {eyebrow && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            {eyebrow}
+          </p>
+        )}
+        {heading && (
+          <h2 className="mt-1 font-serif text-xl font-bold text-foreground">
+            {heading}
+          </h2>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Belum ada data kartu ID di database Supabase untuk kategori ini (0 data). Silakan tambahkan data melalui Dasbor Admin.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card/75 py-4 shadow-sm">
@@ -193,17 +219,21 @@ export function SingleIronRailLanyard({
         className="relative w-full overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:thin]"
       >
         <div style={{ width: railMinWidth, minWidth: "100%" }}>
-          <TeamLanyardRail
-            key={railKey}
-            items={items}
-            autoplay={false}
-            labels={labels}
-            active={active}
-            onActiveChange={setActive}
-            flipped={flipped}
-            onFlippedChange={handleFlippedFromInner}
-            className="bg-transparent"
-          />
+          {!isTransitioningOut ? (
+            <TeamLanyardRail
+              key={railKey}
+              items={items}
+              autoplay={false}
+              labels={labels}
+              active={active}
+              onActiveChange={setActive}
+              flipped={flipped}
+              onFlippedChange={handleFlippedFromInner}
+              className="bg-transparent"
+            />
+          ) : (
+            <div className="h-[340px] w-full" />
+          )}
         </div>
       </div>
 

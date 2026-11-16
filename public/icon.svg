@@ -1,14 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2b2118" />
-      <stop offset="55%" stop-color="#68271e" />
-      <stop offset="100%" stop-color="#c86d3b" />
+    <linearGradient id="unoBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff8ec" />
+      <stop offset="55%" stop-color="#f6e3c2" />
+      <stop offset="100%" stop-color="#e8c28d" />
+    </linearGradient>
+    <linearGradient id="unoBadge" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d97736" />
+      <stop offset="50%" stop-color="#b84a27" />
+      <stop offset="100%" stop-color="#8c2d1b" />
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)" stroke="#f3ca82" stroke-width="3" />
-  <path d="M16 18h14c2.2 0 4 1.8 4 4v24c0-2.2-1.8-4-4-4H16V18zm32 0H34c-2.2 0-4 1.8-4 4v24c0-2.2 1.8-4 4-4h14V18z" fill="none" stroke="#fbf6ec" stroke-width="2.2" stroke-linejoin="round" opacity="0.35"/>
-  <text x="32" y="25" text-anchor="middle" font-family="Georgia, serif" font-size="11" font-weight="bold" fill="#f3ca82">XII</text>
-  <text x="32" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="bold" fill="#fbf6ec">PPLG 1</text>
-  <text x="32" y="54" text-anchor="middle" font-family="monospace" font-size="7.5" font-weight="bold" fill="#e8cfa6">MAKN ENDE</text>
+  <rect width="64" height="64" rx="16" fill="url(#unoBg)" />
+  <rect x="4" y="4" width="56" height="56" rx="13" fill="url(#unoBadge)" stroke="#f3ca82" stroke-width="2" />
+  <circle cx="50" cy="14" r="3" fill="#ffd98e" opacity="0.9" />
+  <path d="M12 47 H52" stroke="#ffd98e" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 3" opacity="0.75" />
+  <text
+    x="32"
+    y="37"
+    text-anchor="middle"
+    font-family="Georgia, serif"
+    font-size="19"
+    font-weight="900"
+    letter-spacing="1"
+    fill="#fff9f0"
+  >
+    UNO
+  </text>
+  <text
+    x="32"
+    y="55"
+    text-anchor="middle"
+    font-family="monospace"
+    font-size="6.5"
+    font-weight="700"
+    letter-spacing="1.2"
+    fill="#ffe2a8"
+  >
+    PPLG · ENDE
+  </text>
 </svg>

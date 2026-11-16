@@ -14,9 +14,14 @@ import {
   Send,
   List,
   CheckCircle2,
+  Sparkles,
+  Smile,
+  Coffee,
+  Terminal,
 } from "lucide-react";
 import { Adaptive } from "@/components/three/adaptive";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import { FAREWELL_MEME_STICKERS } from "@/lib/procedural-textures";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
@@ -38,6 +43,65 @@ const BukuKenanganSceneHD = dynamic(
 );
 
 type KenanganTab = "buku" | "kapsul" | "thanks";
+
+function FarewellMemeStickerCard({
+  memeIdx,
+  rotateDeg = -3,
+  className = "",
+}: {
+  memeIdx: number;
+  rotateDeg?: number;
+  className?: string;
+}) {
+  const meme =
+    FAREWELL_MEME_STICKERS[
+      Math.abs(memeIdx) % FAREWELL_MEME_STICKERS.length
+    ]!;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.06, rotate: 0 }}
+      whileTap={{ scale: 0.96 }}
+      style={{
+        transform: `rotate(${rotateDeg}deg)`,
+        backgroundColor: meme.bg,
+        borderColor: meme.accent,
+        color: meme.ink,
+      }}
+      className={`inline-flex max-w-[275px] items-center gap-2.5 rounded-2xl border-2 p-2.5 shadow-[0_6px_16px_rgba(28,18,10,0.16),0_0_0_5px_#fffdf9] select-none ${className}`}
+    >
+      <div
+        style={{ borderColor: meme.accent }}
+        className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 bg-[#fffdf9] text-[#23140b] shadow-2xs"
+      >
+        {meme.icon === "coffee" || meme.icon === "reuni" ? (
+          <Coffee className="size-5 text-[#c86d3b]" />
+        ) : meme.icon === "git-bye" || meme.icon === "ctrl-s" || meme.icon === "bug" ? (
+          <Terminal className="size-5 text-[#2d6a6e]" />
+        ) : (
+          <Smile className="size-5 text-[#d9534f]" />
+        )}
+      </div>
+      <div className="min-w-0 text-left leading-tight">
+        <span
+          style={{ backgroundColor: meme.accent }}
+          className="inline-block rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-[#fffdf9]"
+        >
+          ★ {meme.badge} ★
+        </span>
+        <p className="mt-1 font-hand text-base font-bold leading-none">
+          {meme.topText}
+        </p>
+        <p
+          style={{ color: meme.accent }}
+          className="mt-0.5 font-hand text-sm font-bold leading-tight"
+        >
+          {meme.bottomText}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
 
 export function KenanganClient({
   students: initialStudents,
@@ -157,16 +221,7 @@ export function KenanganClient({
           pageNumber: (idx + 1) * 2 + 2,
           studentName: stu.full_name,
           studentNickname: stu.nickname,
-          messages:
-            stuMemories.length > 0
-              ? stuMemories
-              : [
-                  {
-                    author: "Keluarga XII PPLG 1",
-                    text: `Terima kasih sudah menjadi bagian dari cerita hangat kita di MAKN Ende, ${stu.nickname}!`,
-                    seed: 500 + idx,
-                  },
-                ],
+          messages: stuMemories,
           decorSeed: 400 + idx * 29,
         },
       });
@@ -306,15 +361,15 @@ export function KenanganClient({
       {/* Header Halaman Kenangan */}
       <header className="mx-auto max-w-3xl text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Ruang Memori & Surat Masa Depan · XII PPLG 1
+          Ruang Memori & Surat Masa Depan · UNO XII PPLG 1
         </p>
         <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
           Buku Kenangan, Kapsul Waktu & Dinding Terima Kasih
         </h1>
         <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Buka lembar demi lembar catatan tulisan tangan untuk setiap sahabat,
-          segel surat yang baru terbuka di masa depan, atau gantungkan ucapan
-          terima kasih sederhana.
+          Buka lembar demi lembar catatan tulisan tangan asli lengkap dengan
+          stiker meme perpisahan untuk setiap sahabat, segel surat masa depan,
+          atau gantungkan ucapan terima kasih.
         </p>
       </header>
 
@@ -324,9 +379,11 @@ export function KenanganClient({
         aria-label="Menu Ruang Kenangan"
         className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-card p-1.5"
       >
-        <button
+        <motion.button
           role="tab"
           type="button"
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "buku"}
           onClick={() => setActiveTab("buku")}
           className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
@@ -337,11 +394,13 @@ export function KenanganClient({
         >
           <BookOpen className="size-4" />
           <span>Buku Kenangan</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           role="tab"
           type="button"
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "kapsul"}
           onClick={() => setActiveTab("kapsul")}
           className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
@@ -352,11 +411,13 @@ export function KenanganClient({
         >
           <Clock className="size-4" />
           <span>Kapsul Waktu ({timeCapsules.length})</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           role="tab"
           type="button"
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "thanks"}
           onClick={() => setActiveTab("thanks")}
           className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
@@ -367,7 +428,7 @@ export function KenanganClient({
         >
           <Heart className="size-4" />
           <span>Wall of Thanks ({thanksList.length})</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* TAB 1: BUKU KENANGAN */}
@@ -395,8 +456,10 @@ export function KenanganClient({
           {/* Kontrol Navigasi Buku & Daftar Isi Cepat */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
             <div className="flex flex-wrap items-center gap-2.5">
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setIsBookOpen((prev) => !prev)}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 whitespace-nowrap"
               >
@@ -404,10 +467,12 @@ export function KenanganClient({
                 <span>
                   {isBookOpen ? "Tutup Sampul Buku" : "Buka Sampul Buku"}
                 </span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => {
                   setIsBookOpen(true);
                   setSpreadIndex(0);
@@ -416,7 +481,7 @@ export function KenanganClient({
               >
                 <List className="size-4 text-[var(--color-chart-1)]" />
                 <span>Daftar Isi</span>
-              </button>
+              </motion.button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -440,8 +505,9 @@ export function KenanganClient({
                 ))}
               </select>
 
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.92 }}
                 aria-label="Halaman sebelumnya"
                 disabled={spreadIndex <= 0}
                 onClick={() => {
@@ -451,14 +517,15 @@ export function KenanganClient({
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronLeft className="size-5" />
-              </button>
+              </motion.button>
 
               <span className="font-mono text-xs tabular-nums text-muted-foreground px-1">
                 {spreadIndex + 1} / {spreads.length}
               </span>
 
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.92 }}
                 aria-label="Halaman berikutnya"
                 disabled={spreadIndex >= spreads.length - 1}
                 onClick={() => {
@@ -468,11 +535,11 @@ export function KenanganClient({
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronRight className="size-5" />
-              </button>
+              </motion.button>
             </div>
           </div>
 
-          {/* Adaptive Buku Kenangan: 3D Melengkung di Desktop HD, Buku 2D Geser dengan Hiasan di Mobile Simple */}
+          {/* Adaptive Buku Kenangan: 3D Melengkung di Desktop HD, Buku 2D Scrapbook dengan Kotak Teks Acak & Stiker Meme di Mode Ringan */}
           <Adaptive
             simple={
               <div className="overflow-hidden rounded-2xl border-2 border-[#782f24]/60 bg-[#fbf5e8] text-[#2b2118] shadow-lg">
@@ -481,163 +548,279 @@ export function KenanganClient({
                   <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-6 py-16 text-center text-[#f3ca82]">
                     <div className="w-full max-w-md rounded-xl border-2 border-[#e0a958] p-8 shadow-inner">
                       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#ebd0a0]">
-                        Album Memori Madrasah
+                        Album Memori Madrasah · UNO
                       </p>
                       <h2 className="mt-4 font-serif text-4xl font-bold">
                         Kenangan XII PPLG 1
                       </h2>
-                      <p className="mt-2 font-serif text-lg italic text-[#ebd0a0]">
+                      <p className="mt-2 font-hand text-2xl text-[#ebd0a0]">
                         MAKN Ende · Flores, NTT
                       </p>
                       <p className="mt-6 font-mono text-xs text-[#ebd0a0]/80">
                         2024 — 2027
                       </p>
-                      <button
+                      <motion.button
                         type="button"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setIsBookOpen(true)}
-                        className="mt-8 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#e0a958] px-6 py-2.5 text-xs font-bold text-[#2b2118] shadow transition-transform active:scale-95"
+                        className="mt-8 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#e0a958] px-6 py-2.5 text-xs font-bold text-[#2b2118] shadow"
                       >
                         <BookOpen className="size-4" />
                         <span>Buka Lembar Pertama</span>
-                      </button>
+                      </motion.button>
                     </div>
                   </div>
                 ) : (
-                  /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Washi Tape, dan Tulisan Tangan Caveat */
+                  /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Kotak Teks Acak, Tulisan Tangan Caveat, dan Stiker Meme Perpisahan */
                   <div className="relative grid grid-cols-1 divide-y divide-[#d8c7ae] md:grid-cols-2 md:divide-x md:divide-y-0">
                     {/* Halaman Kiri */}
-                    <div className="relative p-6 sm:p-8">
-                      {/* Hiasan Washi Tape */}
-                      <div
-                        aria-hidden="true"
-                        className="mx-auto -mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
-                      />
-                      {currentSpread.leftPage.type === "toc" ? (
-                        <div>
-                          <h2 className="font-serif text-2xl font-bold text-[#2b2118]">
-                            Daftar Isi — Bagian I
-                          </h2>
-                          <p className="mt-1 text-xs text-[#6e5a47]">
-                            Ketuk nama sahabat untuk langsung membuka halamannya:
-                          </p>
-                          <ul className="mt-4 space-y-2">
-                            {currentSpread.leftPage.tocEntries?.map((entry) => (
-                              <li key={entry.spreadIndex}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSpreadIndex(entry.spreadIndex)
-                                  }
-                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-[#2b2118] hover:bg-[#ebe0cd]"
-                                >
-                                  <span>
-                                    {String(entry.spreadIndex).padStart(2, "0")}.{" "}
-                                    {entry.name}
-                                  </span>
-                                  <span className="font-mono text-xs text-[#a84232]">
-                                    Hal. {entry.spreadIndex * 2}
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-center">
-                          <div className="vintage-photo-frame w-44 rotate-1 rounded-lg bg-white p-3">
-                            <div className="flex aspect-square items-center justify-center rounded bg-[#d9c5a9] text-[#6e5a47]">
-                              <span className="font-serif text-3xl font-bold">
-                                {currentSpread.leftPage.studentNickname?.slice(
-                                  0,
-                                  2
-                                )}
-                              </span>
-                            </div>
-                            <p className="mt-2 font-hand text-xl font-bold text-[#2b2118]">
-                              {currentSpread.leftPage.studentNickname}
+                    <div className="relative flex flex-col justify-between p-6 sm:p-8">
+                      <div>
+                        {/* Hiasan Washi Tape */}
+                        <div
+                          aria-hidden="true"
+                          className="mx-auto -mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
+                        />
+                        {currentSpread.leftPage.type === "toc" ? (
+                          <div>
+                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                              Daftar Isi — Bagian I
+                            </h2>
+                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                              Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
                             </p>
+                            <ul className="mt-4 space-y-2.5">
+                              {currentSpread.leftPage.tocEntries?.map(
+                                (entry, idx) => {
+                                  const tilt =
+                                    idx % 2 === 0 ? "-rotate-1" : "rotate-1";
+                                  return (
+                                    <li key={entry.spreadIndex}>
+                                      <motion.button
+                                        type="button"
+                                        whileHover={{ scale: 1.02, x: 4 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() =>
+                                          setSpreadIndex(entry.spreadIndex)
+                                        }
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                      >
+                                        <span>
+                                          {String(entry.spreadIndex).padStart(
+                                            2,
+                                            "0"
+                                          )}
+                                          . {entry.name}
+                                        </span>
+                                        <span className="font-hand text-lg text-[#a84232]">
+                                          Hal. {entry.spreadIndex * 2} →
+                                        </span>
+                                      </motion.button>
+                                    </li>
+                                  );
+                                }
+                              )}
+                            </ul>
                           </div>
-                          <h2 className="mt-5 font-serif text-2xl font-bold text-[#2b2118]">
-                            {currentSpread.leftPage.studentName}
-                          </h2>
-                          <p className="mt-1 text-xs font-semibold text-[#a84232]">
-                            {currentSpread.leftPage.studentRole}
-                          </p>
-                          <p className="mt-4 font-hand text-2xl leading-relaxed text-[#3d2f22]">
-                            &ldquo;{currentSpread.leftPage.studentBio}&rdquo;
-                          </p>
-                          {currentSpread.leftPage.studentTags && (
-                            <p className="mt-4 text-xs font-semibold text-[#2d6a6e]">
-                              {currentSpread.leftPage.studentTags.join(" · ")}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      <p className="mt-6 text-center font-serif text-xs text-[#6e5a47]">
-                        — {currentSpread.leftPage.pageNumber} —
-                      </p>
+                        ) : (
+                          <div className="flex flex-col items-center text-center">
+                            <motion.div
+                              whileHover={{ rotate: 0, scale: 1.03 }}
+                              style={{
+                                transform: `rotate(${
+                                  ((spreadIndex % 5) - 2) * 1.8
+                                }deg)`,
+                              }}
+                              className="real-photo-paper photo-gloss-sheen w-48 rounded-lg p-3 pb-5 shadow-md"
+                            >
+                              <div className="flex aspect-square items-center justify-center rounded bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] text-[#fbf6ec]">
+                                <span className="font-hand text-4xl font-bold">
+                                  {currentSpread.leftPage.studentNickname?.slice(
+                                    0,
+                                    2
+                                  )}
+                                </span>
+                              </div>
+                              <p className="mt-2.5 font-hand text-2xl font-bold text-[#2b2118]">
+                                ★ {currentSpread.leftPage.studentNickname} ★
+                              </p>
+                            </motion.div>
+
+                            {/* Kotak Nama Miring Unik */}
+                            <div
+                              style={{
+                                transform: `rotate(${
+                                  ((spreadIndex % 3) - 1) * -1.4
+                                }deg)`,
+                              }}
+                              className="mt-5 w-full max-w-md rounded-xl border-2 border-[#d99b4e] bg-[#fffdf7] px-4 py-2.5 shadow-xs"
+                            >
+                              <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                                {currentSpread.leftPage.studentName}
+                              </h2>
+                              <p className="font-hand text-lg font-bold text-[#a84232]">
+                                {currentSpread.leftPage.studentRole}
+                              </p>
+                            </div>
+
+                            {/* Kotak Bio dengan Variasi Kertas & Posisi Acak per Siswa */}
+                            <div
+                              style={{
+                                transform: `rotate(${
+                                  ((spreadIndex * 7) % 5) - 2
+                                }deg) translateX(${
+                                  ((spreadIndex * 11) % 16) - 8
+                                }px)`,
+                              }}
+                              className="relative mt-5 w-full max-w-md rounded-2xl border-2 border-[#6e4e32] bg-[#fffaf0] p-5 shadow-sm"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="absolute -top-3 left-6 h-5 w-16 -rotate-6 bg-[#c86d3b]/45"
+                              />
+                              <p className="font-hand text-2xl leading-relaxed text-[#182542]">
+                                &ldquo;{currentSpread.leftPage.studentBio}&rdquo;
+                              </p>
+                              {currentSpread.leftPage.studentTags && (
+                                <p className="mt-3 font-hand text-lg font-bold text-[#a84232]">
+                                  #{currentSpread.leftPage.studentTags.join("  #")}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stiker Meme Perpisahan Lucu di Halaman Kiri */}
+                      <div className="mt-6 flex flex-col items-center gap-3 pt-2">
+                        <FarewellMemeStickerCard
+                          memeIdx={spreadIndex * 2 + 1}
+                          rotateDeg={spreadIndex % 2 === 0 ? -3 : 3}
+                        />
+                        <p className="text-center font-hand text-lg font-bold text-[#6e5a47]">
+                          ~ Lembar {currentSpread.leftPage.pageNumber} · UNO Scrapbook ~
+                        </p>
+                      </div>
                     </div>
 
                     {/* Halaman Kanan */}
-                    <div className="relative p-6 sm:p-8">
-                      <div
-                        aria-hidden="true"
-                        className="mx-auto -mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
-                      />
-                      {currentSpread.rightPage.type === "toc" ? (
-                        <div>
-                          <h2 className="font-serif text-2xl font-bold text-[#2b2118]">
-                            Daftar Isi — Bagian II
-                          </h2>
-                          <p className="mt-1 text-xs text-[#6e5a47]">
-                            Ketuk nama sahabat untuk langsung membuka halamannya:
-                          </p>
-                          <ul className="mt-4 space-y-2">
-                            {currentSpread.rightPage.tocEntries?.map((entry) => (
-                              <li key={entry.spreadIndex}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSpreadIndex(entry.spreadIndex)
-                                  }
-                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-[#2b2118] hover:bg-[#ebe0cd]"
-                                >
-                                  <span>
-                                    {String(entry.spreadIndex).padStart(2, "0")}.{" "}
-                                    {entry.name}
-                                  </span>
-                                  <span className="font-mono text-xs text-[#a84232]">
-                                    Hal. {entry.spreadIndex * 2}
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <h3 className="font-serif text-base font-bold italic text-[#6e5a47]">
-                            Catatan Sahabat untuk{" "}
-                            {currentSpread.rightPage.studentNickname}:
-                          </h3>
-                          {currentSpread.rightPage.messages?.map((m, idx) => (
-                            <blockquote
-                              key={idx}
-                              className="rounded-xl border border-[#d8c7ae] bg-[#fffaf0] p-4 shadow-sm"
-                            >
-                              <p className="font-hand text-2xl leading-snug text-[#2b2118]">
-                                &ldquo;{m.text}&rdquo;
-                              </p>
-                              <footer className="mt-2 text-right text-xs font-semibold text-[#a84232]">
-                                — {m.author}
-                              </footer>
-                            </blockquote>
-                          ))}
-                        </div>
-                      )}
-                      <p className="mt-6 text-center font-serif text-xs text-[#6e5a47]">
-                        — {currentSpread.rightPage.pageNumber} —
-                      </p>
+                    <div className="relative flex flex-col justify-between p-6 sm:p-8">
+                      <div>
+                        <div
+                          aria-hidden="true"
+                          className="mx-auto -mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
+                        />
+                        {currentSpread.rightPage.type === "toc" ? (
+                          <div>
+                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                              Daftar Isi — Bagian II
+                            </h2>
+                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                              Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
+                            </p>
+                            <ul className="mt-4 space-y-2.5">
+                              {currentSpread.rightPage.tocEntries?.map(
+                                (entry, idx) => {
+                                  const tilt =
+                                    idx % 2 === 0 ? "rotate-1" : "-rotate-1";
+                                  return (
+                                    <li key={entry.spreadIndex}>
+                                      <motion.button
+                                        type="button"
+                                        whileHover={{ scale: 1.02, x: 4 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() =>
+                                          setSpreadIndex(entry.spreadIndex)
+                                        }
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                      >
+                                        <span>
+                                          {String(entry.spreadIndex).padStart(
+                                            2,
+                                            "0"
+                                          )}
+                                          . {entry.name}
+                                        </span>
+                                        <span className="font-hand text-lg text-[#a84232]">
+                                          Hal. {entry.spreadIndex * 2} →
+                                        </span>
+                                      </motion.button>
+                                    </li>
+                                  );
+                                }
+                              )}
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
+                            <div className="inline-block -rotate-1 rounded-xl border-2 border-[#2b190d] bg-[#fffdf7] px-4 py-1.5 shadow-2xs">
+                              <h3 className="font-hand text-2xl font-bold text-[#2b2118]">
+                                Surat Sahabat utk{" "}
+                                {currentSpread.rightPage.studentNickname} ♥
+                              </h3>
+                            </div>
+                            {currentSpread.rightPage.messages &&
+                            currentSpread.rightPage.messages.length > 0 ? (
+                              currentSpread.rightPage.messages.map((m, idx) => {
+                                const cardBgs = [
+                                  "bg-[#fffdf5] border-[#5c4026]",
+                                  "bg-[#f3faf7] border-[#2d6a6e]",
+                                  "bg-[#fef9e7] border-[#b8732a]",
+                                  "bg-[#fdf2e9] border-[#a84232]",
+                                ];
+                                const rotDeg =
+                                  (((m.seed || 10) + idx * 7 + spreadIndex * 3) %
+                                    7) -
+                                  3;
+                                const shiftPx =
+                                  (((m.seed || 10) + idx * 13) % 20) - 10;
+
+                                return (
+                                  <motion.blockquote
+                                    key={idx}
+                                    whileHover={{ scale: 1.02, rotate: 0 }}
+                                    style={{
+                                      transform: `rotate(${rotDeg}deg) translateX(${shiftPx}px)`,
+                                    }}
+                                    className={`relative rounded-2xl border-2 p-4 shadow-sm transition-shadow hover:shadow-md ${
+                                      cardBgs[(idx + spreadIndex) % cardBgs.length]
+                                    }`}
+                                  >
+                                    <span
+                                      aria-hidden="true"
+                                      className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#c86d3b]/45"
+                                    />
+                                    <p className="font-hand text-2xl leading-snug text-[#182542]">
+                                      &ldquo;{m.text}&rdquo;
+                                    </p>
+                                    <footer className="mt-2 text-right font-hand text-xl font-bold text-[#a84232]">
+                                      ~ Dari: {m.author} ♥
+                                    </footer>
+                                  </motion.blockquote>
+                                );
+                              })
+                            ) : (
+                              <div className="rounded-2xl border-2 border-dashed border-[#c4a782] bg-[#fffdf7]/80 p-5 text-center">
+                                <p className="font-hand text-2xl text-[#6e5a47]">
+                                  Belum ada pesan kenangan di database untuk halaman ini.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stiker Meme Perpisahan Lucu di Halaman Kanan */}
+                      <div className="mt-6 flex flex-col items-center gap-3 pt-2">
+                        <FarewellMemeStickerCard
+                          memeIdx={spreadIndex * 2 + 2}
+                          rotateDeg={spreadIndex % 2 === 0 ? 3 : -3}
+                        />
+                        <p className="text-center font-hand text-lg font-bold text-[#6e5a47]">
+                          ~ Lembar {currentSpread.rightPage.pageNumber} · UNO Scrapbook ~
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -653,6 +836,31 @@ export function KenanganClient({
               />
             }
           />
+
+          {/* Strip Koleksi Stiker Meme Perpisahan di Bawah Buku (Tampil di Mode 3D & 2D) */}
+          <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-[var(--color-accent-warm)]" />
+                <span className="font-hand text-xl font-bold text-foreground">
+                  Stiker Meme Perpisahan Lembar Ini (Hal. {currentSpread.leftPage.pageNumber} &ndash; {currentSpread.rightPage.pageNumber})
+                </span>
+              </div>
+              <span className="font-hand text-base text-muted-foreground">
+                Setiap halaman menyimpan stiker kenangan masa sekolah yang berbeda ✨
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-4 sm:justify-around">
+              <FarewellMemeStickerCard
+                memeIdx={spreadIndex * 2 + 1}
+                rotateDeg={-2}
+              />
+              <FarewellMemeStickerCard
+                memeIdx={spreadIndex * 2 + 2}
+                rotateDeg={2}
+              />
+            </div>
+          </div>
 
           {/* Panel Daftar Isi Interaktif & Form Kirim Catatan Buku Kenangan */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
