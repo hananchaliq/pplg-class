@@ -20,6 +20,7 @@ export default async function HomePage() {
       <BerandaClient
         graduationDate={data.settings.graduation_date}
         homeroomTeacherName={homeroomTeacher?.full_name ?? "Belum Ditentukan"}
+        initialMoments={data.moments}
         stats={{
           activeStudents,
           movedStudents,

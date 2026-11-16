@@ -6,5 +6,6 @@ coverage/
 .env*
 !.env.example
 
-.aistudio/
-public/assets/aistudio/
+# AI Studio & local assets
+.ai-studio/
+public/assets/

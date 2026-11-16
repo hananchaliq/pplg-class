@@ -28,6 +28,11 @@ export function GuruClient({
     [teachers]
   );
 
+  const homeroomCard = React.useMemo(
+    () => (homeroomTeacher ? teacherToLanyardMember(homeroomTeacher) : null),
+    [homeroomTeacher]
+  );
+
   const nonHomeroomTeachers = React.useMemo(
     () => teachers.filter((t) => !t.is_homeroom),
     [teachers]
@@ -36,15 +41,9 @@ export function GuruClient({
   const groupTabs = React.useMemo<
     Array<{ id: TeacherGroup | "all"; label: string; desc: string }>
   >(() => {
-    const kejuruanCount = nonHomeroomTeachers.filter(
-      (t) => t.grp === "kejuruan"
-    ).length;
-    const agamaCount = nonHomeroomTeachers.filter(
-      (t) => t.grp === "agama"
-    ).length;
-    const akademikCount = nonHomeroomTeachers.filter(
-      (t) => t.grp === "akademik"
-    ).length;
+    const kejuruanCount = teachers.filter((t) => t.grp === "kejuruan").length;
+    const agamaCount = teachers.filter((t) => t.grp === "agama").length;
+    const akademikCount = teachers.filter((t) => t.grp === "akademik").length;
     return [
       {
         id: "kejuruan",
@@ -63,18 +62,18 @@ export function GuruClient({
       },
       {
         id: "all",
-        label: `Semua Guru (${nonHomeroomTeachers.length})`,
-        desc: "Seluruh pendidik MAKN Ende dalam satu gagang besi interaktif yang dapat digeser ke kiri dan kanan.",
+        label: `Semua Guru (${teachers.length})`,
+        desc: "Seluruh pendidik & Wali Kelas XII PPLG 1 MAKN Ende dalam satu gagang besi interaktif yang dapat digeser ke kiri dan kanan.",
       },
     ];
-  }, [nonHomeroomTeachers]);
+  }, [teachers]);
 
-  // Semua kartu guru dalam tab terpilih digantung pada 1 gagang besi tunggal yang bisa digeser
+  // Semua kartu guru (termasuk Wali Kelas) dalam tab terpilih digantung pada 1 gagang besi tunggal yang bisa digeser
   const singleRailTeachers = React.useMemo(() => {
-    return nonHomeroomTeachers
+    return teachers
       .filter((t) => (activeGroup === "all" ? true : t.grp === activeGroup))
       .map((t) => teacherToLanyardMember(t));
-  }, [nonHomeroomTeachers, activeGroup]);
+  }, [teachers, activeGroup]);
 
   const currentTabMeta =
     groupTabs.find((t) => t.id === activeGroup) ?? groupTabs[0]!;
@@ -101,8 +100,8 @@ export function GuruClient({
         </p>
       </header>
 
-      {/* Kartu Khusus Wali Kelas di Atas */}
-      {homeroomTeacher && (
+      {/* Kartu Khusus Wali Kelas di Atas (Tersinkronisasi Penuh dengan Kartu ID) */}
+      {homeroomTeacher && homeroomCard && (
         <motion.section
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -112,33 +111,55 @@ export function GuruClient({
         >
           <div className="ikat-divider" aria-hidden="true" />
           <div className="grid grid-cols-1 items-center gap-8 p-6 sm:p-10 lg:grid-cols-12">
+            {/* Visual Kartu ID Gantung Wali Kelas */}
             <div className="flex flex-col items-center text-center lg:col-span-4">
               <motion.div
-                whileHover={{ scale: 1.06, rotate: -2 }}
-                transition={{ type: "spring", stiffness: 340, damping: 20 }}
-                className="relative size-28 overflow-hidden rounded-full border-4 border-[var(--color-accent-warm)]/40 bg-muted shadow-md"
+                whileHover={{ y: -4, rotate: -1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                className="relative flex w-full max-w-[260px] flex-col items-center overflow-hidden rounded-2xl border-2 border-[#d4af37]/70 bg-gradient-to-b from-[#2f2319] via-[#241a12] to-[#1b130d] p-5 text-[#fbf6ec] shadow-xl"
               >
-                {homeroomTeacher.photo_url ? (
-                  <img
-                    src={homeroomTeacher.photo_url}
-                    alt={homeroomTeacher.full_name}
-                    referrerPolicy="no-referrer"
-                    className="size-full object-cover"
-                  />
-                ) : null}
+                {/* Lubang & Jepitan Kartu ID di Atas */}
+                <div
+                  aria-hidden="true"
+                  className="mb-3 h-2.5 w-12 rounded-full bg-[#120c08] ring-1 ring-[#d4af37]/50"
+                />
+                <div className="relative size-28 overflow-hidden rounded-full border-4 border-[#d4af37] bg-[#3a2a1d] shadow-md">
+                  {homeroomCard.image ? (
+                    <img
+                      src={homeroomCard.image}
+                      alt={homeroomTeacher.full_name}
+                      referrerPolicy="no-referrer"
+                      className="size-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <span className="mt-3 inline-block rounded-full border border-[#d4af37]/60 bg-[#d4af37]/15 px-3 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-[#f5d67b]">
+                  ✦ WALI KELAS XII PPLG 1 ✦
+                </span>
+                <h2
+                  id="homeroom-heading"
+                  className="mt-2 font-serif text-xl font-bold text-[#fbf6ec]"
+                >
+                  {homeroomTeacher.full_name}
+                </h2>
+                <p className="mt-0.5 text-xs text-[#ebd0a0]/85">
+                  {homeroomTeacher.title}
+                </p>
+                {/* Strip Barcode Kartu ID */}
+                <div
+                  aria-hidden="true"
+                  className="mt-4 flex h-5 w-full items-center justify-center gap-0.5 border-t border-dashed border-[#d4af37]/30 pt-2 opacity-80"
+                >
+                  {Array.from({ length: 28 }).map((_, bIdx) => (
+                    <span
+                      key={bIdx}
+                      className={`h-full bg-[#f5ebd6] ${
+                        bIdx % 3 === 0 ? "w-1" : bIdx % 2 === 0 ? "w-0.5" : "w-[3px]"
+                      }`}
+                    />
+                  ))}
+                </div>
               </motion.div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-                Wali Kelas XII PPLG 1
-              </p>
-              <h2
-                id="homeroom-heading"
-                className="mt-1 font-serif text-2xl font-bold text-foreground"
-              >
-                {homeroomTeacher.full_name}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {homeroomTeacher.title}
-              </p>
             </div>
 
             <div className="flex flex-col justify-between space-y-4 lg:col-span-8">

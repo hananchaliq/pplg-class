@@ -24,6 +24,7 @@ export default async function KenanganPage() {
         memoryEntries={data.memoryEntries}
         timeCapsules={data.timeCapsules}
         thanksList={data.thanksList}
+        moments={data.moments}
       />
     </DbConnectionGuard>
   );

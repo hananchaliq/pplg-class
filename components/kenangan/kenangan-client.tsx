@@ -18,10 +18,12 @@ import {
   Smile,
   Coffee,
   Terminal,
+  Camera,
 } from "lucide-react";
 import { Adaptive } from "@/components/three/adaptive";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { FAREWELL_MEME_STICKERS } from "@/lib/procedural-textures";
+import { studentToLanyardMember } from "@/lib/domain-logic";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
@@ -29,6 +31,7 @@ import {
 import type { BookSpread } from "@/components/kenangan/buku-scene-hd";
 import type {
   MemoryEntryRow,
+  MomentRow,
   StudentRow,
   ThanksRow,
   TimeCapsuleRow,
@@ -108,25 +111,30 @@ export function KenanganClient({
   memoryEntries: initialMemoryEntries,
   timeCapsules: initialTimeCapsules,
   thanksList: initialThanksList,
+  moments: initialMoments = [],
 }: {
   students: StudentRow[];
   memoryEntries: MemoryEntryRow[];
   timeCapsules: TimeCapsuleRow[];
   thanksList: ThanksRow[];
+  moments?: MomentRow[];
 }) {
   const { data: liveData, refresh } = useLivePublicData({
     students: initialStudents,
     memoryEntries: initialMemoryEntries,
     timeCapsules: initialTimeCapsules,
     thanksList: initialThanksList,
+    moments: initialMoments,
   });
   const students = liveData?.students ?? initialStudents;
   const memoryEntries = liveData?.memoryEntries ?? initialMemoryEntries;
   const timeCapsules = liveData?.timeCapsules ?? initialTimeCapsules;
   const thanksList = liveData?.thanksList ?? initialThanksList;
+  const moments = liveData?.moments ?? initialMoments;
 
   const [activeTab, setActiveTab] = React.useState<KenanganTab>("buku");
-  const [isBookOpen, setIsBookOpen] = React.useState(true);
+  // Buku Kenangan dimulai dalam keadaan TERTUTUP (sampul depan XII PPLG 1 + 1 Foto Bersama) baik 3D maupun 2D
+  const [isBookOpen, setIsBookOpen] = React.useState(false);
   const [spreadIndex, setSpreadIndex] = React.useState(0);
 
   // State Paginasi (Prev / Next Icon) agar tidak capek scroll
@@ -168,31 +176,187 @@ export function KenanganClient({
   const [thFeedback, setThFeedback] = React.useState<string | null>(null);
   const [thSubmitting, setThSubmitting] = React.useState(false);
 
-  // Susun Spread Buku Kenangan: Spread 0 = Daftar Isi, Spread 1..N = tiap siswa
+  // 1 Foto Bersama untuk Sampul Depan Buku Kenangan (Prioritas: Kategori "Foto Sampul Buku" -> "Foto Bersama Kelas" -> Foto Upload Asli -> Momen Pertama)
+  const coverPhotoMoment = React.useMemo(() => {
+    return (
+      moments.find((m) => m.category === "Foto Sampul Buku") ||
+      moments.find((m) => m.category === "Foto Bersama Kelas") ||
+      moments.find(
+        (m) =>
+          m.image_url && !m.image_url.startsWith("/api/moment-illustration")
+      ) ||
+      moments[0]
+    );
+  }, [moments]);
+
+  // Koleksi Foto Bersama untuk 2 Spread (4 Halaman) pertama setelah sampul dibuka, sebelum Daftar Isi
+  const groupPhotoPagesData = React.useMemo(() => {
+    const prioritized = [
+      ...moments.filter((m) => m.category === "Foto Bersama Kelas"),
+      ...moments.filter((m) => m.category === "Foto Sampul Buku"),
+      ...moments.filter(
+        (m) =>
+          m.category !== "Foto Bersama Kelas" &&
+          m.category !== "Foto Sampul Buku" &&
+          m.category !== "Foto Hero 3D" &&
+          m.image_url &&
+          !m.image_url.startsWith("/api/moment-illustration")
+      ),
+      ...moments.filter(
+        (m) =>
+          m.category !== "Foto Bersama Kelas" &&
+          m.category !== "Foto Sampul Buku" &&
+          m.category !== "Foto Hero 3D" &&
+          (!m.image_url || m.image_url.startsWith("/api/moment-illustration"))
+      ),
+    ];
+
+    const fallbackList = [
+      {
+        title: "Kebersamaan Keluarga Besar XII PPLG 1",
+        category: "Kebersamaan Keluarga Besar XII PPLG 1",
+        caption:
+          "Dari hari pertama orientasi sampai sidang proyek akhir, selalu kompak satu frekuensi di MAKN Ende.",
+        dateLabel: "2024 — 2027",
+        dateStr: "2024 — 2027",
+        imageUrl: coverPhotoMoment?.image_url || "",
+        uploaderName: "XII PPLG 1",
+        seed: 101,
+      },
+      {
+        title: "Momen Laboratorium & Begadang Koding",
+        category: "Momen Laboratorium & Begadang Koding",
+        caption:
+          "Suasana lab rekayasa perangkat lunak saat mengejar deadline aplikasi dan merayakan deploy sukses bersama.",
+        dateLabel: "Kelas XI & XII",
+        dateStr: "Kelas XI & XII",
+        imageUrl: prioritized[1]?.image_url || coverPhotoMoment?.image_url || "",
+        uploaderName: "XII PPLG 1",
+        seed: 202,
+      },
+      {
+        title: "Tawa & Cerita di Asrama MAKN Ende",
+        category: "Tawa & Cerita di Asrama MAKN Ende",
+        caption:
+          "Kenangan apel pagi, belajar malam bersama, hingga berbagi kopi hangat sebelum ujian dimulai.",
+        dateLabel: "Asrama Ende",
+        dateStr: "Asrama Ende",
+        imageUrl: prioritized[2]?.image_url || coverPhotoMoment?.image_url || "",
+        uploaderName: "XII PPLG 1",
+        seed: 303,
+      },
+      {
+        title: "Langkah Menuju Masa Depan UNO PPLG 1",
+        category: "Langkah Menuju Masa Depan UNO PPLG 1",
+        caption:
+          "Doa dan janji untuk kembali berkumpul membawa cerita sukses masing-masing di hari reuni nanti.",
+        dateLabel: "Angkatan 2024–2027",
+        dateStr: "Angkatan 2024–2027",
+        imageUrl: prioritized[3]?.image_url || coverPhotoMoment?.image_url || "",
+        uploaderName: "XII PPLG 1",
+        seed: 404,
+      },
+    ];
+
+    const mapped = prioritized.map((m, idx) => ({
+      title: m.category || `Kenangan Kelas ${m.phase}`,
+      category: m.category || `Kenangan Kelas ${m.phase}`,
+      caption: m.caption,
+      dateLabel: m.taken_at || `Kelas ${m.phase}`,
+      dateStr: m.taken_at || `Kelas ${m.phase}`,
+      imageUrl: m.image_url,
+      uploaderName: m.uploader_name,
+      seed: 110 + idx * 37,
+    }));
+
+    while (mapped.length < 8) {
+      mapped.push(fallbackList[mapped.length % fallbackList.length]!);
+    }
+
+    return mapped.slice(0, 8);
+  }, [moments, coverPhotoMoment]);
+
+  // Susun Spread Buku Kenangan:
+  // Spread 0 (Hal 1-2) = Foto Bersama Bagian I
+  // Spread 1 (Hal 3-4) = Foto Bersama Bagian II
+  // Spread 2 (Hal 5-6) = Daftar Isi Buku Kenangan
+  // Spread 3..N (Hal 7+) = Halaman Kenangan Setiap Siswa (Foto dari ID Card)
+  const TOC_SPREAD_INDEX = 2;
+  const FIRST_STUDENT_SPREAD_INDEX = 3;
+
   const spreads: BookSpread[] = React.useMemo(() => {
     const result: BookSpread[] = [];
+
+    // Spread 0: Halaman 1 & 2 — Album Foto Bersama Bagian I
+    result.push({
+      spreadIndex: 0,
+      leftPage: {
+        type: "group-photo",
+        pageNumber: 1,
+        groupTitle: "Foto Bersama XII PPLG 1 — Lembar I",
+        groupSubtitle:
+          "Kenangan kebersamaan satu angkatan dari awal melangkah hingga perpisahan.",
+        groupPhotos: groupPhotoPagesData.slice(0, 2),
+        decorSeed: 51,
+      },
+      rightPage: {
+        type: "group-photo",
+        pageNumber: 2,
+        groupTitle: "Foto Bersama XII PPLG 1 — Lembar II",
+        groupSubtitle:
+          "Setiap senyum, perjuangan di lab, dan cerita hangat di MAKN Ende.",
+        groupPhotos: groupPhotoPagesData.slice(2, 4),
+        decorSeed: 73,
+      },
+    });
+
+    // Spread 1: Halaman 3 & 4 — Album Foto Bersama Bagian II
+    result.push({
+      spreadIndex: 1,
+      leftPage: {
+        type: "group-photo",
+        pageNumber: 3,
+        groupTitle: "Foto Bersama XII PPLG 1 — Lembar III",
+        groupSubtitle:
+          "Jejak kebersamaan di kelas, asrama, dan kegiatan ekstrakurikuler.",
+        groupPhotos: groupPhotoPagesData.slice(4, 6),
+        decorSeed: 89,
+      },
+      rightPage: {
+        type: "group-photo",
+        pageNumber: 4,
+        groupTitle: "Foto Bersama XII PPLG 1 — Lembar IV",
+        groupSubtitle:
+          "Satu keluarga UNO XII PPLG 1 yang tak lekang oleh waktu.",
+        groupPhotos: groupPhotoPagesData.slice(6, 8),
+        decorSeed: 107,
+      },
+    });
+
+    // Spread 2: Halaman 5 & 6 — Daftar Isi Buku Kenangan
     const tocEntries = students.map((s, idx) => ({
       name: s.full_name,
-      spreadIndex: idx + 1,
+      spreadIndex: idx + FIRST_STUDENT_SPREAD_INDEX,
     }));
     const halfToc = Math.ceil(tocEntries.length / 2);
 
     result.push({
-      spreadIndex: 0,
+      spreadIndex: TOC_SPREAD_INDEX,
       leftPage: {
         type: "toc",
-        pageNumber: 1,
+        pageNumber: 5,
         tocEntries: tocEntries.slice(0, halfToc),
         decorSeed: 101,
       },
       rightPage: {
         type: "toc",
-        pageNumber: 2,
+        pageNumber: 6,
         tocEntries: tocEntries.slice(halfToc),
         decorSeed: 202,
       },
     });
 
+    // Spread 3..N: Halaman Kenangan Setiap Siswa (Foto langsung dari ID Card!)
     students.forEach((stu, idx) => {
       const stuMemories = memoryEntries
         .filter((m) => m.student_id === stu.id)
@@ -202,25 +366,29 @@ export function KenanganClient({
           seed: m.decor_seed,
         }));
 
+      // Gunakan foto yang sama persis dengan ID Card 3D & 2D siswa
+      const idCardMember = studentToLanyardMember(stu, idx);
+      const sIdx = idx + FIRST_STUDENT_SPREAD_INDEX;
+
       result.push({
-        spreadIndex: idx + 1,
+        spreadIndex: sIdx,
         leftPage: {
           type: "student-left",
-          pageNumber: (idx + 1) * 2 + 1,
+          pageNumber: sIdx * 2 + 1,
           studentName: stu.full_name,
           studentNickname: stu.nickname,
           studentRole: stu.is_active
             ? `Peminatan ${stu.tags[0] || "PPLG"}`
-            : "Pernah Bersama Kita",
+            : "Sahabat Istimewa Selamanya",
           studentBio: stu.bio,
           studentTags: stu.tags,
-          studentPhotoUrl: stu.photo_url,
+          studentPhotoUrl: idCardMember.image || stu.photo_url,
           showPhoto: stu.show_photo,
           decorSeed: 300 + idx * 19,
         },
         rightPage: {
           type: "student-right",
-          pageNumber: (idx + 1) * 2 + 2,
+          pageNumber: sIdx * 2 + 2,
           studentName: stu.full_name,
           studentNickname: stu.nickname,
           messages: stuMemories,
@@ -230,7 +398,7 @@ export function KenanganClient({
     });
 
     return result;
-  }, [students, memoryEntries]);
+  }, [students, memoryEntries, groupPhotoPagesData]);
 
   const currentSpread = spreads[spreadIndex] ?? spreads[0]!;
 
@@ -369,9 +537,8 @@ export function KenanganClient({
           Buku Kenangan, Kapsul Waktu & Dinding Terima Kasih
         </h1>
         <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Buka lembar demi lembar catatan tulisan tangan asli lengkap dengan
-          stiker meme perpisahan untuk setiap sahabat, segel surat masa depan,
-          atau gantungkan ucapan terima kasih.
+          Buka sampul buku kenangan XII PPLG 1 untuk melihat album foto bersama,
+          daftar isi, dan lembar tulisan tangan setiap sahabat lengkap dengan foto ID Card.
         </p>
       </header>
 
@@ -438,7 +605,11 @@ export function KenanganClient({
         <section aria-label="Buku Kenangan XII PPLG 1" className="mt-8 space-y-8">
           {/* Teks alternatif tersembunyi (sr-only) berisi pesan pada spread aktif untuk pembaca layar */}
           <div className="sr-only" aria-live="polite">
-            {currentSpread.leftPage.type === "toc" ? (
+            {!isBookOpen ? (
+              <p>Sampul Buku Kenangan XII PPLG 1 tertutup. Klik untuk membuka.</p>
+            ) : currentSpread.leftPage.type === "group-photo" ? (
+              <p>{currentSpread.leftPage.groupTitle}</p>
+            ) : currentSpread.leftPage.type === "toc" ? (
               <p>Halaman Daftar Isi Buku Kenangan XII PPLG 1.</p>
             ) : (
               <div>
@@ -479,16 +650,38 @@ export function KenanganClient({
                   setIsBookOpen(true);
                   setSpreadIndex(0);
                 }}
-                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted whitespace-nowrap"
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
+                  isBookOpen && (spreadIndex === 0 || spreadIndex === 1)
+                    ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
+                    : "border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                <Camera className="size-4 text-[var(--color-accent-warm)]" />
+                <span>Foto Bersama (Hal. 1–4)</span>
+              </motion.button>
+
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  setIsBookOpen(true);
+                  setSpreadIndex(TOC_SPREAD_INDEX);
+                }}
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
+                  isBookOpen && spreadIndex === TOC_SPREAD_INDEX
+                    ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
+                    : "border-border bg-background text-foreground hover:bg-muted"
+                }`}
               >
                 <List className="size-4 text-[var(--color-chart-1)]" />
-                <span>Daftar Isi</span>
+                <span>Daftar Isi (Hal. 5–6)</span>
               </motion.button>
             </div>
 
             <div className="flex items-center gap-2">
               <label htmlFor="jump-student" className="sr-only">
-                Loncat ke halaman siswa
+                Loncat ke halaman buku
               </label>
               <select
                 id="jump-student"
@@ -499,9 +692,11 @@ export function KenanganClient({
                 }}
                 className="min-h-[44px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground"
               >
-                <option value={0}>00. Daftar Isi Buku</option>
+                <option value={0}>Hal. 1–2 · Foto Bersama Bagian I</option>
+                <option value={1}>Hal. 3–4 · Foto Bersama Bagian II</option>
+                <option value={TOC_SPREAD_INDEX}>Hal. 5–6 · Daftar Isi Buku</option>
                 {students.map((s, idx) => (
-                  <option key={s.id} value={idx + 1}>
+                  <option key={s.id} value={idx + FIRST_STUDENT_SPREAD_INDEX}>
                     {String(idx + 1).padStart(2, "0")}. {s.full_name}
                   </option>
                 ))}
@@ -511,10 +706,13 @@ export function KenanganClient({
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 aria-label="Halaman sebelumnya"
-                disabled={spreadIndex <= 0}
+                disabled={isBookOpen && spreadIndex <= 0}
                 onClick={() => {
-                  setIsBookOpen(true);
-                  setSpreadIndex((p) => Math.max(0, p - 1));
+                  if (!isBookOpen) {
+                    setIsBookOpen(true);
+                  } else {
+                    setSpreadIndex((p) => Math.max(0, p - 1));
+                  }
                 }}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
@@ -522,17 +720,20 @@ export function KenanganClient({
               </motion.button>
 
               <span className="font-mono text-xs tabular-nums text-muted-foreground px-1">
-                {spreadIndex + 1} / {spreads.length}
+                {!isBookOpen ? "Sampul" : `${spreadIndex + 1} / ${spreads.length}`}
               </span>
 
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 aria-label="Halaman berikutnya"
-                disabled={spreadIndex >= spreads.length - 1}
+                disabled={isBookOpen && spreadIndex >= spreads.length - 1}
                 onClick={() => {
-                  setIsBookOpen(true);
-                  setSpreadIndex((p) => Math.min(spreads.length - 1, p + 1));
+                  if (!isBookOpen) {
+                    setIsBookOpen(true);
+                  } else {
+                    setSpreadIndex((p) => Math.min(spreads.length - 1, p + 1));
+                  }
                 }}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
@@ -546,35 +747,66 @@ export function KenanganClient({
             simple={
               <div className="overflow-hidden rounded-2xl border-2 border-[#782f24]/60 bg-[#fbf5e8] text-[#2b2118] shadow-lg">
                 {!isBookOpen ? (
-                  /* Sampul Buku 2D Tertutup */
-                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-6 py-16 text-center text-[#f3ca82]">
-                    <div className="w-full max-w-md rounded-xl border-2 border-[#e0a958] p-8 shadow-inner">
+                  /* Sampul Buku 2D Tertutup dengan 1 Foto Bersama XII PPLG 1 */
+                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-6 py-12 text-center text-[#f3ca82]">
+                    <div className="w-full max-w-lg rounded-2xl border-2 border-[#e0a958] bg-[#592017]/60 p-6 sm:p-8 shadow-inner">
                       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#ebd0a0]">
                         Album Memori Madrasah · UNO
                       </p>
-                      <h2 className="mt-4 font-serif text-4xl font-bold">
+                      <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold text-[#f7d794]">
                         Kenangan XII PPLG 1
                       </h2>
-                      <p className="mt-2 font-hand text-2xl text-[#ebd0a0]">
-                        MAKN Ende · Flores, NTT
+                      <p className="mt-1 font-hand text-2xl text-[#ebd0a0]">
+                        MAKN Ende · Angkatan 2024 — 2027
                       </p>
-                      <p className="mt-6 font-mono text-xs text-[#ebd0a0]/80">
-                        2024 — 2027
-                      </p>
+
+                      {/* 1 Foto Bersama di Sampul Depan Buku Kenangan */}
+                      <motion.div
+                        whileHover={{ rotate: 0, scale: 1.02 }}
+                        onClick={() => setIsBookOpen(true)}
+                        style={{ transform: "rotate(-1.2deg)" }}
+                        className="relative mx-auto mt-6 max-w-sm cursor-pointer rounded-xl border border-[#d6c5ad] bg-[#fffdf9] p-3 pb-4 text-[#2b2118] shadow-xl"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="absolute -top-3 left-1/2 h-5 w-24 -translate-x-1/2 -rotate-2 bg-[#e8c67a]/85 shadow-2xs"
+                        />
+                        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                          {coverPhotoMoment?.image_url ? (
+                            <img
+                              src={coverPhotoMoment.image_url}
+                              alt={coverPhotoMoment.caption || "Foto Bersama XII PPLG 1"}
+                              referrerPolicy="no-referrer"
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-full flex-col items-center justify-center bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] p-4 text-[#fbf6ec]">
+                              <Camera className="size-8 opacity-80" />
+                              <span className="mt-1 font-hand text-xl font-bold">
+                                Keluarga Besar XII PPLG 1
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-2.5 font-hand text-xl font-bold text-[#2b190e]">
+                          ★ {coverPhotoMoment?.caption || "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"} ★
+                        </p>
+                      </motion.div>
+
                       <motion.button
                         type="button"
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsBookOpen(true)}
-                        className="mt-8 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#e0a958] px-6 py-2.5 text-xs font-bold text-[#2b2118] shadow"
+                        className="mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#e0a958] px-6 py-2.5 text-xs font-bold text-[#2b2118] shadow-md"
                       >
                         <BookOpen className="size-4" />
-                        <span>Buka Lembar Pertama</span>
+                        <span>Buka Sampul Buku Kenangan</span>
                       </motion.button>
                     </div>
                   </div>
                 ) : (
-                  /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Kotak Teks Acak, Tulisan Tangan Caveat, dan Stiker Meme Perpisahan */
+                  /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Halaman Foto Bersama, Daftar Isi, dan Halaman Siswa */
                   <div className="relative grid grid-cols-1 divide-y divide-[#d8c7ae] md:grid-cols-2 md:divide-x md:divide-y-0">
                     {/* Halaman Kiri */}
                     <div className="relative flex flex-col justify-between p-6 sm:p-8">
@@ -584,7 +816,52 @@ export function KenanganClient({
                           aria-hidden="true"
                           className="mx-auto -mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
                         />
-                        {currentSpread.leftPage.type === "toc" ? (
+                        {currentSpread.leftPage.type === "group-photo" ? (
+                          <div>
+                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                              {currentSpread.leftPage.groupTitle}
+                            </h2>
+                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                              {currentSpread.leftPage.groupSubtitle}
+                            </p>
+                            <div className="mt-5 space-y-5">
+                              {currentSpread.leftPage.groupPhotos?.map((gp, idx) => (
+                                <motion.div
+                                  key={idx}
+                                  whileHover={{ rotate: 0, scale: 1.01 }}
+                                  style={{
+                                    transform: `rotate(${idx % 2 === 0 ? -1.4 : 1.4}deg)`,
+                                  }}
+                                  className="relative rounded-xl border border-[#d4c4ae] bg-[#fffdf9] p-3 pb-4 shadow-md"
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#d9822b]/50"
+                                  />
+                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                                    {gp.imageUrl ? (
+                                      <img
+                                        src={gp.imageUrl}
+                                        alt={gp.category}
+                                        referrerPolicy="no-referrer"
+                                        className="size-full object-cover"
+                                      />
+                                    ) : null}
+                                    <span className="absolute top-2 right-2 rounded bg-[#23140b]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#f7d794]">
+                                      {gp.dateStr}
+                                    </span>
+                                  </div>
+                                  <h3 className="mt-2.5 font-hand text-2xl font-bold text-[#23140b]">
+                                    ★ {gp.category}
+                                  </h3>
+                                  <p className="mt-0.5 font-hand text-lg leading-snug text-[#4e3824]">
+                                    {gp.caption}
+                                  </p>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : currentSpread.leftPage.type === "toc" ? (
                           <div>
                             <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
                               Daftar Isi — Bagian I
@@ -597,6 +874,8 @@ export function KenanganClient({
                                 (entry, idx) => {
                                   const tilt =
                                     idx % 2 === 0 ? "-rotate-1" : "rotate-1";
+                                  const stuNumber =
+                                    entry.spreadIndex - FIRST_STUDENT_SPREAD_INDEX + 1;
                                   return (
                                     <li key={entry.spreadIndex}>
                                       <motion.button
@@ -609,14 +888,11 @@ export function KenanganClient({
                                         className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
                                       >
                                         <span>
-                                          {String(entry.spreadIndex).padStart(
-                                            2,
-                                            "0"
-                                          )}
-                                          . {entry.name}
+                                          {String(stuNumber).padStart(2, "0")}.{" "}
+                                          {entry.name}
                                         </span>
                                         <span className="font-hand text-lg text-[#a84232]">
-                                          Hal. {entry.spreadIndex * 2} →
+                                          Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
                                     </li>
@@ -723,7 +999,52 @@ export function KenanganClient({
                           aria-hidden="true"
                           className="mx-auto -mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
                         />
-                        {currentSpread.rightPage.type === "toc" ? (
+                        {currentSpread.rightPage.type === "group-photo" ? (
+                          <div>
+                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                              {currentSpread.rightPage.groupTitle}
+                            </h2>
+                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                              {currentSpread.rightPage.groupSubtitle}
+                            </p>
+                            <div className="mt-5 space-y-5">
+                              {currentSpread.rightPage.groupPhotos?.map((gp, idx) => (
+                                <motion.div
+                                  key={idx}
+                                  whileHover={{ rotate: 0, scale: 1.01 }}
+                                  style={{
+                                    transform: `rotate(${idx % 2 === 0 ? 1.4 : -1.4}deg)`,
+                                  }}
+                                  className="relative rounded-xl border border-[#d4c4ae] bg-[#fffdf9] p-3 pb-4 shadow-md"
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#2d6a6e]/45"
+                                  />
+                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                                    {gp.imageUrl ? (
+                                      <img
+                                        src={gp.imageUrl}
+                                        alt={gp.category}
+                                        referrerPolicy="no-referrer"
+                                        className="size-full object-cover"
+                                      />
+                                    ) : null}
+                                    <span className="absolute top-2 right-2 rounded bg-[#23140b]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#f7d794]">
+                                      {gp.dateStr}
+                                    </span>
+                                  </div>
+                                  <h3 className="mt-2.5 font-hand text-2xl font-bold text-[#23140b]">
+                                    ★ {gp.category}
+                                  </h3>
+                                  <p className="mt-0.5 font-hand text-lg leading-snug text-[#4e3824]">
+                                    {gp.caption}
+                                  </p>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : currentSpread.rightPage.type === "toc" ? (
                           <div>
                             <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
                               Daftar Isi — Bagian II
@@ -736,6 +1057,8 @@ export function KenanganClient({
                                 (entry, idx) => {
                                   const tilt =
                                     idx % 2 === 0 ? "rotate-1" : "-rotate-1";
+                                  const stuNumber =
+                                    entry.spreadIndex - FIRST_STUDENT_SPREAD_INDEX + 1;
                                   return (
                                     <li key={entry.spreadIndex}>
                                       <motion.button
@@ -748,14 +1071,11 @@ export function KenanganClient({
                                         className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
                                       >
                                         <span>
-                                          {String(entry.spreadIndex).padStart(
-                                            2,
-                                            "0"
-                                          )}
-                                          . {entry.name}
+                                          {String(stuNumber).padStart(2, "0")}.{" "}
+                                          {entry.name}
                                         </span>
                                         <span className="font-hand text-lg text-[#a84232]">
-                                          Hal. {entry.spreadIndex * 2} →
+                                          Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
                                     </li>
@@ -843,6 +1163,11 @@ export function KenanganClient({
                 spreads={spreads}
                 isBookOpen={isBookOpen}
                 activeSpreadIndex={spreadIndex}
+                coverPhotoUrl={coverPhotoMoment?.image_url}
+                coverCaption={
+                  coverPhotoMoment?.caption ||
+                  "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"
+                }
                 onOpenBook={() => setIsBookOpen(true)}
                 onChangeSpread={(next) => setSpreadIndex(next)}
               />
@@ -889,7 +1214,8 @@ export function KenanganClient({
                   .slice((tocPage - 1) * TOC_PER_PAGE, tocPage * TOC_PER_PAGE)
                   .map((s, localIdx) => {
                     const idx = (tocPage - 1) * TOC_PER_PAGE + localIdx;
-                    const isCurrent = spreadIndex === idx + 1;
+                    const targetSpread = idx + FIRST_STUDENT_SPREAD_INDEX;
+                    const isCurrent = isBookOpen && spreadIndex === targetSpread;
                     return (
                       <motion.button
                         key={s.id}
@@ -898,7 +1224,7 @@ export function KenanganClient({
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           setIsBookOpen(true);
-                          setSpreadIndex(idx + 1);
+                          setSpreadIndex(targetSpread);
                         }}
                         className={`flex min-h-[42px] items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors ${
                           isCurrent
@@ -910,7 +1236,7 @@ export function KenanganClient({
                           {String(idx + 1).padStart(2, "0")}. {s.full_name}
                         </span>
                         <span className="ml-2 shrink-0 font-mono text-[11px] text-[var(--color-accent-warm)]">
-                          Hal. {(idx + 1) * 2 + 1}
+                          Hal. {targetSpread * 2 + 1}
                         </span>
                       </motion.button>
                     );

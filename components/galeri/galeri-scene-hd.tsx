@@ -138,12 +138,33 @@ export function GaleriSceneHD({
       const polaroidNodes: PolaroidNode[] = [];
       const interactableMeshes: THREE.Object3D[] = [];
 
+      const isRealUploaded = (url?: string) => {
+        const clean = (url || "").trim();
+        return (
+          clean.length > 0 && !clean.startsWith("/api/moment-illustration")
+        );
+      };
+      const allRealMoments = moments.filter((m) => isRealUploaded(m.image_url));
+
       const phases: MomentPhase[] = ["X", "XI", "XII"];
       phases.forEach((ph) => {
         const shelfY = ph === "X" ? 3.2 : ph === "XI" ? 0 : -3.2;
-        const phaseMoments = moments
-          .filter((m) => String(m.phase || "XII").trim().toUpperCase() === ph)
-          .slice(0, 12);
+        const inPhase = moments.filter(
+          (m) => String(m.phase || "XII").trim().toUpperCase() === ph
+        );
+        const realInPhase = inPhase.filter((m) => isRealUploaded(m.image_url));
+        const otherReal = allRealMoments.filter(
+          (m) => String(m.phase || "XII").trim().toUpperCase() !== ph
+        );
+        const nonRealInPhase = inPhase.filter(
+          (m) => !isRealUploaded(m.image_url)
+        );
+        // Pastikan foto asli yang diupload selalu berada di barisan depan gantungan 3D
+        const phaseMoments = [
+          ...realInPhase,
+          ...otherReal,
+          ...nonRealInPhase,
+        ].slice(0, 12);
 
         // Dua baris tali katenari per fase dengan jarak vertikal lega (1.36 unit) agar jepitan bawah tidak menyentuh kartu atas
         for (let row = 0; row < 2; row++) {

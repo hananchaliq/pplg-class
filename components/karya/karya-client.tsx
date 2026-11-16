@@ -14,7 +14,10 @@ import {
   Users,
   Layers,
 } from "lucide-react";
-import { computeClassSkillMap } from "@/lib/domain-logic";
+import {
+  computeClassSkillMap,
+  studentToLanyardMember,
+} from "@/lib/domain-logic";
 import { useVisualTier } from "@/lib/visual-tier";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import {
@@ -25,10 +28,14 @@ import type { StudentRow, WorkRow } from "@/lib/types";
 
 function TiltWorkCard({
   work,
+  student,
+  studentIndex = 0,
   enableTilt,
   index,
 }: {
   work: WorkRow;
+  student?: StudentRow;
+  studentIndex?: number;
   enableTilt: boolean;
   index: number;
 }) {
@@ -57,6 +64,10 @@ function TiltWorkCard({
     "from-[#c86d3b] to-[#8f4922]",
   ];
   const toneGrad = bannerTones[index % bannerTones.length]!;
+  const lanyardCard = React.useMemo(
+    () => (student ? studentToLanyardMember(student, studentIndex) : null),
+    [student, studentIndex]
+  );
 
   return (
     <motion.article
@@ -69,22 +80,54 @@ function TiltWorkCard({
       className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-[var(--color-accent-warm)]/60"
     >
       <div>
-        {/* Pratinjau Visual Karya Prosedural */}
+        {/* Pratinjau Visual Karya Tersinkronisasi dengan Foto Kartu ID Siswa */}
         <div
-          className={`relative flex h-40 flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-4 text-[#fbf6ec]`}
+          className={`relative flex h-44 flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-4 text-[#fbf6ec]`}
         >
+          {work.image_url ? (
+            <img
+              src={work.image_url}
+              alt={work.title}
+              referrerPolicy="no-referrer"
+              className="pointer-events-none absolute inset-0 size-full object-cover opacity-35 transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : null}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -right-6 -bottom-6 size-28 rounded-full border border-white/15 transition-transform duration-500 group-hover:scale-125"
           />
-          <div className="flex items-center justify-between text-xs opacity-90">
-            <span className="font-mono font-bold">
+          <div className="relative z-10 flex items-center justify-between gap-2 text-xs">
+            <span className="rounded bg-black/25 px-2 py-0.5 font-mono font-bold text-[#f3ca82]">
               KARYA #{String(index + 1).padStart(2, "0")}
             </span>
-            <span className="font-semibold">{work.student_name}</span>
+            {/* Mini Badge Kartu ID Siswa */}
+            <div className="flex items-center gap-2 rounded-full border border-white/25 bg-black/30 py-1 pr-3 pl-1 backdrop-blur-2xs">
+              <div className="relative size-7 shrink-0 overflow-hidden rounded-full border border-[#f3ca82] bg-[#2b1f18]">
+                {lanyardCard?.image ? (
+                  <img
+                    src={lanyardCard.image}
+                    alt={student?.full_name || work.student_name}
+                    referrerPolicy="no-referrer"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <span className="flex size-full items-center justify-center font-serif text-[10px] font-bold text-[#fbf6ec]">
+                    {(student?.full_name || work.student_name || "S").slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="text-left leading-none">
+                <p className="max-w-[130px] truncate text-[11px] font-bold text-[#fbf6ec]">
+                  {student?.full_name || work.student_name}
+                </p>
+                <p className="mt-0.5 text-[9px] text-[#ebd0a0]">
+                  {lanyardCard?.role || "Siswa XII PPLG 1"}
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="font-serif text-lg font-bold leading-snug">
+          <div className="relative z-10">
+            <p className="font-serif text-lg font-bold leading-snug drop-shadow-2xs">
               {work.title}
             </p>
           </div>
@@ -968,14 +1011,20 @@ export function KaryaClient({
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {pagedWorks.map((w, idx) => (
-            <TiltWorkCard
-              key={w.id}
-              work={w}
-              enableTilt={tier === "hd"}
-              index={(workPage - 1) * WORKS_PER_PAGE + idx}
-            />
-          ))}
+          {pagedWorks.map((w, idx) => {
+            const stuIdx = students.findIndex((s) => s.id === w.student_id);
+            const matchedStu = stuIdx >= 0 ? students[stuIdx] : undefined;
+            return (
+              <TiltWorkCard
+                key={w.id}
+                work={w}
+                student={matchedStu}
+                studentIndex={stuIdx >= 0 ? stuIdx : idx}
+                enableTilt={tier === "hd"}
+                index={(workPage - 1) * WORKS_PER_PAGE + idx}
+              />
+            );
+          })}
         </div>
 
         <PaginationBar

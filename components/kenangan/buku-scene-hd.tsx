@@ -21,6 +21,8 @@ interface BukuKenanganSceneHDProps {
   spreads: BookSpread[];
   isBookOpen: boolean;
   activeSpreadIndex: number;
+  coverPhotoUrl?: string;
+  coverCaption?: string;
   onOpenBook: () => void;
   onChangeSpread: (nextIndex: number) => void;
 }
@@ -60,12 +62,16 @@ export function BukuKenanganSceneHD({
   spreads,
   isBookOpen,
   activeSpreadIndex,
+  coverPhotoUrl,
+  coverCaption,
   onOpenBook,
   onChangeSpread,
 }: BukuKenanganSceneHDProps) {
   const spreadsRef = React.useRef(spreads);
   const isOpenRef = React.useRef(isBookOpen);
   const activeSpreadRef = React.useRef(activeSpreadIndex);
+  const coverPhotoUrlRef = React.useRef(coverPhotoUrl);
+  const coverCaptionRef = React.useRef(coverCaption);
   const onOpenRef = React.useRef(onOpenBook);
   const onChangeSpreadRef = React.useRef(onChangeSpread);
 
@@ -73,9 +79,19 @@ export function BukuKenanganSceneHD({
     spreadsRef.current = spreads;
     isOpenRef.current = isBookOpen;
     activeSpreadRef.current = activeSpreadIndex;
+    coverPhotoUrlRef.current = coverPhotoUrl;
+    coverCaptionRef.current = coverCaption;
     onOpenRef.current = onOpenBook;
     onChangeSpreadRef.current = onChangeSpread;
-  }, [spreads, isBookOpen, activeSpreadIndex, onOpenBook, onChangeSpread]);
+  }, [
+    spreads,
+    isBookOpen,
+    activeSpreadIndex,
+    coverPhotoUrl,
+    coverCaption,
+    onOpenBook,
+    onChangeSpread,
+  ]);
 
   const animStateRef = React.useRef({
     coverOpenProgress: isBookOpen ? 1 : 0,
@@ -83,6 +99,9 @@ export function BukuKenanganSceneHD({
   });
 
   const syncSpreadTexturesRef = React.useRef<((idx: number) => void) | null>(null);
+  const syncCoverTextureRef = React.useRef<
+    ((photoUrl?: string, caption?: string) => void) | null
+  >(null);
   const prevSpreadIndexRef = React.useRef(activeSpreadIndex);
 
   React.useEffect(() => {
@@ -104,7 +123,11 @@ export function BukuKenanganSceneHD({
         ease: "power2.out",
       });
     }
-  }, [activeSpreadIndex]);
+  }, [activeSpreadIndex, spreads]);
+
+  React.useEffect(() => {
+    syncCoverTextureRef.current?.(coverPhotoUrl, coverCaption);
+  }, [coverPhotoUrl, coverCaption]);
 
   const handleSetup = React.useCallback(
     ({
@@ -118,7 +141,11 @@ export function BukuKenanganSceneHD({
     }) => {
       const wood = createWoodTextures(renderer, "warm");
       const darkWood = createWoodTextures(renderer, "dark");
-      const coverTex = createBookCoverTextures(renderer);
+      const coverTex = createBookCoverTextures(
+        renderer,
+        coverPhotoUrlRef.current,
+        coverCaptionRef.current
+      );
 
       // 1. Permukaan Meja Belajar Kayu Jati (Dilihat dari Atas)
       const deskMesh = new THREE.Mesh(
@@ -508,6 +535,13 @@ export function BukuKenanganSceneHD({
       // Sampul Depan Berengsel (Saat Buku Ditutup)
       const closedCoverHinge = new THREE.Group();
       closedCoverHinge.position.set(0, 0.16, 0);
+      const closedFrontCoverBoard = new THREE.Mesh(
+        new THREE.BoxGeometry(PAGE_W + 0.18, 0.042, PAGE_H + 0.2),
+        clothMat
+      );
+      closedFrontCoverBoard.position.set((PAGE_W + 0.18) / 2, -0.022, 0);
+      closedCoverHinge.add(closedFrontCoverBoard);
+
       const closedFrontCoverGeo = new THREE.PlaneGeometry(PAGE_W + 0.14, PAGE_H + 0.16);
       closedFrontCoverGeo.rotateX(-Math.PI / 2);
       closedFrontCoverGeo.translate((PAGE_W + 0.14) / 2, 0, 0);
@@ -521,8 +555,18 @@ export function BukuKenanganSceneHD({
         closedFrontCoverGeo,
         closedFrontCoverMat
       );
+      closedFrontCoverMesh.position.y = 0.002;
       closedCoverHinge.add(closedFrontCoverMesh);
       bookRoot.add(closedCoverHinge);
+
+      syncCoverTextureRef.current = (photoUrl?: string, caption?: string) => {
+        const nextCover = createBookCoverTextures(renderer, photoUrl, caption);
+        if (closedFrontCoverMat.map) {
+          closedFrontCoverMat.map.dispose();
+        }
+        closedFrontCoverMat.map = nextCover.map;
+        closedFrontCoverMat.needsUpdate = true;
+      };
 
       // Cache Tekstur Spread
       const textureCache = new Map<
@@ -645,6 +689,7 @@ export function BukuKenanganSceneHD({
           binderRingsGroup.visible = isMostlyOpen;
           binderSpinePlate.visible = isMostlyOpen;
           indexTabsGroup.visible = isMostlyOpen;
+          cornerProtectorsGroup.visible = isMostlyOpen;
 
           // Kedipan lembut lampu fairy lights di tepi meja
           fairyBulbs.forEach((b, i) => {
@@ -664,8 +709,8 @@ export function BukuKenanganSceneHD({
             flipPivot.visible = false;
           }
 
-          // Posisi buku tepat di tengah meja saat terbuka
-          const targetBookX = THREE.MathUtils.lerp(-0.55, 0, openProg);
+          // Posisi buku tepat di tengah meja saat tertutup maupun terbuka
+          const targetBookX = THREE.MathUtils.lerp(-1.12, 0, openProg);
           bookRoot.position.x = THREE.MathUtils.damp(
             bookRoot.position.x,
             targetBookX,

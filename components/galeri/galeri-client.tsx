@@ -108,14 +108,42 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     text: string;
   } | null>(null);
 
+  const isRealPhoto = React.useCallback((url?: string) => {
+    const clean = (url || "").trim();
+    return clean.length > 0 && !clean.startsWith("/api/moment-illustration");
+  }, []);
+
+  // Jika fase aktif belum punya foto asli tetapi fase lain punya foto asli yang diupload, arahkan ke fase yang punya foto asli saat pertama kali dibuka
+  const didAutoSelectPhase = React.useRef(false);
+  React.useEffect(() => {
+    if (didAutoSelectPhase.current || moments.length === 0) return;
+    const currentHasReal = moments.some(
+      (m) => m.phase === activePhase && isRealPhoto(m.image_url)
+    );
+    if (!currentHasReal) {
+      const phaseWithReal = (["XII", "XI", "X"] as MomentPhase[]).find((ph) =>
+        moments.some((m) => m.phase === ph && isRealPhoto(m.image_url))
+      );
+      if (phaseWithReal && phaseWithReal !== activePhase) {
+        setActivePhase(phaseWithReal);
+      }
+    }
+    didAutoSelectPhase.current = true;
+  }, [moments, activePhase, isRealPhoto]);
+
   const filteredMoments = React.useMemo(() => {
-    return moments.filter((m) => {
+    const list = moments.filter((m) => {
       if (activeCategory !== "Semua" && m.category !== activeCategory) {
         return false;
       }
       return true;
     });
-  }, [moments, activeCategory]);
+    // Prioritaskan foto yang benar-benar diupload di urutan paling depan
+    return [...list].sort(
+      (a, b) =>
+        (isRealPhoto(b.image_url) ? 1 : 0) - (isRealPhoto(a.image_url) ? 1 : 0)
+    );
+  }, [moments, activeCategory, isRealPhoto]);
 
   // Daftar momen yang sedang ditampilkan di bawah (seluruh koleksi atau difilter per fase)
   const listSourceMoments = React.useMemo(() => {
@@ -137,10 +165,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
   }, [listSourceMoments, momentPage, totalMomentPages]);
 
   const phaseRackMoments = React.useMemo(() => {
-    return filteredMoments
-      .filter((m) => m.phase === activePhase)
-      .slice(0, 14);
-  }, [filteredMoments, activePhase]);
+    const inPhase = filteredMoments.filter((m) => m.phase === activePhase);
+    const allRealUploaded = filteredMoments.filter((m) =>
+      isRealPhoto(m.image_url)
+    );
+    const combined = [
+      ...inPhase.filter((m) => isRealPhoto(m.image_url)),
+      ...allRealUploaded.filter((m) => m.phase !== activePhase),
+      ...inPhase.filter((m) => !isRealPhoto(m.image_url)),
+    ];
+    return combined.slice(0, 14);
+  }, [filteredMoments, activePhase, isRealPhoto]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

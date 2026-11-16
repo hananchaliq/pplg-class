@@ -148,9 +148,88 @@ export async function POST(req: NextRequest) {
         typeof body.updatedText === "string" ? body.updatedText : undefined;
 
       const success = await moderateItem(table, id, status, updatedText);
+      if (success && table === "moments" && status === "approved") {
+        const supabase = getSupabaseAdminClient();
+        if (supabase) {
+          await supabase.from("moments").update({ sort_order: 0 }).eq("id", id);
+        }
+      }
       revalidatePath("/", "layout");
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: success, data });
+    }
+
+    if (action === "upsert_moment") {
+      const supabase = getSupabaseAdminClient();
+      if (!supabase) {
+        return NextResponse.json(
+          { ok: false, error: "Database Supabase belum terhubung." },
+          { status: 500 }
+        );
+      }
+      const category = String(body.category || "Momen Kelas").trim();
+      const uploaderName = String(body.uploaderName || "Admin XII PPLG 1").trim();
+      const caption = String(body.caption || "Dokumentasi Kenangan XII PPLG 1").trim();
+      const phase = (["X", "XI", "XII"].includes(String(body.phase))
+        ? String(body.phase)
+        : "XII") as "X" | "XI" | "XII";
+      const dateLabel = String(
+        body.takenAt || new Date().toISOString().slice(0, 10)
+      ).trim();
+      const imageUrl = String(body.imageUrl || "").trim();
+      if (!imageUrl) {
+        return NextResponse.json(
+          { ok: false, error: "Berkas foto atau URL gambar wajib diisi." },
+          { status: 400 }
+        );
+      }
+
+      const title = `${category} | ${uploaderName}`;
+
+      // Jika kategori adalah Foto Sampul Buku dan replaceSingle aktif, perbarui yang sudah ada bila ditemukan
+      if (body.replaceExistingCategory && category) {
+        const { data: existingRows } = await supabase
+          .from("moments")
+          .select("id, title")
+          .ilike("title", `${category} |%`);
+        if (existingRows && existingRows.length > 0) {
+          const targetId = existingRows[0]!.id;
+          const { error: updErr } = await supabase
+            .from("moments")
+            .update({
+              grade: phase,
+              title,
+              caption,
+              date_label: dateLabel,
+              image_url: imageUrl,
+              sort_order: 0,
+            })
+            .eq("id", targetId);
+          if (updErr) throw new Error(updErr.message);
+          revalidatePath("/", "layout");
+          const data = await getAdminDashboardData();
+          return NextResponse.json({ ok: true, data });
+        }
+      }
+
+      const id = body.id ? String(body.id) : crypto.randomUUID();
+      const { error } = await supabase.from("moments").upsert(
+        {
+          id,
+          grade: phase,
+          title,
+          caption,
+          date_label: dateLabel,
+          image_url: imageUrl,
+          sort_order: 0,
+        },
+        { onConflict: "id" }
+      );
+      if (error) throw new Error(error.message);
+
+      revalidatePath("/", "layout");
+      const data = await getAdminDashboardData();
+      return NextResponse.json({ ok: true, data });
     }
 
     if (action === "delete_moderated_item") {

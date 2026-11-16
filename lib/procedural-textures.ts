@@ -99,15 +99,20 @@ export function createWoodTextures(
 }
 
 /**
- * Tekstur kain sampul Buku Kenangan dengan tenun ikat Ende & emboss judul
+ * Tekstur kain sampul Buku Kenangan dengan tenun ikat Ende, emboss judul & 1 Foto Bersama XII PPLG 1
  */
-export function createBookCoverTextures(renderer?: THREE.WebGLRenderer | null) {
+export function createBookCoverTextures(
+  renderer?: THREE.WebGLRenderer | null,
+  coverPhotoUrl?: string,
+  coverCaption?: string
+) {
   const width = 1024;
-  const height = 1024;
+  const height = 1280;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+  const handFont = getHandwritingFont();
 
   const bumpCanvas = document.createElement("canvas");
   bumpCanvas.width = width;
@@ -118,7 +123,7 @@ export function createBookCoverTextures(renderer?: THREE.WebGLRenderer | null) {
   const grad = ctx.createLinearGradient(0, 0, width, height);
   grad.addColorStop(0, "#63261d");
   grad.addColorStop(0.5, "#782f24");
-  grad.addColorStop(1, "#521e16");
+  grad.addColorStop(1, "#4a1a12");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
 
@@ -126,9 +131,9 @@ export function createBookCoverTextures(renderer?: THREE.WebGLRenderer | null) {
   bCtx.fillRect(0, 0, width, height);
 
   // Serat tenun silang
-  ctx.strokeStyle = "rgba(255, 230, 195, 0.05)";
+  ctx.strokeStyle = "rgba(255, 230, 195, 0.055)";
   ctx.lineWidth = 1;
-  for (let i = 0; i < width; i += 6) {
+  for (let i = 0; i < Math.max(width, height); i += 6) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
     ctx.lineTo(i, height);
@@ -139,62 +144,208 @@ export function createBookCoverTextures(renderer?: THREE.WebGLRenderer | null) {
     ctx.stroke();
   }
 
-  // Pita motif tenun ikat Ende di sisi kiri punggung & bingkai
+  // Bingkai emas ganda sampul
   ctx.strokeStyle = "#e0a958";
-  ctx.lineWidth = 5;
-  ctx.strokeRect(56, 56, width - 112, height - 112);
-  ctx.lineWidth = 2;
-  ctx.strokeRect(68, 68, width - 136, height - 136);
+  ctx.lineWidth = 6;
+  ctx.strokeRect(52, 52, width - 104, height - 104);
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(66, 66, width - 132, height - 132);
 
   // Ornamen berlian tenun ikat di atas dan bawah
-  for (let x = 110; x < width - 110; x += 48) {
+  for (let x = 106; x < width - 106; x += 48) {
     ctx.fillStyle = "#d99b4e";
     ctx.beginPath();
-    ctx.moveTo(x, 102);
-    ctx.lineTo(x + 14, 114);
-    ctx.lineTo(x, 126);
-    ctx.lineTo(x - 14, 114);
+    ctx.moveTo(x, 96);
+    ctx.lineTo(x + 14, 108);
+    ctx.lineTo(x, 120);
+    ctx.lineTo(x - 14, 108);
     ctx.closePath();
     ctx.fill();
 
     ctx.beginPath();
-    ctx.moveTo(x, height - 126);
-    ctx.lineTo(x + 14, height - 114);
-    ctx.lineTo(x, height - 102);
-    ctx.lineTo(x - 14, height - 114);
+    ctx.moveTo(x, height - 120);
+    ctx.lineTo(x + 14, height - 108);
+    ctx.lineTo(x, height - 96);
+    ctx.lineTo(x - 14, height - 108);
     ctx.closePath();
     ctx.fill();
   }
 
-  // Judul emas timbul
+  // Judul emas timbul di bagian atas sampul
   ctx.fillStyle = "#f3ca82";
   ctx.textAlign = "center";
-  ctx.font = "600 32px Georgia, serif";
-  ctx.fillText("ALBUM MEMORI MADRASAH", width / 2, 310);
+  ctx.font = "600 28px Georgia, serif";
+  ctx.fillText("ALBUM MEMORI MADRASAH · UNO", width / 2, 185);
 
-  ctx.font = "bold 76px Georgia, serif";
-  ctx.fillText("Kenangan", width / 2, 430);
-  ctx.fillText("XII PPLG 1", width / 2, 525);
+  ctx.font = "bold 74px Georgia, serif";
+  ctx.fillText("Kenangan", width / 2, 275);
+  ctx.fillText("XII PPLG 1", width / 2, 362);
 
-  ctx.font = "italic 34px Georgia, serif";
+  ctx.font = "italic 30px Georgia, serif";
   ctx.fillStyle = "#ebd0a0";
-  ctx.fillText("MAKN Ende · Flores, NTT", width / 2, 620);
+  ctx.fillText("MAKN Ende · Flores, NTT (2024 — 2027)", width / 2, 415);
 
-  ctx.font = "500 26px sans-serif";
-  ctx.fillText("2024 — 2027", width / 2, 820);
+  // BINGKAI 1 FOTO BERSAMA DI TENGAH SAMPUL DEPAN
+  const frameW = 680;
+  const frameH = 560;
+  const frameX = (width - frameW) / 2;
+  const frameY = 468;
+  const photoPad = 28;
+  const photoX = frameX + photoPad;
+  const photoY = frameY + photoPad;
+  const photoW = frameW - photoPad * 2;
+  const photoH = 415;
+
+  const drawCoverPhotoFrame = (loadedImg?: HTMLImageElement) => {
+    ctx.save();
+    // Bayangan kertas Polaroid di sampul
+    ctx.fillStyle = "rgba(18, 8, 4, 0.42)";
+    ctx.fillRect(frameX + 10, frameY + 14, frameW, frameH);
+
+    // Kertas Polaroid Krem Emas
+    ctx.fillStyle = "#fffdf7";
+    ctx.fillRect(frameX, frameY, frameW, frameH);
+    ctx.strokeStyle = "#d4af37";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(frameX + 4, frameY + 4, frameW - 8, frameH - 8);
+
+    // Area Foto Bersama
+    if (loadedImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(photoX, photoY, photoW, photoH);
+      ctx.clip();
+      const iw = loadedImg.naturalWidth || loadedImg.width || photoW;
+      const ih = loadedImg.naturalHeight || loadedImg.height || photoH;
+      const sc = Math.max(photoW / iw, photoH / ih);
+      const dw = iw * sc;
+      const dh = ih * sc;
+      ctx.drawImage(
+        loadedImg,
+        photoX + (photoW - dw) / 2,
+        photoY + (photoH - dh) / 2,
+        dw,
+        dh
+      );
+      ctx.restore();
+    } else {
+      // Ilustrasi hangat Foto Bersama Satu Kelas XII PPLG 1 bila belum ada foto diupload
+      const pGrad = ctx.createLinearGradient(photoX, photoY, photoX, photoY + photoH);
+      pGrad.addColorStop(0, "#c86d3b");
+      pGrad.addColorStop(0.55, "#e09f5a");
+      pGrad.addColorStop(1, "#2d6a6e");
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(photoX, photoY, photoW, photoH);
+
+      // Matahari senja Ende
+      ctx.fillStyle = "rgba(255, 244, 214, 0.85)";
+      ctx.beginPath();
+      ctx.arc(photoX + photoW * 0.5, photoY + photoH * 0.34, 62, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Barisan siluet kebersamaan siswa-siswi XII PPLG 1
+      const count = 9;
+      for (let i = 0; i < count; i++) {
+        const px = photoX + 68 + (i * (photoW - 136)) / (count - 1);
+        const py = photoY + photoH - 58 - (i % 2) * 14;
+        ctx.fillStyle = i % 2 === 0 ? "#241710" : "#332016";
+        ctx.beginPath();
+        ctx.arc(px, py - 52, 22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(px, py + 18, 34, 52, 0, Math.PI, 0, false);
+        ctx.fill();
+      }
+    }
+
+    // Bingkai dalam foto & siku foto emas di 4 sudut
+    ctx.strokeStyle = "#8c6d46";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(photoX, photoY, photoW, photoH);
+
+    ctx.fillStyle = "#d4af37";
+    const corners: [number, number, number, number][] = [
+      [photoX - 4, photoY - 4, 1, 1],
+      [photoX + photoW + 4, photoY - 4, -1, 1],
+      [photoX - 4, photoY + photoH + 4, 1, -1],
+      [photoX + photoW + 4, photoY + photoH + 4, -1, -1],
+    ];
+    corners.forEach(([cx, cy, sx, sy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + sx * 36, cy);
+      ctx.lineTo(cx, cy + sy * 36);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Washi Tape Emas di atas bingkai foto bersama
+    ctx.save();
+    ctx.translate(width / 2, frameY - 4);
+    ctx.rotate(-0.03);
+    ctx.fillStyle = "rgba(212, 175, 55, 0.78)";
+    ctx.fillRect(-115, -16, 230, 32);
+    ctx.restore();
+
+    // Caption Tulisan Tangan di bawah Foto Bersama pada Sampul
+    ctx.fillStyle = "#1f1208";
+    ctx.font = `700 40px ${handFont}`;
+    ctx.textAlign = "center";
+    const cap =
+      coverCaption && coverCaption.trim().length > 0
+        ? coverCaption.trim().slice(0, 38)
+        : "Keluarga Besar UNO · XII PPLG 1";
+    ctx.fillText(`★ ${cap} ★`, width / 2, photoY + photoH + 56);
+
+    ctx.fillStyle = "#8c3b2b";
+    ctx.font = `700 28px ${handFont}`;
+    ctx.fillText(
+      "Satu Atap, Satu Cerita, Selamanya Saudara ♥",
+      width / 2,
+      photoY + photoH + 96
+    );
+    ctx.restore();
+  };
+
+  drawCoverPhotoFrame();
+
+  // Petunjuk buka sampul di bagian bawah sampul
+  ctx.fillStyle = "#f3ca82";
+  ctx.font = "bold 26px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.fillText("✦ KETUK SAMPUL UNTUK MEMBUKA BUKU KENANGAN ✦", width / 2, 1118);
 
   // Emboss di bump map
   bCtx.fillStyle = "#ffffff";
   bCtx.textAlign = "center";
-  bCtx.font = "bold 76px Georgia, serif";
-  bCtx.fillText("Kenangan", width / 2, 430);
-  bCtx.fillText("XII PPLG 1", width / 2, 525);
+  bCtx.font = "bold 74px Georgia, serif";
+  bCtx.fillText("Kenangan", width / 2, 275);
+  bCtx.fillText("XII PPLG 1", width / 2, 362);
   bCtx.strokeStyle = "#ffffff";
   bCtx.lineWidth = 6;
-  bCtx.strokeRect(56, 56, width - 112, height - 112);
+  bCtx.strokeRect(52, 52, width - 104, height - 104);
+  bCtx.strokeRect(frameX, frameY, frameW, frameH);
 
   const map = applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
   const bumpMap = applyTextureSettings(new THREE.CanvasTexture(bumpCanvas), renderer, false, false);
+
+  const cleanCoverUrl = (coverPhotoUrl || "").trim();
+  if (
+    typeof window !== "undefined" &&
+    cleanCoverUrl.length > 0 &&
+    !cleanCoverUrl.startsWith("/api/moment-illustration")
+  ) {
+    const img = new window.Image();
+    if (cleanCoverUrl.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      drawCoverPhotoFrame(img);
+      map.needsUpdate = true;
+    };
+    img.src = cleanCoverUrl;
+  }
+
   return { map, bumpMap };
 }
 
@@ -924,9 +1075,21 @@ export function createPolaroidTexture(
   return tex;
 }
 
+export interface GroupPhotoBookItem {
+  imageUrl: string;
+  caption: string;
+  category: string;
+  dateStr: string;
+  uploaderName?: string;
+  seed: number;
+}
+
 export interface BookPageData {
-  type: "toc" | "student-left" | "student-right";
+  type: "group-photo" | "toc" | "student-left" | "student-right";
   pageNumber: number;
+  groupTitle?: string;
+  groupSubtitle?: string;
+  groupPhotos?: GroupPhotoBookItem[];
   studentName?: string;
   studentNickname?: string;
   studentRole?: string;
@@ -1664,7 +1827,162 @@ export function createBookPageTexture(
   ctx.lineWidth = 3;
   ctx.strokeRect(52, 52, width - 104, height - 104);
 
-  if (page.type === "toc") {
+  const groupSlots: Array<{
+    cx: number;
+    cy: number;
+    rot: number;
+    pw: number;
+    ph: number;
+    caption: string;
+    dateStr: string;
+    category: string;
+    imageUrl: string;
+  }> = [];
+
+  if (page.type === "group-photo") {
+    drawBuntingFlags(ctx, width, 64);
+    drawRansomWord(
+      ctx,
+      isLeftPage ? "OUR STORY" : "TOGETHER",
+      isLeftPage ? 195 : 210,
+      122,
+      42
+    );
+
+    ctx.fillStyle = "#1f1208";
+    ctx.font = `700 48px ${handFont}`;
+    ctx.textAlign = "center";
+    ctx.fillText(
+      page.groupTitle || "Album Foto Bersama UNO · XII PPLG 1",
+      width / 2,
+      194
+    );
+
+    ctx.fillStyle = "#8c3b2b";
+    ctx.font = `700 30px ${handFont}`;
+    ctx.fillText(
+      page.groupSubtitle || "Kenangan Satu Angkatan Sebelum Memasuki Daftar Isi ♥",
+      width / 2,
+      234
+    );
+
+    const items = page.groupPhotos && page.groupPhotos.length > 0
+      ? page.groupPhotos.slice(0, 2)
+      : [
+          {
+            imageUrl: "",
+            caption: "Kebersamaan Keluarga Besar XII PPLG 1 di MAKN Ende",
+            category: "Foto Bersama Kelas",
+            dateStr: "2026",
+            seed: page.pageNumber * 13,
+          },
+          {
+            imageUrl: "",
+            caption: "Tawa & Cerita di Laboratorium PPLG Tercinta",
+            category: "Momen Kelas",
+            dateStr: "2027",
+            seed: page.pageNumber * 29,
+          },
+        ];
+
+    items.forEach((item, idx) => {
+      const slotY = idx === 0 ? 455 : 855;
+      const slotShiftX = ((idx % 2 === 0 ? -1 : 1) * (18 + (page.pageNumber % 3) * 8));
+      const slotRot = (idx % 2 === 0 ? -1 : 1) * (0.032 + (idx * 0.015));
+      const cardW = 680;
+      const cardH = 355;
+      const pw = 624;
+      const ph = 248;
+
+      groupSlots.push({
+        cx: width / 2 + slotShiftX,
+        cy: slotY,
+        rot: slotRot,
+        pw,
+        ph,
+        caption: item.caption,
+        dateStr: item.dateStr,
+        category: item.category,
+        imageUrl: item.imageUrl,
+      });
+
+      ctx.save();
+      ctx.translate(width / 2 + slotShiftX, slotY);
+      ctx.rotate(slotRot);
+
+      // Bayangan bingkai foto bersama
+      ctx.fillStyle = "rgba(28, 16, 8, 0.22)";
+      ctx.fillRect(-cardW / 2 + 8, -cardH / 2 + 10, cardW, cardH);
+
+      // Kertas Foto Polaroid Lebar
+      ctx.fillStyle = "#fffdf8";
+      ctx.fillRect(-cardW / 2, -cardH / 2, cardW, cardH);
+      ctx.strokeStyle = "#8c6d46";
+      ctx.lineWidth = 3.5;
+      ctx.strokeRect(-cardW / 2, -cardH / 2, cardW, cardH);
+
+      // Ilustrasi hangat dasar sebelum foto asli selesai dimuat
+      const pGrad = ctx.createLinearGradient(-pw / 2, -cardH / 2 + 22, -pw / 2, -cardH / 2 + 22 + ph);
+      pGrad.addColorStop(0, idx % 2 === 0 ? "#c86d3b" : "#2d6a6e");
+      pGrad.addColorStop(0.6, idx % 2 === 0 ? "#e5a363" : "#6ca699");
+      pGrad.addColorStop(1, "#2a1c12");
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(-pw / 2, -cardH / 2 + 22, pw, ph);
+
+      // Siluet barisan sahabat berfoto bersama
+      const pCount = 7;
+      for (let p = 0; p < pCount; p++) {
+        const px = -pw / 2 + 65 + (p * (pw - 130)) / (pCount - 1);
+        const py = -cardH / 2 + 22 + ph - 42;
+        ctx.fillStyle = "#22150d";
+        ctx.beginPath();
+        ctx.arc(px, py - 38, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(px, py + 14, 26, 38, 0, Math.PI, 0, false);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = "rgba(43, 28, 16, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-pw / 2, -cardH / 2 + 22, pw, ph);
+
+      // Washi Tape di sudut atas foto bersama
+      ctx.fillStyle = idx % 2 === 0 ? "rgba(200, 109, 59, 0.72)" : "rgba(45, 106, 110, 0.72)";
+      ctx.fillRect(-95, -cardH / 2 - 14, 190, 28);
+
+      // Caption tulisan tangan di bagian bawah bingkai foto
+      ctx.fillStyle = "#182542";
+      ctx.font = `700 34px ${handFont}`;
+      ctx.textAlign = "center";
+      const capText = item.caption.length > 46 ? `${item.caption.slice(0, 44)}...` : item.caption;
+      ctx.fillText(`"${capText}"`, 0, cardH / 2 - 44);
+
+      ctx.fillStyle = "#8c3b2b";
+      ctx.font = `700 24px ${handFont}`;
+      ctx.fillText(`✦ ${item.category} · ${item.dateStr || "2026"} ✦`, 0, cardH / 2 - 14);
+      ctx.restore();
+    });
+
+    // Stiker Meme Perpisahan Lucu di sudut bawah halaman foto bersama
+    drawFarewellMemeSticker(
+      ctx,
+      isLeftPage ? 240 : width - 240,
+      1112,
+      0.88,
+      isLeftPage ? -0.05 : 0.05,
+      page.pageNumber + 2
+    );
+    drawPressedFlower(
+      ctx,
+      isLeftPage ? width - 140 : 140,
+      1105,
+      34,
+      "#f2a7b8",
+      "#f3ca82",
+      8
+    );
+  } else if (page.type === "toc") {
     drawBuntingFlags(ctx, width, 64);
     drawRansomWord(
       ctx,
@@ -2295,6 +2613,53 @@ export function createBookPageTexture(
       bookTex.needsUpdate = true;
     };
     img.src = stuImgUrl;
+  }
+
+  // Jika halaman adalah halaman Foto Bersama ("group-photo"), muat dan gambar foto-foto bersama dari database
+  if (
+    typeof window !== "undefined" &&
+    page.type === "group-photo" &&
+    groupSlots.length > 0
+  ) {
+    groupSlots.forEach((slot) => {
+      const cleanUrl = (slot.imageUrl || "").trim();
+      if (
+        !cleanUrl ||
+        cleanUrl.startsWith("/api/moment-illustration")
+      ) {
+        return;
+      }
+      const img = new window.Image();
+      if (cleanUrl.startsWith("http")) {
+        img.crossOrigin = "anonymous";
+      }
+      img.onload = () => {
+        const cardH = 355;
+        const boxX = -slot.pw / 2;
+        const boxY = -cardH / 2 + 22;
+        ctx.save();
+        ctx.translate(slot.cx, slot.cy);
+        ctx.rotate(slot.rot);
+        ctx.beginPath();
+        ctx.rect(boxX, boxY, slot.pw, slot.ph);
+        ctx.clip();
+        const iw = img.naturalWidth || img.width || slot.pw;
+        const ih = img.naturalHeight || img.height || slot.ph;
+        const sc = Math.max(slot.pw / iw, slot.ph / ih);
+        const dw = iw * sc;
+        const dh = ih * sc;
+        ctx.drawImage(
+          img,
+          boxX + (slot.pw - dw) / 2,
+          boxY + (slot.ph - dh) / 2,
+          dw,
+          dh
+        );
+        ctx.restore();
+        bookTex.needsUpdate = true;
+      };
+      img.src = cleanUrl;
+    });
   }
 
   return bookTex;

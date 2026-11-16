@@ -17,15 +17,23 @@ import {
   Clock,
   Lock,
   Trash2,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { DbConnectionGuard } from "@/components/layout/db-connection-guard";
 import { notifyPublicDataUpdated } from "@/lib/use-public-data";
+import {
+  studentToLanyardMember,
+  teacherToLanyardMember,
+} from "@/lib/domain-logic";
 import type {
   ContentStatus,
   DreamCheerRow,
   DreamRow,
   MemoryEntryRow,
+  MomentPhase,
   MomentRow,
   PollWithOptions,
   StudentRow,
@@ -34,6 +42,38 @@ import type {
   WorkRow,
 } from "@/lib/types";
 import type { ModeratableTable } from "@/lib/db";
+
+async function compressImageToWebp(
+  file: File,
+  maxSide = 1200,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Gagal membaca berkas gambar"));
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = () => reject(new Error("Berkas bukan gambar yang valid"));
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Kanvas kompresi tidak tersedia"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/webp", quality));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 interface RawTimeCapsuleAdmin {
   id: string;
@@ -147,6 +187,18 @@ export function AdminClient() {
   const [gradDateInput, setGradDateInput] = useState("");
   const [pollQuestionInput, setPollQuestionInput] = useState("");
   const [pollOptionsInput, setPollOptionsInput] = useState("");
+
+  // State Unggah Media Visual 3D (Hero Kanan, Sampul Buku Kenangan, Foto Bersama, Galeri)
+  const [mediaTarget, setMediaTarget] = useState<
+    | "Foto Hero 3D"
+    | "Foto Sampul Buku"
+    | "Foto Bersama Kelas"
+    | "Kebersamaan Kelas"
+  >("Foto Hero 3D");
+  const [mediaPhase, setMediaPhase] = useState<MomentPhase>("XII");
+  const [mediaCaption, setMediaCaption] = useState("");
+  const [mediaImageUrl, setMediaImageUrl] = useState("");
+  const [mediaUploading, setMediaUploading] = useState(false);
 
   const getActiveToken = useCallback(
     (overrideToken?: string) =>
@@ -523,9 +575,52 @@ export function AdminClient() {
       setPollQuestionInput("");
       setPollOptionsInput("");
       notifyPublicDataUpdated();
-      setFeedback("Polling baru berhasil disimpan ke database Supabase.");
-    } else {
-      setFeedback(json.error || "Gagal membuat polling.");
+      setFeedback("Polling baru berhasil ditambahkan ke database.");
+    }
+  };
+
+  const handleUploadVisualMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mediaImageUrl.trim()) {
+      setFeedback("Pilih berkas foto dari perangkat atau masukkan URL gambar terlebih dahulu.");
+      return;
+    }
+    setMediaUploading(true);
+    try {
+      const defaultCaption =
+        mediaTarget === "Foto Hero 3D"
+          ? "Kenangan Meja Belajar 3D XII PPLG 1 MAKN Ende"
+          : mediaTarget === "Foto Sampul Buku"
+            ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
+            : mediaTarget === "Foto Bersama Kelas"
+              ? "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende"
+              : "Momen Kenangan XII PPLG 1";
+
+      const res = await adminPost({
+        action: "upsert_moment",
+        category: mediaTarget,
+        phase: mediaPhase,
+        caption: mediaCaption.trim() || defaultCaption,
+        uploaderName: "Admin XII PPLG 1",
+        imageUrl: mediaImageUrl.trim(),
+        replaceExistingCategory: mediaTarget === "Foto Sampul Buku",
+      });
+      const json = await res.json();
+      if (json.ok && json.data) {
+        setData(json.data);
+        setMediaCaption("");
+        setMediaImageUrl("");
+        notifyPublicDataUpdated();
+        setFeedback(
+          `Foto "${mediaTarget}" berhasil diunggah ke database dan langsung tampil di model 3D & halaman publik!`
+        );
+      } else {
+        setFeedback(json.error || "Gagal menyimpan foto ke database.");
+      }
+    } catch {
+      setFeedback("Gagal mengunggah foto ke server.");
+    } finally {
+      setMediaUploading(false);
     }
   };
 
@@ -1043,7 +1138,7 @@ export function AdminClient() {
                     Tampilkan Foto (Matikan untuk siluet hangat)
                   </label>
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label className="mb-1 block text-xs font-semibold">
                     Keahlian / Tag Skill Map (pisahkan koma)
                   </label>
@@ -1055,22 +1150,85 @@ export function AdminClient() {
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold">
-                    URL Foto Kustom (Opsional)
+                <div className="sm:col-span-2 rounded-xl border border-border bg-background/70 p-4">
+                  <label className="mb-2 block text-xs font-semibold text-foreground">
+                    Foto Kartu ID Siswa (Otomatis Sinkron ke ID Card 3D/2D, Project & Buku Kenangan)
                   </label>
-                  <input
-                    type="text"
-                    value={editingStudent.photo_url || ""}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        photo_url: e.target.value || undefined,
-                      })
-                    }
-                    placeholder="Kosongkan untuk avatar otomatis"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  />
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs">
+                      {editingStudent.photo_url ? (
+                        <img
+                          src={editingStudent.photo_url}
+                          alt={editingStudent.full_name || "Preview Siswa"}
+                          referrerPolicy="no-referrer"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="size-7 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                          <Upload className="size-3.5" />
+                          <span>Unggah Foto dari Perangkat</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const webp = await compressImageToWebp(file, 960, 0.84);
+                                setEditingStudent({
+                                  ...editingStudent,
+                                  photo_url: webp,
+                                  show_photo: true,
+                                });
+                                setFeedback(
+                                  "Foto siswa siap disimpan. Klik 'Simpan Siswa' di bawah untuk menerapkan ke Kartu ID."
+                                );
+                              } catch {
+                                setFeedback("Gagal membaca berkas gambar siswa.");
+                              }
+                            }}
+                          />
+                        </label>
+                        {editingStudent.photo_url && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingStudent({
+                                ...editingStudent,
+                                photo_url: "",
+                              })
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3.5" />
+                            <span>Hapus Foto (Gunakan Siluet)</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={editingStudent.photo_url || ""}
+                        onChange={(e) =>
+                          setEditingStudent({
+                            ...editingStudent,
+                            photo_url: e.target.value,
+                            show_photo:
+                              e.target.value.trim().length > 0
+                                ? true
+                                : editingStudent.show_photo,
+                          })
+                        }
+                        placeholder="Atau tempel URL foto kustom (https://...) — kosongkan untuk avatar otomatis"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="mb-1 block text-xs font-semibold">
@@ -1130,38 +1288,53 @@ export function AdminClient() {
                 (studentPage - 1) * STUDENTS_PER_PAGE,
                 studentPage * STUDENTS_PER_PAGE
               )
-              .map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-start justify-between gap-2 rounded-xl border border-border bg-card p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-serif font-bold text-foreground">
-                      {s.full_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      @{s.nickname} •{" "}
-                      {s.is_active ? `Aktif (${s.gender})` : "Sahabat Pindah"} •{" "}
-                      {s.show_photo ? "Foto Aktif" : "Siluet Hangat"}
-                    </p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                      {s.bio}
-                    </p>
+              .map((s, idx) => {
+                const previewCard = studentToLanyardMember(s, idx);
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="relative size-11 shrink-0 overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted">
+                        {previewCard.image ? (
+                          <img
+                            src={previewCard.image}
+                            alt={s.full_name}
+                            referrerPolicy="no-referrer"
+                            className="size-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-serif font-bold text-foreground">
+                          {s.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          @{s.nickname} •{" "}
+                          {s.is_active ? `Aktif (${s.gender})` : "Sahabat Pindah"} •{" "}
+                          {s.photo_url ? "Foto Asli Diunggah" : s.show_photo ? "Avatar ID" : "Siluet Hangat"}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                          {s.bio}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingStudent(s);
+                          setStudentTagsInput((s.tags || []).join(", "));
+                        }}
+                        className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted"
+                      >
+                        Edit / Foto
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingStudent(s);
-                        setStudentTagsInput((s.tags || []).join(", "));
-                      }}
-                      className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
 
           <PaginationBar
@@ -1281,6 +1454,81 @@ export function AdminClient() {
                     Jadikan Wali Kelas XII PPLG 1
                   </label>
                 </div>
+                <div className="sm:col-span-2 rounded-xl border border-border bg-background/70 p-4">
+                  <label className="mb-2 block text-xs font-semibold text-foreground">
+                    Foto Profil & Kartu ID Guru / Wali Kelas
+                  </label>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs">
+                      {editingTeacher.photo_url ? (
+                        <img
+                          src={editingTeacher.photo_url}
+                          alt={editingTeacher.full_name || "Preview Guru"}
+                          referrerPolicy="no-referrer"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="size-7 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                          <Upload className="size-3.5" />
+                          <span>Unggah Foto Guru / Wali Kelas</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const webp = await compressImageToWebp(file, 960, 0.84);
+                                setEditingTeacher({
+                                  ...editingTeacher,
+                                  photo_url: webp,
+                                });
+                                setFeedback(
+                                  "Foto guru siap disimpan. Klik 'Simpan Guru' untuk menyinkronkan ke Wali Kelas & Kartu ID."
+                                );
+                              } catch {
+                                setFeedback("Gagal membaca berkas gambar guru.");
+                              }
+                            }}
+                          />
+                        </label>
+                        {editingTeacher.photo_url && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingTeacher({
+                                ...editingTeacher,
+                                photo_url: "",
+                              })
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3.5" />
+                            <span>Hapus Foto</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Atau tempel URL foto guru (https://...)"
+                        value={editingTeacher.photo_url || ""}
+                        onChange={(e) =>
+                          setEditingTeacher({
+                            ...editingTeacher,
+                            photo_url: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="sm:col-span-2">
                   <label className="mb-1 block text-xs font-semibold">
                     Pesan Singkat untuk XII PPLG 1
@@ -1339,29 +1587,44 @@ export function AdminClient() {
                 (teacherPage - 1) * TEACHERS_PER_PAGE,
                 teacherPage * TEACHERS_PER_PAGE
               )
-              .map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-start justify-between gap-2 rounded-xl border border-border bg-card p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-serif font-bold text-foreground">
-                      {t.full_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.title} • {t.grp.toUpperCase()}
-                      {t.is_homeroom ? " • WALI KELAS" : ""}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditingTeacher(t)}
-                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted"
+              .map((t) => {
+                const previewTeacher = teacherToLanyardMember(t);
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5"
                   >
-                    Edit
-                  </button>
-                </div>
-              ))}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="relative size-11 shrink-0 overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted">
+                        {previewTeacher.image ? (
+                          <img
+                            src={previewTeacher.image}
+                            alt={t.full_name}
+                            referrerPolicy="no-referrer"
+                            className="size-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-serif font-bold text-foreground">
+                          {t.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t.title} • {t.grp.toUpperCase()}
+                          {t.is_homeroom ? " • WALI KELAS" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingTeacher(t)}
+                      className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted"
+                    >
+                      Edit / Foto
+                    </button>
+                  </div>
+                );
+              })}
           </div>
 
           <PaginationBar
@@ -1378,16 +1641,213 @@ export function AdminClient() {
         </div>
       )}
 
-      {/* TAB 4: PENGATURAN SITUS & POLLING KELAS */}
+      {/* TAB 4: PENGATURAN SITUS, MEDIA VISUAL 3D & POLLING KELAS */}
       {activeTab === "pengaturan" && (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-5 h-fit">
-            <div className="mb-4 flex items-center gap-2.5">
-              <Clock className="h-5 w-5 text-[var(--color-chart-2)]" />
-              <h2 className="font-serif text-xl font-bold text-foreground">
-                Pengaturan Hitung Mundur Kelulusan
-              </h2>
+        <div className="space-y-8">
+          {/* Panel Unggah Foto Model 3D Hero Kanan, Sampul Buku Kenangan, Foto Bersama & Galeri */}
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <ImageIcon className="h-5 w-5 text-[var(--color-accent-warm)]" />
+                <h2 className="font-serif text-xl font-bold text-foreground">
+                  Unggah Foto Model 3D Hero Kanan, Sampul Buku Kenangan, Foto Bersama & Galeri
+                </h2>
+              </div>
+              <span className="rounded-md bg-muted px-2.5 py-1 font-mono text-[11px] font-semibold text-foreground">
+                Langsung Aktif di 3D & 2D Tanpa Antrean
+              </span>
             </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Unggah gambar dari perangkat Anda untuk ditampilkan di bingkai foto & Polaroid meja 3D sebelah kanan halaman Hero, 1 foto bersama pada sampul depan Buku Kenangan XII PPLG 1 (3D & 2D), halaman pembuka foto bersama sebelum Daftar Isi, serta gantungan foto 3D Galeri.
+            </p>
+
+            <form
+              onSubmit={handleUploadVisualMedia}
+              className="mt-5 grid grid-cols-1 gap-4 rounded-xl border border-border bg-background/70 p-4 lg:grid-cols-12"
+            >
+              <div className="space-y-3 lg:col-span-7">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-foreground">
+                      Target Lokasi Tampil (3D & 2D)
+                    </label>
+                    <select
+                      value={mediaTarget}
+                      onChange={(e) =>
+                        setMediaTarget(
+                          e.target.value as
+                            | "Foto Hero 3D"
+                            | "Foto Sampul Buku"
+                            | "Foto Bersama Kelas"
+                            | "Kebersamaan Kelas"
+                        )
+                      }
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+                    >
+                      <option value="Foto Hero 3D">
+                        1. Model 3D Kanan Halaman Hero (+ Galeri)
+                      </option>
+                      <option value="Foto Sampul Buku">
+                        2. Sampul Depan Buku Kenangan XII PPLG 1 (1 Foto Bersama)
+                      </option>
+                      <option value="Foto Bersama Kelas">
+                        3. Halaman Pembuka Foto Bersama Buku Kenangan (Hal. 1–4)
+                      </option>
+                      <option value="Kebersamaan Kelas">
+                        4. Gantungan Polaroid 3D & Daftar Galeri Momen
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-foreground">
+                      Fase Rak Galeri 3D
+                    </label>
+                    <select
+                      value={mediaPhase}
+                      onChange={(e) => setMediaPhase(e.target.value as MomentPhase)}
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+                    >
+                      <option value="XII">Kelas XII (Senja Terakhir)</option>
+                      <option value="XI">Kelas XI (Masa PKL & Proyek)</option>
+                      <option value="X">Kelas X (Awal Perjumpaan)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">
+                    Keterangan / Caption Foto Bersama
+                  </label>
+                  <input
+                    type="text"
+                    value={mediaCaption}
+                    onChange={(e) => setMediaCaption(e.target.value)}
+                    placeholder="Mis. Foto Bersama Keluarga Besar UNO XII PPLG 1 di Lapangan MAKN Ende"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                    <Upload className="size-4" />
+                    <span>Pilih File Gambar dari Perangkat</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const webp = await compressImageToWebp(file, 1400, 0.84);
+                          setMediaImageUrl(webp);
+                        } catch {
+                          setFeedback("Gagal memproses berkas gambar.");
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={mediaUploading || !mediaImageUrl.trim()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Save className="size-4" />
+                    <span>
+                      {mediaUploading
+                        ? "Menyimpan ke Database..."
+                        : "Simpan & Tampilkan di 3D/2D"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-3 lg:col-span-5">
+                {mediaImageUrl ? (
+                  <div className="w-full space-y-2 text-center">
+                    <div className="relative mx-auto aspect-[16/10] max-h-44 overflow-hidden rounded-lg border border-border bg-black/80">
+                      <img
+                        src={mediaImageUrl}
+                        alt="Pratinjau Unggahan"
+                        referrerPolicy="no-referrer"
+                        className="size-full object-contain"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMediaImageUrl("")}
+                      className="text-[11px] font-semibold text-red-600 hover:underline"
+                    >
+                      Ganti / Hapus Pratinjau
+                    </button>
+                  </div>
+                ) : (
+                  <p className="px-4 py-8 text-center text-xs text-muted-foreground">
+                    Belum ada foto dipilih. Klik <strong>&ldquo;Pilih File Gambar dari Perangkat&rdquo;</strong> untuk mengunggah foto Hero 3D, Sampul Buku Kenangan, atau Foto Bersama.
+                  </p>
+                )}
+              </div>
+            </form>
+
+            {/* Daftar Foto Visual yang Sudah Tersimpan di Database */}
+            <div className="mt-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Koleksi Foto Hero 3D, Sampul Buku, Foto Bersama & Galeri Aktif ({data.moments.filter((m) => m.image_url && !m.image_url.startsWith("/api/moment-illustration")).length} Foto Asli)
+              </h3>
+              <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {data.moments
+                  .filter(
+                    (m) =>
+                      m.image_url &&
+                      !m.image_url.startsWith("/api/moment-illustration")
+                  )
+                  .slice(0, 8)
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center justify-between gap-2.5 rounded-xl border border-border bg-background p-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                          <img
+                            src={m.image_url}
+                            alt={m.caption}
+                            referrerPolicy="no-referrer"
+                            className="size-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="inline-block rounded bg-[var(--color-accent-warm)]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--color-accent-warm)]">
+                            {m.category} · {m.phase}
+                          </span>
+                          <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                            {m.caption}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteModeratedItem("moments", m.id)}
+                        className="shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-600 hover:bg-red-600 hover:text-white"
+                        title="Hapus Foto"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-5 h-fit">
+              <div className="mb-4 flex items-center gap-2.5">
+                <Clock className="h-5 w-5 text-[var(--color-chart-2)]" />
+                <h2 className="font-serif text-xl font-bold text-foreground">
+                  Pengaturan Hitung Mundur Kelulusan
+                </h2>
+              </div>
             <p className="mb-4 text-xs text-muted-foreground">
               Jika waktu kelulusan di masa depan, Beranda menampilkan hitung
               mundur. Jika sudah terlampaui, Beranda otomatis beralih ke mode{" "}
@@ -1493,6 +1953,7 @@ export function AdminClient() {
                 ))
               )}
             </div>
+          </div>
           </div>
         </div>
       )}

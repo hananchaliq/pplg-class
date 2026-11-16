@@ -9,6 +9,7 @@ import { Adaptive } from "@/components/three/adaptive";
 import { SITE_CONTENT } from "@/lib/content";
 import { useSadAudio } from "@/lib/sad-audio";
 import { notifyRouteTransitionStart, useLivePublicData } from "@/lib/use-public-data";
+import type { MomentRow } from "@/lib/types";
 
 const HeroDeskSceneHD = dynamic(
   () =>
@@ -21,7 +22,11 @@ const HeroDeskSceneHD = dynamic(
 /**
  * Ilustrasi SVG Berlapis "Meja Belajar Saat Senja" untuk Mobile & Mode Ringan (SimpleView)
  */
-function HeroDeskSimpleSVG() {
+function HeroDeskSimpleSVG({ heroMoment }: { heroMoment?: MomentRow | null }) {
+  const hasRealPhoto =
+    Boolean(heroMoment?.image_url) &&
+    !heroMoment!.image_url.startsWith("/api/moment-illustration");
+
   return (
     <div
       role="img"
@@ -81,11 +86,49 @@ function HeroDeskSimpleSVG() {
         <rect x="102" y="264" width="108" height="16" fill="#fbf6ec" />
         <rect x="105" y="238" width="105" height="22" rx="4" fill="#3b593f" />
 
-        {/* Polaroid Melayang */}
-        <g transform="translate(195, 84) rotate(-8)">
-          <rect width="74" height="88" rx="4" fill="#fbf6ec" />
-          <rect x="7" y="7" width="60" height="56" fill="#c86d3b" />
-          <circle cx="37" cy="35" r="12" fill="#fbf3dc" />
+        {/* Polaroid Melayang (Menampilkan Foto Unggahan Admin) */}
+        <g transform="translate(175, 74) rotate(-8)">
+          <rect width="88" height="104" rx="4" fill="#fbf6ec" />
+          {hasRealPhoto ? (
+            <image
+              href={heroMoment!.image_url}
+              x="7"
+              y="7"
+              width="74"
+              height="68"
+              preserveAspectRatio="xMidYMid slice"
+            />
+          ) : (
+            <>
+              <rect x="7" y="7" width="74" height="68" fill="#c86d3b" />
+              <circle cx="44" cy="40" r="14" fill="#fbf3dc" />
+            </>
+          )}
+        </g>
+
+        {/* Bingkai Foto Meja Kanan (Menampilkan Foto Unggahan Admin) */}
+        <g transform="translate(532, 206) rotate(4)">
+          <rect width="92" height="108" rx="5" fill="#3b2314" stroke="#c88d48" strokeWidth="3" />
+          <rect x="7" y="7" width="78" height="72" fill="#2c1d15" />
+          {hasRealPhoto ? (
+            <image
+              href={heroMoment!.image_url}
+              x="7"
+              y="7"
+              width="78"
+              height="72"
+              preserveAspectRatio="xMidYMid slice"
+            />
+          ) : (
+            <>
+              <rect x="7" y="7" width="78" height="72" fill="#2d6a6e" />
+              <circle cx="46" cy="42" r="14" fill="#fbf3dc" />
+            </>
+          )}
+          <rect x="7" y="81" width="78" height="19" fill="#fffdf7" />
+          <text x="46" y="94" textAnchor="middle" fill="#2b190d" fontSize="9" fontWeight="bold">
+            {(heroMoment?.caption || "XII PPLG 1").slice(0, 14)}
+          </text>
         </g>
 
         {/* Laptop Menyala di Tengah Meja (Anti-Silau & Jelas) */}
@@ -149,10 +192,12 @@ function HeroDeskSimpleSVG() {
 export function BerandaClient({
   graduationDate: initialGraduationDate,
   homeroomTeacherName: initialHomeroomTeacherName = "",
+  initialMoments = [],
   stats: initialStats,
 }: {
   graduationDate: string;
   homeroomTeacherName?: string;
+  initialMoments?: MomentRow[];
   stats: {
     activeStudents: number;
     movedStudents: number;
@@ -165,7 +210,8 @@ export function BerandaClient({
     totalThanks?: number;
   };
 }) {
-  const { data: liveData } = useLivePublicData();
+  const { data: liveData } = useLivePublicData({ moments: initialMoments });
+  const moments = liveData?.moments ?? initialMoments;
   const heroSectionRef = React.useRef<HTMLElement | null>(null);
   const [daysLeft, setDaysLeft] = React.useState<number | null>(null);
   const { playing, toggleAudio, currentTrack } = useSadAudio();
@@ -414,8 +460,26 @@ export function BerandaClient({
           className="lg:col-span-7"
         >
           <Adaptive
-            simple={<HeroDeskSimpleSVG />}
-            hd={<HeroDeskSceneHD />}
+            simple={
+              <HeroDeskSimpleSVG
+                heroMoment={
+                  moments.find(
+                    (m) =>
+                      m.category === "Foto Hero 3D" &&
+                      m.image_url &&
+                      !m.image_url.startsWith("/api/moment-illustration")
+                  ) ??
+                  moments.find(
+                    (m) =>
+                      m.image_url &&
+                      !m.image_url.startsWith("/api/moment-illustration")
+                  ) ??
+                  moments[0] ??
+                  null
+                }
+              />
+            }
+            hd={<HeroDeskSceneHD moments={moments} />}
           />
         </motion.div>
       </section>

@@ -9,9 +9,40 @@ import {
   createWoodTextures,
 } from "@/lib/procedural-textures";
 import { ensureScrollTrigger, gsap } from "@/lib/gsap-utils";
+import type { MomentRow } from "@/lib/types";
 
-export function HeroDeskSceneHD({ scrollTriggerEl }: { scrollTriggerEl?: HTMLElement | null }) {
+export function HeroDeskSceneHD({
+  scrollTriggerEl,
+  moments = [],
+}: {
+  scrollTriggerEl?: HTMLElement | null;
+  moments?: MomentRow[];
+}) {
   const scrollProgressRef = React.useRef(0);
+
+  const heroPhotos = React.useMemo(() => {
+    const withRealImg = moments.filter(
+      (m) =>
+        m.image_url &&
+        m.image_url.trim().length > 0 &&
+        !m.image_url.startsWith("/api/moment-illustration")
+    );
+    const heroSpecific = withRealImg.filter(
+      (m) =>
+        m.category === "Foto Hero 3D" ||
+        m.category === "Foto Sampul Buku" ||
+        m.category === "Foto Bersama Kelas"
+    );
+    return [...heroSpecific, ...withRealImg, ...moments].slice(0, 3);
+  }, [moments]);
+
+  const heroSceneKey = React.useMemo(
+    () =>
+      heroPhotos
+        .map((m) => `${m.id}:${(m.image_url || "").length}:${m.caption}`)
+        .join("|") || "default-hero",
+    [heroPhotos]
+  );
 
   React.useEffect(() => {
     ensureScrollTrigger();
@@ -42,6 +73,9 @@ export function HeroDeskSceneHD({ scrollTriggerEl }: { scrollTriggerEl?: HTMLEle
       camera: THREE.PerspectiveCamera;
       renderer: THREE.WebGLRenderer;
     }) => {
+      const m1 = heroPhotos[0];
+      const m2 = heroPhotos[1] ?? heroPhotos[0];
+
       const wood = createWoodTextures(renderer, "warm");
       const darkWood = createWoodTextures(renderer, "dark");
 
@@ -445,50 +479,100 @@ export function HeroDeskSceneHD({ scrollTriggerEl }: { scrollTriggerEl?: HTMLEle
       );
       scene.add(dustPoints);
 
-      // 8. Polaroid Melayang Pelan
+      // 8. Polaroid Melayang & Bingkai Foto Meja Kanan (Menampilkan Foto Unggahan Admin)
       const polTex1 = createPolaroidTexture(
         {
-          caption: "Senja di Lab RPL",
-          category: "Momen Kelas",
-          phase: "XII",
-          dateStr: "2026",
+          caption: m1?.caption || "Senja di Lab RPL",
+          category: m1?.category || "Momen Kelas",
+          phase: m1?.phase || "XII",
+          dateStr: m1?.taken_at || "2026",
           seed: 7,
+          imageUrl: m1?.image_url,
         },
         renderer
       );
       const floatingPol1 = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.56, 0.68),
-        new THREE.MeshStandardMaterial({
+        new THREE.PlaneGeometry(0.62, 0.76),
+        new THREE.MeshBasicMaterial({
           map: polTex1,
-          roughness: 0.7,
           side: THREE.DoubleSide,
+          toneMapped: false,
         })
       );
-      floatingPol1.position.set(-1.1, 1.05, -0.35);
+      floatingPol1.position.set(-1.12, 1.05, -0.35);
       floatingPol1.rotation.set(0.08, 0.28, 0.12);
       scene.add(floatingPol1);
 
       const polTex2 = createPolaroidTexture(
         {
-          caption: "Keluarga XII PPLG 1",
-          category: "Hari Terakhir",
-          phase: "XII",
-          dateStr: "2027",
+          caption: m2?.caption || "Keluarga XII PPLG 1",
+          category: m2?.category || "Hari Terakhir",
+          phase: m2?.phase || "XII",
+          dateStr: m2?.taken_at || "2027",
           seed: 19,
+          imageUrl: m2?.image_url,
         },
         renderer
       );
       const floatingPol2 = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.54, 0.66),
-        new THREE.MeshStandardMaterial({
+        new THREE.PlaneGeometry(0.62, 0.76),
+        new THREE.MeshBasicMaterial({
           map: polTex2,
-          roughness: 0.7,
           side: THREE.DoubleSide,
+          toneMapped: false,
         })
       );
       floatingPol2.position.set(1.05, 1.25, -0.45);
       floatingPol2.rotation.set(-0.05, -0.25, -0.1);
       scene.add(floatingPol2);
+
+      // Bingkai Foto Kayu Berdiri di Sisi Kanan Meja Belajar (Menampilkan Foto Unggahan Admin)
+      const deskFrameGroup = new THREE.Group();
+      deskFrameGroup.position.set(1.22, 0.015, 0.46);
+      deskFrameGroup.rotation.y = -0.38;
+      deskFrameGroup.rotation.x = -0.14;
+      addContactShadow(1.22, 0.46, 0.36, 0.24);
+
+      const frameOuter = new THREE.Mesh(
+        new THREE.BoxGeometry(0.74, 0.88, 0.045),
+        new THREE.MeshStandardMaterial({
+          map: darkWood.map,
+          bumpMap: darkWood.bumpMap,
+          bumpScale: 0.015,
+          roughness: 0.48,
+          metalness: 0.12,
+        })
+      );
+      frameOuter.position.y = 0.44;
+      frameOuter.castShadow = true;
+      deskFrameGroup.add(frameOuter);
+
+      const frameGoldTrim = new THREE.Mesh(
+        new THREE.BoxGeometry(0.68, 0.82, 0.048),
+        brassMat
+      );
+      frameGoldTrim.position.y = 0.44;
+      deskFrameGroup.add(frameGoldTrim);
+
+      const framePhotoMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.64, 0.78),
+        new THREE.MeshBasicMaterial({
+          map: polTex1,
+          toneMapped: false,
+        })
+      );
+      framePhotoMesh.position.set(0, 0.44, 0.026);
+      deskFrameGroup.add(framePhotoMesh);
+
+      const frameStand = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.52, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0x3b2314, roughness: 0.7 })
+      );
+      frameStand.position.set(0, 0.24, -0.14);
+      frameStand.rotation.x = 0.45;
+      deskFrameGroup.add(frameStand);
+
+      scene.add(deskFrameGroup);
 
       // Parallax Pointer
       const pointerTarget = { x: 0, y: 0 };
@@ -546,14 +630,17 @@ export function HeroDeskSceneHD({ scrollTriggerEl }: { scrollTriggerEl?: HTMLEle
           window.removeEventListener("pointermove", onPointerMove);
           screenTexOn.dispose();
           screenTexOff.dispose();
+          polTex1.dispose();
+          polTex2.dispose();
         },
       };
     },
-    []
+    [heroPhotos]
   );
 
   return (
     <SceneShell
+      key={heroSceneKey}
       onSetup={handleSetup}
       cameraPosition={[0, 1.55, 4.25]}
       cameraFov={42}
