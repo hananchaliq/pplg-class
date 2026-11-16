@@ -32,6 +32,85 @@ import {
 } from "@/lib/use-public-data";
 import type { StudentRow, WorkRow } from "@/lib/types";
 
+/**
+ * Menghasilkan URL Auto-Screenshot langsung dari Link Demo (seperti pratinjau deployment Vercel)
+ * tanpa perlu upload gambar manual.
+ */
+function getAutoDemoScreenshotUrl(
+  demoUrl?: string,
+  customImageUrl?: string
+): string {
+  const cleanCustom = (customImageUrl || "").trim();
+  if (cleanCustom.length > 0) {
+    return cleanCustom;
+  }
+  const cleanDemo = (demoUrl || "").trim();
+  if (
+    /^https?:\/\/.+/i.test(cleanDemo) &&
+    cleanDemo !== "https://" &&
+    cleanDemo !== "http://"
+  ) {
+    return `https://api.microlink.io/?url=${encodeURIComponent(
+      cleanDemo
+    )}&screenshot=true&meta=false&embed=screenshot.url`;
+  }
+  return "";
+}
+
+function getFallbackMshotsUrl(demoUrl?: string): string {
+  const cleanDemo = (demoUrl || "").trim();
+  if (
+    /^https?:\/\/.+/i.test(cleanDemo) &&
+    cleanDemo !== "https://" &&
+    cleanDemo !== "http://"
+  ) {
+    return `https://s0.wordpress.com/mshots/v1/${encodeURIComponent(
+      cleanDemo
+    )}?w=1200&h=750`;
+  }
+  return "";
+}
+
+function createProjectFallbackDataUri(work: {
+  title: string;
+  demo_url?: string;
+  tags?: string[];
+}): string {
+  const safeTitle = (work.title || "Proyek Siswa XII PPLG 1")
+    .replace(/[<>&"']/g, "")
+    .slice(0, 42);
+  const safeUrl = (work.demo_url || "https://xiipplg1-maknende.sch.id")
+    .replace(/[<>&"']/g, "")
+    .slice(0, 48);
+  const safeTag = (work.tags?.[0] || "Full-Stack Web").replace(/[<>&"']/g, "");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#172326"/>
+        <stop offset="55%" stop-color="#22383c"/>
+        <stop offset="100%" stop-color="#3c261a"/>
+      </linearGradient>
+    </defs>
+    <rect width="800" height="500" fill="url(#bg)"/>
+    <rect x="28" y="24" width="744" height="452" rx="14" fill="#101719" stroke="#476468" stroke-width="2"/>
+    <rect x="28" y="24" width="744" height="42" rx="14" fill="#1c282b"/>
+    <circle cx="54" cy="45" r="6" fill="#e06c58"/>
+    <circle cx="74" cy="45" r="6" fill="#e5b567"/>
+    <circle cx="94" cy="45" r="6" fill="#6ca87c"/>
+    <rect x="124" y="33" width="520" height="24" rx="6" fill="#101719"/>
+    <text x="140" y="49" font-family="monospace" font-size="13" fill="#9ec4c8">${safeUrl}</text>
+    <rect x="64" y="102" width="160" height="28" rx="6" fill="#c86d3b" fill-opacity="0.25" stroke="#c86d3b"/>
+    <text x="144" y="121" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="13" fill="#f3ca82">${safeTag}</text>
+    <text x="64" y="176" font-family="Georgia,serif" font-weight="bold" font-size="30" fill="#fbf6ec">${safeTitle}</text>
+    <rect x="64" y="210" width="420" height="12" rx="6" fill="#324b4f"/>
+    <rect x="64" y="234" width="340" height="12" rx="6" fill="#273b3e"/>
+    <rect x="64" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#355257"/>
+    <rect x="294" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#355257"/>
+    <rect x="524" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#c86d3b" stroke-opacity="0.6"/>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 function TiltWorkCard({
   work,
   student,
@@ -45,9 +124,36 @@ function TiltWorkCard({
   studentIndex?: number;
   enableTilt: boolean;
   index: number;
-  onPreviewImage?: (work: WorkRow) => void;
+  onPreviewImage?: (work: WorkRow, resolvedShotUrl: string) => void;
 }) {
   const cardRef = React.useRef<HTMLElement | null>(null);
+
+  const primaryShotUrl = React.useMemo(
+    () =>
+      getAutoDemoScreenshotUrl(work.demo_url, work.image_url) ||
+      createProjectFallbackDataUri(work),
+    [work]
+  );
+  const [imgSrc, setImgSrc] = React.useState(primaryShotUrl);
+  const fallbackStageRef = React.useRef(0);
+
+  React.useEffect(() => {
+    fallbackStageRef.current = 0;
+    setImgSrc(primaryShotUrl);
+  }, [primaryShotUrl]);
+
+  const handleImgError = () => {
+    if (fallbackStageRef.current === 0) {
+      fallbackStageRef.current = 1;
+      const mshot = getFallbackMshotsUrl(work.demo_url);
+      if (mshot && mshot !== imgSrc) {
+        setImgSrc(mshot);
+        return;
+      }
+    }
+    fallbackStageRef.current = 2;
+    setImgSrc(createProjectFallbackDataUri(work));
+  };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!enableTilt || !cardRef.current) return;
@@ -77,6 +183,15 @@ function TiltWorkCard({
     [student, studentIndex]
   );
 
+  let hostnameLabel = "live-demo.app";
+  try {
+    if (work.demo_url && /^https?:\/\//i.test(work.demo_url)) {
+      hostnameLabel = new URL(work.demo_url).hostname.replace(/^www\./, "");
+    }
+  } catch {
+    hostnameLabel = "live-demo.app";
+  }
+
   return (
     <motion.article
       ref={cardRef}
@@ -88,33 +203,35 @@ function TiltWorkCard({
       className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-[var(--color-accent-warm)]/60"
     >
       <div>
-        {/* Pratinjau Visual Karya Tersinkronisasi dengan Foto Kartu ID Siswa */}
+        {/* Pratinjau Screenshot Otomatis dari Link Demo (Gaya Vercel) + Kartu ID Siswa */}
         <div
           onClick={() => {
-            if (work.image_url && onPreviewImage) onPreviewImage(work);
+            if (onPreviewImage) onPreviewImage(work, imgSrc);
           }}
-          className={`relative flex h-44 flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-4 text-[#fbf6ec] ${
-            work.image_url ? "cursor-pointer" : ""
-          }`}
+          className={`relative flex h-52 cursor-pointer flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-3.5 text-[#fbf6ec]`}
         >
-          {work.image_url ? (
-            <img
-              src={work.image_url}
-              alt={work.title}
-              referrerPolicy="no-referrer"
-              className="pointer-events-none absolute inset-0 size-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : null}
+          {/* Bingkai Browser Mini & Auto-Screenshot */}
+          <img
+            src={imgSrc}
+            alt={`Pratinjau ${work.title}`}
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            onError={handleImgError}
+            className="pointer-events-none absolute inset-0 size-full object-cover object-top opacity-90 transition-transform duration-500 group-hover:scale-105"
+          />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -right-6 -bottom-6 size-28 rounded-full border border-white/15 transition-transform duration-500 group-hover:scale-125"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/55"
           />
+
           <div className="relative z-10 flex items-center justify-between gap-2 text-xs">
-            <span className="rounded bg-black/25 px-2 py-0.5 font-mono font-bold text-[#f3ca82]">
-              KARYA #{String(index + 1).padStart(2, "0")}
-            </span>
+            <div className="flex items-center gap-1.5 rounded-md border border-white/20 bg-black/55 px-2 py-1 font-mono text-[10px] font-semibold text-[#f3ca82] backdrop-blur-xs">
+              <span className="size-2 rounded-full bg-[#4ade80]" />
+              <span className="max-w-[115px] truncate">{hostnameLabel}</span>
+            </div>
+
             {/* Mini Badge Kartu ID Siswa */}
-            <div className="flex items-center gap-2 rounded-full border border-white/25 bg-black/30 py-1 pr-3 pl-1 backdrop-blur-2xs">
+            <div className="flex items-center gap-2 rounded-full border border-white/25 bg-black/55 py-1 pr-3 pl-1 backdrop-blur-xs">
               <div className="relative size-7 shrink-0 overflow-hidden rounded-full border border-[#f3ca82] bg-[#2b1f18]">
                 {lanyardCard?.image ? (
                   <img
@@ -125,12 +242,14 @@ function TiltWorkCard({
                   />
                 ) : (
                   <span className="flex size-full items-center justify-center font-serif text-[10px] font-bold text-[#fbf6ec]">
-                    {(student?.full_name || work.student_name || "S").slice(0, 2).toUpperCase()}
+                    {(student?.full_name || work.student_name || "S")
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </span>
                 )}
               </div>
               <div className="text-left leading-none">
-                <p className="max-w-[130px] truncate text-[11px] font-bold text-[#fbf6ec]">
+                <p className="max-w-[125px] truncate text-[11px] font-bold text-[#fbf6ec]">
                   {student?.full_name || work.student_name}
                 </p>
                 <p className="mt-0.5 text-[9px] text-[#ebd0a0]">
@@ -139,10 +258,19 @@ function TiltWorkCard({
               </div>
             </div>
           </div>
-          <div className="relative z-10">
-            <p className="font-serif text-lg font-bold leading-snug drop-shadow-2xs">
-              {work.title}
-            </p>
+
+          <div className="relative z-10 flex items-end justify-between gap-2">
+            <div>
+              <span className="inline-block rounded bg-black/45 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#f3ca82]">
+                KARYA #{String(index + 1).padStart(2, "0")}
+              </span>
+              <p className="mt-1 font-serif text-lg font-bold leading-snug text-white drop-shadow-xs">
+                {work.title}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-white/25 bg-black/50 px-2 py-1 text-[10px] font-semibold text-[#fbf6ec] opacity-90 group-hover:bg-[var(--color-accent-warm)]">
+              Klik Perbesar
+            </span>
           </div>
         </div>
 
@@ -217,7 +345,10 @@ export function KaryaClient({
 
   // State Form Kirim / Perbarui Karya
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [previewWork, setPreviewWork] = React.useState<WorkRow | null>(null);
+  const [previewWork, setPreviewWork] = React.useState<{
+    work: WorkRow;
+    shotUrl: string;
+  } | null>(null);
   const [studentId, setStudentId] = React.useState(
     students.find((s) => s.is_active)?.id ?? ""
   );
@@ -232,9 +363,15 @@ export function KaryaClient({
   const [workCropSource, setWorkCropSource] = React.useState<string | null>(
     null
   );
+  const [workCropOpen, setWorkCropOpen] = React.useState(false);
   const [classCode, setClassCode] = React.useState("XIIPPLG1");
   const [submitting, setSubmitting] = React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
+
+  const liveFormScreenshotUrl = React.useMemo(
+    () => getAutoDemoScreenshotUrl(demoUrl, workImageDataUrl || undefined),
+    [demoUrl, workImageDataUrl]
+  );
 
   const skillNodes = React.useMemo(
     () => computeClassSkillMap(students, works),
@@ -1045,6 +1182,9 @@ export function KaryaClient({
                 studentIndex={stuIdx >= 0 ? stuIdx : idx}
                 enableTilt={tier === "hd"}
                 index={(workPage - 1) * WORKS_PER_PAGE + idx}
+                onPreviewImage={(clickedWork, resolvedShotUrl) =>
+                  setPreviewWork({ work: clickedWork, shotUrl: resolvedShotUrl })
+                }
               />
             );
           })}
@@ -1059,6 +1199,96 @@ export function KaryaClient({
           itemLabel="karya siswa"
         />
       </section>
+
+      {/* Modal Pop-Up Pratinjau Screenshot Karya Ukuran Penuh */}
+      {previewWork && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Pratinjau Karya ${previewWork.work.title}`}
+          onClick={() => setPreviewWork(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-xs"
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative mx-auto flex max-h-[92vh] w-full max-w-4xl flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl"
+          >
+            <div className="mb-3 flex items-start justify-between gap-4 border-b border-border pb-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
+                  Tangkapan Layar Otomatis dari Link Demo · Karya {previewWork.work.student_name}
+                </p>
+                <h3 className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground">
+                  {previewWork.work.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup pratinjau karya"
+                onClick={() => setPreviewWork(null)}
+                className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40 shadow-md">
+              <img
+                src={previewWork.shotUrl}
+                alt={previewWork.work.title}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.src = createProjectFallbackDataUri(previewWork.work);
+                }}
+                className="block h-auto max-h-[56vh] w-auto max-w-full object-contain"
+              />
+            </div>
+
+            <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center">
+              <div className="max-w-2xl">
+                <p className="text-sm leading-relaxed text-foreground">
+                  {previewWork.work.description}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--color-accent-warm)]">
+                  {previewWork.work.tags.map((t, i) => (
+                    <React.Fragment key={t}>
+                      {i > 0 && <span aria-hidden="true">·</span>}
+                      <span>{t}</span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                {previewWork.work.demo_url && (
+                  <a
+                    href={previewWork.work.demo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90"
+                  >
+                    <span>Buka Website Demo</span>
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                )}
+                {previewWork.work.repo_url && (
+                  <a
+                    href={previewWork.work.repo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    <Code2 className="size-3.5" />
+                    <span>Kode Sumber</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Modal Daftarkan / Perbarui Karya */}
       {modalOpen && (
@@ -1196,13 +1426,14 @@ export function KaryaClient({
                     htmlFor="wk-demo"
                     className="block text-xs font-semibold text-foreground"
                   >
-                    Tautan Demo
+                    Tautan Demo (Otomatis Di-Screenshot)
                   </label>
                   <input
                     id="wk-demo"
                     type="url"
                     value={demoUrl}
                     onChange={(e) => setDemoUrl(e.target.value)}
+                    placeholder="https://proyek-kamu.vercel.app"
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
@@ -1221,6 +1452,88 @@ export function KaryaClient({
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
+              </div>
+
+              {/* Pratinjau Tangkapan Layar Otomatis dari Link Demo (Seperti Vercel) */}
+              <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">
+                      Pratinjau Foto Proyek (Otomatis dari Link Demo)
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Tidak perlu upload manual — foto karya otomatis diambil dari tautan demo di atas seperti di Vercel.
+                    </p>
+                  </div>
+                  <label className="inline-flex min-h-[34px] cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted">
+                    <Upload className="size-3" />
+                    <span>{workImageDataUrl ? "Ganti Foto Manual" : "Upload Manual (Opsional)"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        try {
+                          const raw = await readFileAsDataUrl(f);
+                          setWorkCropSource(raw);
+                          setWorkImageDataUrl(raw);
+                          setWorkCropOpen(true);
+                        } finally {
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {liveFormScreenshotUrl && (
+                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-background">
+                    <img
+                      src={liveFormScreenshotUrl}
+                      alt="Pratinjau otomatis proyek"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.src = createProjectFallbackDataUri({
+                          title: title || "Pratinjau Karya Siswa",
+                          demo_url: demoUrl,
+                          tags: tagsInput.split(","),
+                        });
+                      }}
+                      className="max-h-40 w-full object-cover object-top"
+                    />
+                    <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-[11px]">
+                      <span className="font-semibold text-[var(--color-chart-2)]">
+                        {workImageDataUrl
+                          ? "✓ Menggunakan foto hasil crop manual"
+                          : "✓ Auto-Screenshot aktif dari Tautan Demo"}
+                      </span>
+                      {workImageDataUrl && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setWorkCropOpen(true)}
+                            className="inline-flex items-center gap-1 font-semibold text-[var(--color-accent-warm)] hover:underline"
+                          >
+                            <Crop className="size-3" />
+                            <span>Atur Crop</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWorkImageDataUrl(null);
+                              setWorkCropSource(null);
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Gunakan Auto-SS
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {feedback && (
@@ -1253,6 +1566,16 @@ export function KaryaClient({
           </div>
         </div>
       )}
+
+      <ImageCropperModal
+        open={workCropOpen}
+        imageSrc={workCropSource || workImageDataUrl}
+        title="Atur Posisi & Ukuran Gambar Karya"
+        targetAspect={16 / 10}
+        targetLabel="16:10 Pratinjau Proyek"
+        onClose={() => setWorkCropOpen(false)}
+        onConfirm={(croppedWebp) => setWorkImageDataUrl(croppedWebp)}
+      />
     </div>
   );
 }

@@ -148,18 +148,25 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     );
   }, [listSourceMoments, momentPage, totalMomentPages]);
 
+  // Pisahkan tiap fase (X, XI, XII) sendiri-sendiri & tampung foto sebanyak apapun tanpa batas slice
   const phaseRackMoments = React.useMemo(() => {
-    const inPhase = filteredMoments.filter((m) => m.phase === activePhase);
-    const allRealUploaded = filteredMoments.filter((m) =>
-      isRealPhoto(m.image_url)
+    const inPhase = filteredMoments.filter(
+      (m) => String(m.phase || "XII").trim().toUpperCase() === activePhase
     );
-    const combined = [
+    return [
       ...inPhase.filter((m) => isRealPhoto(m.image_url)),
-      ...allRealUploaded.filter((m) => m.phase !== activePhase),
       ...inPhase.filter((m) => !isRealPhoto(m.image_url)),
     ];
-    return combined.slice(0, 14);
   }, [filteredMoments, activePhase, isRealPhoto]);
+
+  const simpleRackRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollSimpleRack = (dir: -1 | 1) => {
+    if (!simpleRackRef.current) return;
+    simpleRackRef.current.scrollBy({
+      left: dir * 480,
+      behavior: "smooth",
+    });
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -279,10 +286,13 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         </div>
       </div>
 
-      {/* Pilihan Timeline Fase (Kelas X, XI, XII) */}
+      {/* Pilihan Timeline Fase (Kelas X, XI, XII) — Masing-Masing Fase Terpisah */}
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {PHASES.map((p) => {
           const active = activePhase === p.id;
+          const countInPhase = filteredMoments.filter(
+            (m) => String(m.phase || "XII").trim().toUpperCase() === p.id
+          ).length;
           return (
             <motion.button
               key={p.id}
@@ -291,6 +301,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               whileTap={{ scale: 0.99 }}
               onClick={() => {
                 setActivePhase(p.id);
+                setSelected3DMoment(null);
                 setMomentPage(1);
               }}
               className={`flex flex-col items-start rounded-xl border p-4 text-left transition-colors ${
@@ -299,9 +310,14 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   : "border-border bg-card/40 hover:bg-card/80"
               }`}
             >
-              <span className="font-serif text-base font-bold text-foreground">
-                {p.label}
-              </span>
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="font-serif text-base font-bold text-foreground">
+                  {p.label}
+                </span>
+                <span className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground">
+                  {countInPhase} Foto
+                </span>
+              </div>
               <span className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 {p.subtitle}
               </span>
@@ -340,7 +356,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Rak Polaroid (Adaptive: 3D Verlet Catenary di Desktop HD, Deret Scroll-Snap Polaroid Kertas Foto Asli di Mobile Simple) */}
+      {/* Rak Polaroid (Adaptive: 3D Verlet Catenary di Desktop HD, Deret Gantungan Bisa Digeser Kiri-Kanan di Mobile Simple) */}
       {!showAllGrid && (
         <div className="mt-6">
           <Adaptive
@@ -349,25 +365,48 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 aria-label={`Deretan Polaroid Fase Kelas ${activePhase}`}
                 className="rounded-2xl border border-border bg-card/70 p-5"
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="font-serif text-lg font-bold text-foreground">
-                    Jemuran Kertas Foto Kelas {activePhase} ({phaseRackMoments.length} Lembar)
-                  </h2>
-                  <span className="font-hand text-base text-muted-foreground">
-                    Geser ke samping · Ketuk foto untuk perbesar
-                  </span>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-serif text-lg font-bold text-foreground">
+                      Gantungan Kertas Foto Kelas {activePhase} ({phaseRackMoments.length} Lembar)
+                    </h2>
+                    <span className="font-hand text-base text-muted-foreground">
+                      Geser ke kiri & kanan sepanjang tali · Ketuk foto untuk mode baca pop-up jelas
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollSimpleRack(-1)}
+                      className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <ChevronLeft className="size-4" />
+                      <span>Geser Kiri</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollSimpleRack(1)}
+                      className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <span>Geser Kanan</span>
+                      <ChevronRight className="size-4" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Tali Jemuran Kayu di Atas Polaroid Mobile */}
+                {/* Tali Jemuran Kayu di Atas Polaroid Mobile (Jarak Foto Agak Rapat & Bisa Digeser Sepanjang Foto) */}
                 <div className="relative pt-3">
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute top-2 right-0 left-0 h-1.5 rounded-full bg-gradient-to-r from-[#8d6b48] via-[#c8a97e] to-[#8d6b48] shadow-sm"
                   />
-                  <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-5 pt-4">
+                  <div
+                    ref={simpleRackRef}
+                    className="flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-5 pt-4 scroll-smooth"
+                  >
                     {phaseRackMoments.map((m, idx) => {
                       const tiltClass =
-                        idx % 2 === 0 ? "-rotate-2" : "rotate-2";
+                        idx % 2 === 0 ? "-rotate-1" : "rotate-1";
                       const globalIdx = filteredMoments.findIndex(
                         (fm) => fm.id === m.id
                       );
@@ -375,12 +414,12 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         <motion.button
                           key={m.id}
                           type="button"
-                          whileHover={{ scale: 1.04, rotate: 0, y: -4 }}
+                          whileHover={{ scale: 1.03, rotate: 0, y: -4 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() =>
                             setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)
                           }
-                          className={`real-photo-paper relative w-[242px] shrink-0 snap-center rounded-md p-3 pb-5 pt-4 text-left transition-shadow ${tiltClass}`}
+                          className={`real-photo-paper relative w-[212px] shrink-0 snap-start rounded-md p-2.5 pb-4 pt-3.5 text-left shadow-md transition-shadow [transform:perspective(680px)_rotateX(2deg)] ${tiltClass}`}
                         >
                           {/* Jepitan Kayu di Tepi Atas */}
                           <span
@@ -396,10 +435,10 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                               className="size-full object-cover"
                             />
                           </div>
-                          <p className="mt-3.5 line-clamp-2 font-hand text-2xl font-bold leading-snug text-foreground">
+                          <p className="mt-2.5 line-clamp-2 font-hand text-xl font-bold leading-snug text-foreground">
                             {m.caption}
                           </p>
-                          <div className="mt-1.5 flex items-center justify-between font-hand text-base font-bold text-muted-foreground">
+                          <div className="mt-1 flex items-center justify-between font-hand text-sm font-bold text-muted-foreground">
                             <span>~ {m.category}</span>
                             <span>{m.taken_at}</span>
                           </div>
@@ -417,26 +456,38 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   activePhase={activePhase}
                   selectedMoment={selected3DMoment}
                   onSelectMoment={setSelected3DMoment}
+                  onOpenLightbox={(m) => {
+                    const idx = filteredMoments.findIndex((x) => x.id === m.id);
+                    if (idx >= 0) setLightboxIndex(idx);
+                  }}
                 />
                 {selected3DMoment && (
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="real-photo-paper flex flex-col items-start justify-between gap-3 rounded-xl p-4 sm:flex-row sm:items-center"
+                    className="real-photo-paper flex flex-col items-start justify-between gap-4 rounded-xl p-4 sm:flex-row sm:items-center"
                   >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 font-hand text-lg font-bold text-muted-foreground">
-                        <span>Fase Kelas {selected3DMoment.phase}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{selected3DMoment.category}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{selected3DMoment.taken_at}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>Ditulis oleh {selected3DMoment.uploader_name}</span>
+                    <div className="flex items-center gap-3.5">
+                      <img
+                        src={selected3DMoment.image_url}
+                        alt={selected3DMoment.caption}
+                        referrerPolicy="no-referrer"
+                        className="h-16 w-20 shrink-0 rounded-md border border-[#cbb799] object-cover shadow-xs"
+                      />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 font-hand text-lg font-bold text-muted-foreground">
+                          <span>Fase Kelas {selected3DMoment.phase}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>{selected3DMoment.category}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>{selected3DMoment.taken_at}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>Ditulis oleh {selected3DMoment.uploader_name}</span>
+                        </div>
+                        <p className="mt-0.5 font-hand text-2xl sm:text-3xl font-bold text-foreground">
+                          &ldquo;{selected3DMoment.caption}&rdquo;
+                        </p>
                       </div>
-                      <p className="mt-1 font-hand text-3xl font-bold text-foreground">
-                        &ldquo;{selected3DMoment.caption}&rdquo;
-                      </p>
                     </div>
                     <motion.button
                       type="button"
@@ -450,7 +501,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                       }}
                       className="min-h-[40px] rounded-lg border border-border bg-background px-3.5 py-2 font-hand text-lg font-bold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
                     >
-                      Lihat Lembar Foto Penuh →
+                      Buka Mode Baca Pop-Up Penuh →
                     </motion.button>
                   </motion.div>
                 )}
@@ -473,7 +524,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 : `Album Kertas Foto Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
             </h2>
             <p className="font-hand text-lg text-muted-foreground">
-              Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk melihat catatan tulisan tangan di baliknya.
+              Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk membuka pop-up foto dan cerita lengkap.
             </p>
           </div>
           <motion.button
@@ -492,7 +543,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           </motion.button>
         </div>
 
-        <div className="mt-7 grid grid-cols-1 gap-7 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {pagedMoments.map((m, idx) => {
             const globalIdx = filteredMoments.findIndex((x) => x.id === m.id);
             const naturalRot = ((idx % 4) - 1.5) * 1.1;
@@ -550,25 +601,27 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         />
       </section>
 
-      {/* Modal Lightbox Bervisual Kertas Foto Fisik Asli (Sesuai Ukuran Foto Asli, Tanpa Pinggiran Hitam) */}
+      {/* Modal Lightbox Pop-Up Kertas Foto 3D (Foto & Teks Sama-Sama Terlihat Jelas dan Mudah Dibaca) */}
       {currentLightboxMoment && lightboxIndex !== null && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Peninjau Lembar Kertas Foto Ukuran Penuh"
           onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-6 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-xs"
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, scale: 0.94, rotate: -1 }}
+            initial={{ opacity: 0, scale: 0.94, rotate: -0.5 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="real-photo-paper relative mx-auto flex max-h-[92vh] w-fit max-w-[95vw] sm:max-w-4xl flex-col overflow-y-auto rounded-xl p-3.5 pb-5 text-card-foreground shadow-2xl sm:p-5 sm:pb-6"
+            className="real-photo-paper relative mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl p-4 pb-5 text-card-foreground shadow-2xl sm:p-6"
           >
-            <div className="mb-3 flex items-center justify-between gap-4">
+            <div className="mb-3 flex items-center justify-between gap-4 border-b border-dashed border-[#cbb799]/80 pb-2.5 dark:border-[#544030]">
               <div className="flex flex-wrap items-center gap-2 font-hand text-xl font-bold text-muted-foreground">
-                <span>Fase Kelas {currentLightboxMoment.phase}</span>
+                <span className="rounded-md bg-[var(--color-accent-warm)]/15 px-2.5 py-0.5 text-foreground">
+                  Fase Kelas {currentLightboxMoment.phase}
+                </span>
                 <span aria-hidden="true">·</span>
                 <span>{currentLightboxMoment.category}</span>
                 <span aria-hidden="true">·</span>
@@ -580,63 +633,66 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 whileTap={{ scale: 0.92 }}
                 aria-label="Tutup foto"
                 onClick={() => setLightboxIndex(null)}
-                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background/80 text-foreground hover:bg-muted"
+                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background/90 text-foreground hover:bg-muted"
               >
                 <X className="size-4" />
               </motion.button>
             </div>
 
-            {/* Bingkai Foto Mengikuti Ukuran & Proporsi Asli Gambar Tanpa Pinggiran Hitam */}
-            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-sm border-2 border-[#cbb799] bg-[#f7efe2] shadow-sm dark:border-[#544030] dark:bg-[#231912]">
+            {/* Bingkai Foto Proporsional agar Ruang Teks di Bawahnya Selalu Terlihat Jelas Tanpa Kedekatan Berlebih */}
+            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-md border-2 border-[#cbb799] bg-[#f7efe2] shadow-md dark:border-[#544030] dark:bg-[#231912]">
               <img
                 src={currentLightboxMoment.image_url}
                 alt={currentLightboxMoment.caption}
                 referrerPolicy="no-referrer"
-                className="block h-auto max-h-[68vh] w-auto max-w-full object-contain"
+                className="block h-auto max-h-[52vh] sm:max-h-[56vh] w-auto max-w-full object-contain"
               />
             </div>
 
-            <div className="mt-4 flex flex-col justify-between gap-4 border-t border-dashed border-[#cbb799] pt-3.5 sm:flex-row sm:items-center dark:border-[#544030]">
-              <div className="max-w-xl">
-                <p className="font-hand text-3xl font-bold leading-snug text-foreground">
-                  &ldquo;{currentLightboxMoment.caption}&rdquo;
-                </p>
-                <p className="mt-1 font-hand text-lg font-bold text-muted-foreground">
+            {/* Area Teks Cerita & Keterangan yang Jelas Terbaca */}
+            <div className="mt-4 rounded-xl border border-[#cbb799]/80 bg-background/75 p-4 shadow-2xs dark:border-[#544030]">
+              <p className="font-hand text-2xl sm:text-3xl font-bold leading-snug text-foreground break-words">
+                &ldquo;{currentLightboxMoment.caption}&rdquo;
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-border pt-2.5">
+                <p className="font-hand text-lg font-bold text-muted-foreground">
                   ~ Diabadikan oleh {currentLightboxMoment.uploader_name} · Lembar Foto{" "}
                   {lightboxIndex + 1} dari {filteredMoments.length} ~
                 </p>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.06, x: -2 }}
-                  whileTap={{ scale: 0.92 }}
-                  aria-label="Foto sebelumnya"
-                  onClick={() =>
-                    setLightboxIndex(
-                      (lightboxIndex - 1 + filteredMoments.length) %
-                        filteredMoments.length
-                    )
-                  }
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
-                >
-                  <ChevronLeft className="size-5" />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.06, x: 2 }}
-                  whileTap={{ scale: 0.92 }}
-                  aria-label="Foto berikutnya"
-                  onClick={() =>
-                    setLightboxIndex(
-                      (lightboxIndex + 1) % filteredMoments.length
-                    )
-                  }
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
-                >
-                  <ChevronRight className="size-5" />
-                </motion.button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.04, x: -2 }}
+                    whileTap={{ scale: 0.94 }}
+                    aria-label="Foto sebelumnya"
+                    onClick={() =>
+                      setLightboxIndex(
+                        (lightboxIndex - 1 + filteredMoments.length) %
+                          filteredMoments.length
+                      )
+                    }
+                    className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    <ChevronLeft className="size-4" />
+                    <span>Sebelumnya</span>
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.04, x: 2 }}
+                    whileTap={{ scale: 0.94 }}
+                    aria-label="Foto berikutnya"
+                    onClick={() =>
+                      setLightboxIndex(
+                        (lightboxIndex + 1) % filteredMoments.length
+                      )
+                    }
+                    className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    <span>Berikutnya</span>
+                    <ChevronRight className="size-4" />
+                  </motion.button>
+                </div>
               </div>
             </div>
           </motion.div>

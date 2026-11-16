@@ -79,14 +79,16 @@ export async function POST(req: NextRequest) {
       (payload.type === "moment" || payload.type === "work") &&
       payload.imageDataUrl
     ) {
-      const validMime = /^data:image\/(webp|jpeg|jpg|png);base64,/i.test(
+      const isDataImage = /^data:image\/(webp|jpeg|jpg|png);base64,/i.test(
         payload.imageDataUrl
       );
-      if (!validMime) {
+      const isHttpsUrl =
+        payload.type === "work" && /^https?:\/\//i.test(payload.imageDataUrl);
+      if (!isDataImage && !isHttpsUrl) {
         return NextResponse.json(
           {
             ok: false,
-            error: "Format gambar harus berupa WebP, JPEG, atau PNG.",
+            error: "Format gambar harus berupa WebP, JPEG, PNG, atau tautan pratinjau valid.",
           },
           { status: 400 }
         );
@@ -104,13 +106,23 @@ export async function POST(req: NextRequest) {
 
     const created = await createPendingSubmission(payload);
 
-    if (payload.type === "work" && payload.imageDataUrl && created?.id) {
-      const supabase = getSupabaseAdminClient();
-      if (supabase) {
-        await supabase
-          .from("works")
-          .update({ image_url: payload.imageDataUrl })
-          .eq("id", created.id);
+    if (payload.type === "work" && created?.id) {
+      const autoScreenshotUrl =
+        payload.imageDataUrl ||
+        (payload.demoUrl && /^https?:\/\//i.test(payload.demoUrl.trim())
+          ? `https://api.microlink.io/?url=${encodeURIComponent(
+              payload.demoUrl.trim()
+            )}&screenshot=true&meta=false&embed=screenshot.url`
+          : undefined);
+
+      if (autoScreenshotUrl) {
+        const supabase = getSupabaseAdminClient();
+        if (supabase) {
+          await supabase
+            .from("works")
+            .update({ image_url: autoScreenshotUrl })
+            .eq("id", created.id);
+        }
       }
     }
 
