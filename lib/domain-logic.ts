@@ -335,6 +335,7 @@ export const SubmitPayloadSchema = z.discriminatedUnion("type", [
     tags: z.array(z.string().min(1).max(24)).min(1).max(5),
     demoUrl: z.string().url().optional().or(z.literal("")),
     repoUrl: z.string().url().optional().or(z.literal("")),
+    imageDataUrl: z.string().optional(),
   }),
 ]);
 

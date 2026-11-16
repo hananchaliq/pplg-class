@@ -13,6 +13,8 @@ import {
   Radar,
   Users,
   Layers,
+  Upload,
+  Crop,
 } from "lucide-react";
 import {
   computeClassSkillMap,
@@ -20,6 +22,10 @@ import {
 } from "@/lib/domain-logic";
 import { useVisualTier } from "@/lib/visual-tier";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import {
+  ImageCropperModal,
+  readFileAsDataUrl,
+} from "@/components/ui/image-cropper-modal";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
@@ -32,12 +38,14 @@ function TiltWorkCard({
   studentIndex = 0,
   enableTilt,
   index,
+  onPreviewImage,
 }: {
   work: WorkRow;
   student?: StudentRow;
   studentIndex?: number;
   enableTilt: boolean;
   index: number;
+  onPreviewImage?: (work: WorkRow) => void;
 }) {
   const cardRef = React.useRef<HTMLElement | null>(null);
 
@@ -82,14 +90,19 @@ function TiltWorkCard({
       <div>
         {/* Pratinjau Visual Karya Tersinkronisasi dengan Foto Kartu ID Siswa */}
         <div
-          className={`relative flex h-44 flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-4 text-[#fbf6ec]`}
+          onClick={() => {
+            if (work.image_url && onPreviewImage) onPreviewImage(work);
+          }}
+          className={`relative flex h-44 flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-4 text-[#fbf6ec] ${
+            work.image_url ? "cursor-pointer" : ""
+          }`}
         >
           {work.image_url ? (
             <img
               src={work.image_url}
               alt={work.title}
               referrerPolicy="no-referrer"
-              className="pointer-events-none absolute inset-0 size-full object-cover opacity-35 transition-transform duration-500 group-hover:scale-105"
+              className="pointer-events-none absolute inset-0 size-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
             />
           ) : null}
           <div
@@ -204,6 +217,7 @@ export function KaryaClient({
 
   // State Form Kirim / Perbarui Karya
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [previewWork, setPreviewWork] = React.useState<WorkRow | null>(null);
   const [studentId, setStudentId] = React.useState(
     students.find((s) => s.is_active)?.id ?? ""
   );
@@ -212,6 +226,12 @@ export function KaryaClient({
   const [tagsInput, setTagsInput] = React.useState("Frontend, React, UI/UX");
   const [demoUrl, setDemoUrl] = React.useState("https://");
   const [repoUrl, setRepoUrl] = React.useState("https://github.com/");
+  const [workImageDataUrl, setWorkImageDataUrl] = React.useState<string | null>(
+    null
+  );
+  const [workCropSource, setWorkCropSource] = React.useState<string | null>(
+    null
+  );
   const [classCode, setClassCode] = React.useState("XIIPPLG1");
   const [submitting, setSubmitting] = React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
@@ -277,6 +297,7 @@ export function KaryaClient({
           tags: parsedTags.length ? parsedTags : ["PPLG"],
           demoUrl: demoUrl.startsWith("http") ? demoUrl : "",
           repoUrl: repoUrl.startsWith("http") ? repoUrl : "",
+          imageDataUrl: workImageDataUrl || undefined,
           classCode,
           honeypot: "",
         }),
@@ -288,6 +309,8 @@ export function KaryaClient({
       if (json.ok) {
         setTitle("");
         setDescription("");
+        setWorkImageDataUrl(null);
+        setWorkCropSource(null);
         notifyPublicDataUpdated();
         void refresh();
       }

@@ -100,13 +100,85 @@ export function useLivePublicData(
     return sharedClientData;
   });
 
-  // Sinkronkan secara instan bila prop dari Server Component berubah setelah navigasi
+  const initStudents = initialData?.students;
+  const initTeachers = initialData?.teachers;
+  const initMoments = initialData?.moments;
+  const initDreams = initialData?.dreams;
+  const initMemories = initialData?.memoryEntries;
+  const initCapsules = initialData?.timeCapsules;
+  const initThanks = initialData?.thanksList;
+  const initWorks = initialData?.works;
+  const initPolls = initialData?.polls;
+  const initSettings = initialData?.settings;
+
+  // Sinkronkan secara instan hanya bila referensi data dari Server Component benar-benar berubah
   React.useEffect(() => {
-    if (initialData) {
-      sharedClientData = { ...sharedClientData, ...initialData };
-      setData((prev) => ({ ...prev, ...initialData }));
+    const nextPatch: Partial<PublicAppDataPayload> = {};
+    let hasChange = false;
+
+    if (initStudents !== undefined && sharedClientData.students !== initStudents) {
+      nextPatch.students = initStudents;
+      hasChange = true;
     }
-  }, [initialData]);
+    if (initTeachers !== undefined && sharedClientData.teachers !== initTeachers) {
+      nextPatch.teachers = initTeachers;
+      hasChange = true;
+    }
+    if (initMoments !== undefined && sharedClientData.moments !== initMoments) {
+      nextPatch.moments = initMoments;
+      hasChange = true;
+    }
+    if (initDreams !== undefined && sharedClientData.dreams !== initDreams) {
+      nextPatch.dreams = initDreams;
+      hasChange = true;
+    }
+    if (
+      initMemories !== undefined &&
+      sharedClientData.memoryEntries !== initMemories
+    ) {
+      nextPatch.memoryEntries = initMemories;
+      hasChange = true;
+    }
+    if (
+      initCapsules !== undefined &&
+      sharedClientData.timeCapsules !== initCapsules
+    ) {
+      nextPatch.timeCapsules = initCapsules;
+      hasChange = true;
+    }
+    if (initThanks !== undefined && sharedClientData.thanksList !== initThanks) {
+      nextPatch.thanksList = initThanks;
+      hasChange = true;
+    }
+    if (initWorks !== undefined && sharedClientData.works !== initWorks) {
+      nextPatch.works = initWorks;
+      hasChange = true;
+    }
+    if (initPolls !== undefined && sharedClientData.polls !== initPolls) {
+      nextPatch.polls = initPolls;
+      hasChange = true;
+    }
+    if (initSettings !== undefined && sharedClientData.settings !== initSettings) {
+      nextPatch.settings = initSettings;
+      hasChange = true;
+    }
+
+    if (hasChange) {
+      sharedClientData = { ...sharedClientData, ...nextPatch };
+      setData((prev) => ({ ...prev, ...nextPatch }));
+    }
+  }, [
+    initStudents,
+    initTeachers,
+    initMoments,
+    initDreams,
+    initMemories,
+    initCapsules,
+    initThanks,
+    initWorks,
+    initPolls,
+    initSettings,
+  ]);
 
   const refresh = React.useCallback(async () => {
     try {

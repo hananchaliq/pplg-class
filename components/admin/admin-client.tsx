@@ -20,8 +20,16 @@ import {
   Upload,
   X,
   Image as ImageIcon,
+  Crop,
+  BookOpen,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import {
+  ImageCropperModal,
+  readFileAsDataUrl,
+} from "@/components/ui/image-cropper-modal";
 import { DbConnectionGuard } from "@/components/layout/db-connection-guard";
 import { notifyPublicDataUpdated } from "@/lib/use-public-data";
 import {
@@ -42,38 +50,6 @@ import type {
   WorkRow,
 } from "@/lib/types";
 import type { ModeratableTable } from "@/lib/db";
-
-async function compressImageToWebp(
-  file: File,
-  maxSide = 1200,
-  quality = 0.82
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Gagal membaca berkas gambar"));
-    reader.onload = () => {
-      const img = new window.Image();
-      img.onerror = () => reject(new Error("Berkas bukan gambar yang valid"));
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const width = Math.max(1, Math.round(img.width * scale));
-        const height = Math.max(1, Math.round(img.height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Kanvas kompresi tidak tersedia"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/webp", quality));
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 interface RawTimeCapsuleAdmin {
   id: string;
@@ -146,6 +122,15 @@ function writeStoredAdminToken(token: string) {
   }
 }
 
+interface AdminCropConfig {
+  imageSrc: string;
+  title: string;
+  targetAspect: number;
+  targetLabel: string;
+  showCircleGuide?: boolean;
+  onDone: (croppedWebp: string) => void;
+}
+
 export function AdminClient() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -163,6 +148,14 @@ export function AdminClient() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // State Crop Mandiri Terpadu & Pop-up Pratinjau Ukuran Asli
+  const [cropConfig, setCropConfig] = useState<AdminCropConfig | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{
+    url: string;
+    caption: string;
+    badge?: string;
+  } | null>(null);
 
   // Paginasi Prev/Next di Dasbor Admin agar tidak capek scroll
   const [queuePage, setQueuePage] = useState(1);
@@ -188,13 +181,20 @@ export function AdminClient() {
   const [pollQuestionInput, setPollQuestionInput] = useState("");
   const [pollOptionsInput, setPollOptionsInput] = useState("");
 
-  // State Unggah Media Visual 3D (Hero Kanan, Sampul Buku Kenangan, Foto Bersama, Galeri)
-  const [mediaTarget, setMediaTarget] = useState<
-    | "Foto Hero 3D"
-    | "Foto Sampul Buku"
-    | "Foto Bersama Kelas"
-    | "Kebersamaan Kelas"
-  >("Foto Hero 3D");
+  // State Pemisahan 3 Seksi Media di Pengaturan Admin:
+  // 1) Hero 3D (Upload Sendiri) | 2) Buku Kenangan (Pilih dari yang Ada atau Upload Ulang) | 3) Galeri Momen (Sendiri)
+  const [mediaSectionTab, setMediaSectionTab] = useState<
+    "hero" | "kenangan" | "galeri"
+  >("hero");
+  const [yearbookSlot, setYearbookSlot] = useState<
+    "Foto Sampul Buku" | "Foto Bersama Kelas"
+  >("Foto Sampul Buku");
+  const [yearbookMode, setYearbookMode] = useState<"existing" | "upload">(
+    "existing"
+  );
+  const [galleryCategory, setGalleryCategory] = useState<string>(
+    "Kebersamaan Kelas"
+  );
   const [mediaPhase, setMediaPhase] = useState<MomentPhase>("XII");
   const [mediaCaption, setMediaCaption] = useState("");
   const [mediaImageUrl, setMediaImageUrl] = useState("");
@@ -579,31 +579,23 @@ export function AdminClient() {
     }
   };
 
-  const handleUploadVisualMedia = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mediaImageUrl.trim()) {
-      setFeedback("Pilih berkas foto dari perangkat atau masukkan URL gambar terlebih dahulu.");
-      return;
-    }
+  const saveVisualMoment = async (params: {
+    category: string;
+    phase: MomentPhase;
+    caption: string;
+    imageUrl: string;
+    replaceExistingCategory?: boolean;
+  }) => {
     setMediaUploading(true);
     try {
-      const defaultCaption =
-        mediaTarget === "Foto Hero 3D"
-          ? "Kenangan Meja Belajar 3D XII PPLG 1 MAKN Ende"
-          : mediaTarget === "Foto Sampul Buku"
-            ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
-            : mediaTarget === "Foto Bersama Kelas"
-              ? "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende"
-              : "Momen Kenangan XII PPLG 1";
-
       const res = await adminPost({
         action: "upsert_moment",
-        category: mediaTarget,
-        phase: mediaPhase,
-        caption: mediaCaption.trim() || defaultCaption,
+        category: params.category,
+        phase: params.phase,
+        caption: params.caption,
         uploaderName: "Admin XII PPLG 1",
-        imageUrl: mediaImageUrl.trim(),
-        replaceExistingCategory: mediaTarget === "Foto Sampul Buku",
+        imageUrl: params.imageUrl,
+        replaceExistingCategory: params.replaceExistingCategory,
       });
       const json = await res.json();
       if (json.ok && json.data) {
@@ -612,7 +604,7 @@ export function AdminClient() {
         setMediaImageUrl("");
         notifyPublicDataUpdated();
         setFeedback(
-          `Foto "${mediaTarget}" berhasil diunggah ke database dan langsung tampil di model 3D & halaman publik!`
+          `Foto "${params.category}" berhasil disimpan ke database dan langsung tampil di model 3D & halaman publik!`
         );
       } else {
         setFeedback(json.error || "Gagal menyimpan foto ke database.");
@@ -622,6 +614,55 @@ export function AdminClient() {
     } finally {
       setMediaUploading(false);
     }
+  };
+
+  const handleUploadVisualMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mediaImageUrl.trim()) {
+      setFeedback("Pilih berkas foto dari HP/Desktop terlebih dahulu.");
+      return;
+    }
+    const targetCategory =
+      mediaSectionTab === "hero"
+        ? "Foto Hero 3D"
+        : mediaSectionTab === "kenangan"
+          ? yearbookSlot
+          : galleryCategory;
+
+    const defaultCaption =
+      targetCategory === "Foto Hero 3D"
+        ? "Kenangan Meja Belajar 3D XII PPLG 1 MAKN Ende"
+        : targetCategory === "Foto Sampul Buku"
+          ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
+          : targetCategory === "Foto Bersama Kelas"
+            ? "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende"
+            : "Momen Kenangan XII PPLG 1";
+
+    await saveVisualMoment({
+      category: targetCategory,
+      phase: mediaPhase,
+      caption: mediaCaption.trim() || defaultCaption,
+      imageUrl: mediaImageUrl.trim(),
+      replaceExistingCategory: targetCategory === "Foto Sampul Buku",
+    });
+  };
+
+  const handleAssignExistingPhotoToYearbook = async (
+    momentItem: MomentRow,
+    slot: "Foto Sampul Buku" | "Foto Bersama Kelas",
+    customImageUrl?: string
+  ) => {
+    const defaultCaption =
+      slot === "Foto Sampul Buku"
+        ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
+        : "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende";
+    await saveVisualMoment({
+      category: slot,
+      phase: momentItem.phase || "XII",
+      caption: mediaCaption.trim() || momentItem.caption || defaultCaption,
+      imageUrl: customImageUrl || momentItem.image_url,
+      replaceExistingCategory: slot === "Foto Sampul Buku",
+    });
   };
 
   const handleDeletePoll = async (id: string) => {
@@ -1152,10 +1193,23 @@ export function AdminClient() {
                 </div>
                 <div className="sm:col-span-2 rounded-xl border border-border bg-background/70 p-4">
                   <label className="mb-2 block text-xs font-semibold text-foreground">
-                    Foto Kartu ID Siswa (Otomatis Sinkron ke ID Card 3D/2D, Project & Buku Kenangan)
+                    Foto Kartu ID Siswa (Dari HP atau Desktop · Otomatis Crop 1:1 & Sinkron ke ID Card 3D/2D, Project & Buku Kenangan)
                   </label>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs">
+                    <div
+                      onClick={() => {
+                        if (editingStudent.photo_url) {
+                          setLightboxPhoto({
+                            url: editingStudent.photo_url,
+                            caption: editingStudent.full_name || "Foto ID Card Siswa",
+                            badge: "Foto ID Card Siswa",
+                          });
+                        }
+                      }}
+                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs ${
+                        editingStudent.photo_url ? "cursor-pointer" : ""
+                      }`}
+                    >
                       {editingStudent.photo_url ? (
                         <img
                           src={editingStudent.photo_url}
@@ -1171,24 +1225,38 @@ export function AdminClient() {
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
                           <Upload className="size-3.5" />
-                          <span>Unggah Foto dari Perangkat</span>
+                          <span>Pilih & Crop Foto (HP / Desktop)</span>
                           <input
                             type="file"
-                            accept="image/jpeg,image/png,image/webp"
+                            accept="image/*"
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
+                              e.target.value = "";
                               if (!file) return;
                               try {
-                                const webp = await compressImageToWebp(file, 960, 0.84);
-                                setEditingStudent({
-                                  ...editingStudent,
-                                  photo_url: webp,
-                                  show_photo: true,
+                                const rawUrl = await readFileAsDataUrl(file);
+                                setCropConfig({
+                                  imageSrc: rawUrl,
+                                  title: `Atur Posisi & Crop Foto ID Card: ${editingStudent.full_name || "Siswa"}`,
+                                  targetAspect: 1,
+                                  targetLabel: "1:1 Foto ID Card Siswa",
+                                  showCircleGuide: true,
+                                  onDone: (croppedWebp) => {
+                                    setEditingStudent((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            photo_url: croppedWebp,
+                                            show_photo: true,
+                                          }
+                                        : prev
+                                    );
+                                    setFeedback(
+                                      "Foto siswa sudah di-crop. Klik 'Simpan Siswa' di bawah untuk menerapkan ke Kartu ID."
+                                    );
+                                  },
                                 });
-                                setFeedback(
-                                  "Foto siswa siap disimpan. Klik 'Simpan Siswa' di bawah untuk menerapkan ke Kartu ID."
-                                );
                               } catch {
                                 setFeedback("Gagal membaca berkas gambar siswa.");
                               }
@@ -1196,19 +1264,48 @@ export function AdminClient() {
                           />
                         </label>
                         {editingStudent.photo_url && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditingStudent({
-                                ...editingStudent,
-                                photo_url: "",
-                              })
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="size-3.5" />
-                            <span>Hapus Foto (Gunakan Siluet)</span>
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropConfig({
+                                  imageSrc: editingStudent.photo_url!,
+                                  title: `Atur Ulang Posisi & Crop: ${editingStudent.full_name || "Siswa"}`,
+                                  targetAspect: 1,
+                                  targetLabel: "1:1 Foto ID Card Siswa",
+                                  showCircleGuide: true,
+                                  onDone: (croppedWebp) => {
+                                    setEditingStudent((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            photo_url: croppedWebp,
+                                            show_photo: true,
+                                          }
+                                        : prev
+                                    );
+                                  },
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                            >
+                              <Crop className="size-3.5" />
+                              <span>Atur Posisi / Crop Ulang</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingStudent({
+                                  ...editingStudent,
+                                  photo_url: "",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <X className="size-3.5" />
+                              <span>Hapus Foto (Gunakan Siluet)</span>
+                            </button>
+                          </>
                         )}
                       </div>
                       <input
@@ -1296,7 +1393,18 @@ export function AdminClient() {
                     className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative size-11 shrink-0 overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted">
+                      <div
+                        onClick={() => {
+                          if (previewCard.image) {
+                            setLightboxPhoto({
+                              url: previewCard.image,
+                              caption: s.full_name,
+                              badge: s.photo_url ? "Foto Asli ID Card" : "Avatar ID",
+                            });
+                          }
+                        }}
+                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted"
+                      >
                         {previewCard.image ? (
                           <img
                             src={previewCard.image}
@@ -1456,10 +1564,23 @@ export function AdminClient() {
                 </div>
                 <div className="sm:col-span-2 rounded-xl border border-border bg-background/70 p-4">
                   <label className="mb-2 block text-xs font-semibold text-foreground">
-                    Foto Profil & Kartu ID Guru / Wali Kelas
+                    Foto Profil & Kartu ID Guru / Wali Kelas (Dari HP atau Desktop · Otomatis Crop 1:1)
                   </label>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs">
+                    <div
+                      onClick={() => {
+                        if (editingTeacher.photo_url) {
+                          setLightboxPhoto({
+                            url: editingTeacher.photo_url,
+                            caption: editingTeacher.full_name || "Foto ID Card Guru",
+                            badge: "Foto ID Card Guru",
+                          });
+                        }
+                      }}
+                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs ${
+                        editingTeacher.photo_url ? "cursor-pointer" : ""
+                      }`}
+                    >
                       {editingTeacher.photo_url ? (
                         <img
                           src={editingTeacher.photo_url}
@@ -1475,23 +1596,37 @@ export function AdminClient() {
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
                           <Upload className="size-3.5" />
-                          <span>Unggah Foto Guru / Wali Kelas</span>
+                          <span>Pilih & Crop Foto Guru (HP / Desktop)</span>
                           <input
                             type="file"
-                            accept="image/jpeg,image/png,image/webp"
+                            accept="image/*"
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
+                              e.target.value = "";
                               if (!file) return;
                               try {
-                                const webp = await compressImageToWebp(file, 960, 0.84);
-                                setEditingTeacher({
-                                  ...editingTeacher,
-                                  photo_url: webp,
+                                const rawUrl = await readFileAsDataUrl(file);
+                                setCropConfig({
+                                  imageSrc: rawUrl,
+                                  title: `Atur Posisi & Crop Foto ID Card: ${editingTeacher.full_name || "Guru / Wali Kelas"}`,
+                                  targetAspect: 1,
+                                  targetLabel: "1:1 Foto ID Card Guru",
+                                  showCircleGuide: true,
+                                  onDone: (croppedWebp) => {
+                                    setEditingTeacher((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            photo_url: croppedWebp,
+                                          }
+                                        : prev
+                                    );
+                                    setFeedback(
+                                      "Foto guru sudah di-crop. Klik 'Simpan Guru' untuk menyinkronkan ke Wali Kelas & Kartu ID."
+                                    );
+                                  },
                                 });
-                                setFeedback(
-                                  "Foto guru siap disimpan. Klik 'Simpan Guru' untuk menyinkronkan ke Wali Kelas & Kartu ID."
-                                );
                               } catch {
                                 setFeedback("Gagal membaca berkas gambar guru.");
                               }
@@ -1499,19 +1634,47 @@ export function AdminClient() {
                           />
                         </label>
                         {editingTeacher.photo_url && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditingTeacher({
-                                ...editingTeacher,
-                                photo_url: "",
-                              })
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="size-3.5" />
-                            <span>Hapus Foto</span>
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropConfig({
+                                  imageSrc: editingTeacher.photo_url!,
+                                  title: `Atur Ulang Posisi & Crop: ${editingTeacher.full_name || "Guru"}`,
+                                  targetAspect: 1,
+                                  targetLabel: "1:1 Foto ID Card Guru",
+                                  showCircleGuide: true,
+                                  onDone: (croppedWebp) => {
+                                    setEditingTeacher((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            photo_url: croppedWebp,
+                                          }
+                                        : prev
+                                    );
+                                  },
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                            >
+                              <Crop className="size-3.5" />
+                              <span>Atur Posisi / Crop Ulang</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingTeacher({
+                                  ...editingTeacher,
+                                  photo_url: "",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <X className="size-3.5" />
+                              <span>Hapus Foto</span>
+                            </button>
+                          </>
                         )}
                       </div>
                       <input
@@ -1595,7 +1758,18 @@ export function AdminClient() {
                     className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative size-11 shrink-0 overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted">
+                      <div
+                        onClick={() => {
+                          if (previewTeacher.image) {
+                            setLightboxPhoto({
+                              url: previewTeacher.image,
+                              caption: t.full_name,
+                              badge: t.is_homeroom ? "Wali Kelas XII PPLG 1" : t.title,
+                            });
+                          }
+                        }}
+                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted"
+                      >
                         {previewTeacher.image ? (
                           <img
                             src={previewTeacher.image}
@@ -1641,175 +1815,495 @@ export function AdminClient() {
         </div>
       )}
 
-      {/* TAB 4: PENGATURAN SITUS, MEDIA VISUAL 3D & POLLING KELAS */}
+      {/* TAB 4: PENGATURAN SITUS, PEMISAHAN FOTO HERO 3D / BUKU KENANGAN / GALERI & POLLING KELAS */}
       {activeTab === "pengaturan" && (
         <div className="space-y-8">
-          {/* Panel Unggah Foto Model 3D Hero Kanan, Sampul Buku Kenangan, Foto Bersama & Galeri */}
+          {/* Panel Kelola Foto Terpisah: (1) Foto Hero 3D Sendiri, (2) Foto Buku Kenangan (Pilih dari yang Ada / Upload Ulang), (3) Foto Galeri Sendiri */}
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <ImageIcon className="h-5 w-5 text-[var(--color-accent-warm)]" />
                 <h2 className="font-serif text-xl font-bold text-foreground">
-                  Unggah Foto Model 3D Hero Kanan, Sampul Buku Kenangan, Foto Bersama & Galeri
+                  Kelola Foto Terpisah: Model 3D Hero, Buku Kenangan & Galeri Momen
                 </h2>
               </div>
               <span className="rounded-md bg-muted px-2.5 py-1 font-mono text-[11px] font-semibold text-foreground">
-                Langsung Aktif di 3D & 2D Tanpa Antrean
+                3 Kanal Foto Terpisah · Mendukung HP & Desktop + Crop Mandiri
               </span>
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Unggah gambar dari perangkat Anda untuk ditampilkan di bingkai foto & Polaroid meja 3D sebelah kanan halaman Hero, 1 foto bersama pada sampul depan Buku Kenangan XII PPLG 1 (3D & 2D), halaman pembuka foto bersama sebelum Daftar Isi, serta gantungan foto 3D Galeri.
+              Setiap tempat kini dipisahkan: <strong>Foto Hero 3D</strong> di-upload tersendiri untuk meja belajar 3D kanan Beranda, <strong>Foto Buku Kenangan</strong> bisa memilih dari foto yang sudah ada di database atau upload ulang, dan <strong>Foto Galeri</strong> khusus untuk gantungan Polaroid Galeri.
             </p>
 
-            <form
-              onSubmit={handleUploadVisualMedia}
-              className="mt-5 grid grid-cols-1 gap-4 rounded-xl border border-border bg-background/70 p-4 lg:grid-cols-12"
-            >
-              <div className="space-y-3 lg:col-span-7">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* 3 Tab Kanal Media Terpisah */}
+            <div className="mt-4 flex flex-wrap gap-2 border-b border-border pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaSectionTab("hero");
+                  setMediaImageUrl("");
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+                  mediaSectionTab === "hero"
+                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    : "border border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                <Sparkles className="size-3.5" />
+                <span>1. Foto Model 3D Hero Kanan (Upload Sendiri)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaSectionTab("kenangan");
+                  setMediaImageUrl("");
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+                  mediaSectionTab === "kenangan"
+                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    : "border border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                <BookOpen className="size-3.5" />
+                <span>2. Foto Buku Kenangan (Pilih yang Sudah Ada / Upload Ulang)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaSectionTab("galeri");
+                  setMediaImageUrl("");
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+                  mediaSectionTab === "galeri"
+                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    : "border border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                <ImageIcon className="size-3.5" />
+                <span>3. Foto Galeri Momen (Khusus Galeri 3D & 2D)</span>
+              </button>
+            </div>
+
+            {/* KANAL 2: BUKU KENANGAN — OPSI PILIH FOTO YANG SUDAH ADA ATAU UPLOAD ULANG */}
+            {mediaSectionTab === "kenangan" && (
+              <div className="mt-4 space-y-4 rounded-xl border border-border bg-background/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-foreground">
-                      Target Lokasi Tampil (3D & 2D)
+                      Pilih Slot Halaman Buku Kenangan (3D & 2D)
                     </label>
-                    <select
-                      value={mediaTarget}
-                      onChange={(e) =>
-                        setMediaTarget(
-                          e.target.value as
-                            | "Foto Hero 3D"
-                            | "Foto Sampul Buku"
-                            | "Foto Bersama Kelas"
-                            | "Kebersamaan Kelas"
-                        )
-                      }
-                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
-                    >
-                      <option value="Foto Hero 3D">
-                        1. Model 3D Kanan Halaman Hero (+ Galeri)
-                      </option>
-                      <option value="Foto Sampul Buku">
-                        2. Sampul Depan Buku Kenangan XII PPLG 1 (1 Foto Bersama)
-                      </option>
-                      <option value="Foto Bersama Kelas">
-                        3. Halaman Pembuka Foto Bersama Buku Kenangan (Hal. 1–4)
-                      </option>
-                      <option value="Kebersamaan Kelas">
-                        4. Gantungan Polaroid 3D & Daftar Galeri Momen
-                      </option>
-                    </select>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setYearbookSlot("Foto Sampul Buku")}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          yearbookSlot === "Foto Sampul Buku"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        Sampul Depan Buku Kenangan (1 Foto Bersama Utama)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setYearbookSlot("Foto Bersama Kelas")}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          yearbookSlot === "Foto Bersama Kelas"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        Halaman Pembuka Foto Bersama (Hal. 1–4 Sebelum Daftar Isi)
+                      </button>
+                    </div>
                   </div>
+
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-foreground">
-                      Fase Rak Galeri 3D
+                      Metode Pengaturan Foto Buku Kenangan
                     </label>
-                    <select
-                      value={mediaPhase}
-                      onChange={(e) => setMediaPhase(e.target.value as MomentPhase)}
-                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
-                    >
-                      <option value="XII">Kelas XII (Senja Terakhir)</option>
-                      <option value="XI">Kelas XI (Masa PKL & Proyek)</option>
-                      <option value="X">Kelas X (Awal Perjumpaan)</option>
-                    </select>
+                    <div className="flex gap-2 rounded-lg border border-border bg-card p-1">
+                      <button
+                        type="button"
+                        onClick={() => setYearbookMode("existing")}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          yearbookMode === "existing"
+                            ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Pilih dari Foto yang Sudah Ada
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setYearbookMode("upload")}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          yearbookMode === "upload"
+                            ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Upload Foto Baru / Ulang
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-foreground">
-                    Keterangan / Caption Foto Bersama
-                  </label>
-                  <input
-                    type="text"
-                    value={mediaCaption}
-                    onChange={(e) => setMediaCaption(e.target.value)}
-                    placeholder="Mis. Foto Bersama Keluarga Besar UNO XII PPLG 1 di Lapangan MAKN Ende"
-                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
-                    <Upload className="size-4" />
-                    <span>Pilih File Gambar dari Perangkat</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const webp = await compressImageToWebp(file, 1400, 0.84);
-                          setMediaImageUrl(webp);
-                        } catch {
-                          setFeedback("Gagal memproses berkas gambar.");
-                        }
-                      }}
-                    />
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={mediaUploading || !mediaImageUrl.trim()}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Save className="size-4" />
-                    <span>
-                      {mediaUploading
-                        ? "Menyimpan ke Database..."
-                        : "Simpan & Tampilkan di 3D/2D"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-3 lg:col-span-5">
-                {mediaImageUrl ? (
-                  <div className="w-full space-y-2 text-center">
-                    <div className="relative mx-auto aspect-[16/10] max-h-44 overflow-hidden rounded-lg border border-border bg-black/80">
-                      <img
-                        src={mediaImageUrl}
-                        alt="Pratinjau Unggahan"
-                        referrerPolicy="no-referrer"
-                        className="size-full object-contain"
+                {yearbookMode === "existing" ? (
+                  <div className="space-y-3 border-t border-border pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Klik <strong>&ldquo;Gunakan untuk {yearbookSlot}&rdquo;</strong> atau <strong>&ldquo;Crop & Gunakan&rdquo;</strong> pada salah satu foto yang sudah pernah di-upload di bawah ini:
+                      </p>
+                      <input
+                        type="text"
+                        value={mediaCaption}
+                        onChange={(e) => setMediaCaption(e.target.value)}
+                        placeholder="Opsional: Keterangan baru untuk Buku Kenangan..."
+                        className="w-full max-w-xs rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground"
                       />
                     </div>
+
+                    {data.moments.filter(
+                      (m) =>
+                        m.image_url &&
+                        !m.image_url.startsWith("/api/moment-illustration")
+                    ).length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          Belum ada foto yang ter-upload di database. Silakan beralih ke tab <strong>&ldquo;Upload Foto Baru / Ulang&rdquo;</strong> untuk mengunggah foto pertama.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                        {data.moments
+                          .filter(
+                            (m) =>
+                              m.image_url &&
+                              !m.image_url.startsWith("/api/moment-illustration")
+                          )
+                          .map((m) => (
+                            <div
+                              key={`pick-${m.id}`}
+                              className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card shadow-2xs"
+                            >
+                              <div
+                                onClick={() =>
+                                  setLightboxPhoto({
+                                    url: m.image_url,
+                                    caption: m.caption,
+                                    badge: `${m.category} · Kelas ${m.phase}`,
+                                  })
+                                }
+                                className="relative aspect-[16/10] w-full cursor-pointer overflow-hidden bg-muted"
+                              >
+                                <img
+                                  src={m.image_url}
+                                  alt={m.caption}
+                                  referrerPolicy="no-referrer"
+                                  className="size-full object-cover transition-transform duration-300 hover:scale-105"
+                                />
+                                <span className="absolute top-2 left-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#f3ca82]">
+                                  {m.category}
+                                </span>
+                              </div>
+                              <div className="p-2.5">
+                                <p className="line-clamp-1 text-xs font-semibold text-foreground">
+                                  {m.caption}
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={mediaUploading}
+                                    onClick={() =>
+                                      void handleAssignExistingPhotoToYearbook(
+                                        m,
+                                        yearbookSlot
+                                      )
+                                    }
+                                    className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-[var(--color-accent-warm)] px-2 py-1.5 text-[11px] font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                                  >
+                                    <Check className="size-3" />
+                                    <span>Pakai Foto Ini</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={mediaUploading}
+                                    onClick={() =>
+                                      setCropConfig({
+                                        imageSrc: m.image_url,
+                                        title: `Crop Foto untuk ${yearbookSlot}`,
+                                        targetAspect: 16 / 10,
+                                        targetLabel: `16:10 ${yearbookSlot}`,
+                                        onDone: (croppedWebp) => {
+                                          void handleAssignExistingPhotoToYearbook(
+                                            m,
+                                            yearbookSlot,
+                                            croppedWebp
+                                          );
+                                        },
+                                      })
+                                    }
+                                    className="inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground hover:bg-muted"
+                                  >
+                                    <Crop className="size-3" />
+                                    <span>Crop</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* FORM UPLOAD BARU / ULANG (Untuk Hero 3D, Galeri Momen, atau Buku Kenangan Mode Upload) */}
+            {(mediaSectionTab !== "kenangan" || yearbookMode === "upload") && (
+              <form
+                onSubmit={handleUploadVisualMedia}
+                className="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-border bg-background/70 p-4 lg:grid-cols-12"
+              >
+                <div className="space-y-3 lg:col-span-7">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-foreground">
+                        Target Kanal Foto Aktif
+                      </label>
+                      {mediaSectionTab === "hero" ? (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-[var(--color-accent-warm)]">
+                          Khusus Model 3D Kanan Halaman Hero (Terpisah dari Galeri)
+                        </div>
+                      ) : mediaSectionTab === "kenangan" ? (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-[var(--color-accent-warm)]">
+                          {yearbookSlot === "Foto Sampul Buku"
+                            ? "Sampul Depan Buku Kenangan (1 Foto Bersama)"
+                            : "Halaman Pembuka Foto Bersama Buku Kenangan (Hal. 1–4)"}
+                        </div>
+                      ) : (
+                        <select
+                          value={galleryCategory}
+                          onChange={(e) => setGalleryCategory(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+                        >
+                          <option value="Kebersamaan Kelas">
+                            Kebersamaan Kelas (Galeri)
+                          </option>
+                          <option value="Praktikum & Koding">
+                            Praktikum & Koding (Galeri)
+                          </option>
+                          <option value="Asrama & Kehidupan">
+                            Asrama & Kehidupan (Galeri)
+                          </option>
+                          <option value="Lomba & Karya">
+                            Lomba & Karya (Galeri)
+                          </option>
+                          <option value="Perpisahan">
+                            Perpisahan (Galeri)
+                          </option>
+                        </select>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-foreground">
+                        Fase Kelas
+                      </label>
+                      <select
+                        value={mediaPhase}
+                        onChange={(e) => setMediaPhase(e.target.value as MomentPhase)}
+                        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+                      >
+                        <option value="XII">Kelas XII (Senja Terakhir)</option>
+                        <option value="XI">Kelas XI (Masa PKL & Proyek)</option>
+                        <option value="X">Kelas X (Awal Perjumpaan)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-foreground">
+                      Keterangan / Caption Foto
+                    </label>
+                    <input
+                      type="text"
+                      value={mediaCaption}
+                      onChange={(e) => setMediaCaption(e.target.value)}
+                      placeholder="Mis. Foto Bersama Keluarga Besar UNO XII PPLG 1 di Lapangan MAKN Ende"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                      <Upload className="size-4" />
+                      <span>Pilih & Crop Gambar (HP / Desktop)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!file) return;
+                          try {
+                            const rawUrl = await readFileAsDataUrl(file);
+                            const aspect =
+                              mediaSectionTab === "kenangan" ? 16 / 10 : 4 / 3;
+                            const label =
+                              mediaSectionTab === "hero"
+                                ? "4:3 Bingkai Hero 3D"
+                                : mediaSectionTab === "kenangan"
+                                  ? `16:10 ${yearbookSlot}`
+                                  : "4:3 Polaroid Galeri";
+                            setCropConfig({
+                              imageSrc: rawUrl,
+                              title: `Atur Posisi & Crop: ${label}`,
+                              targetAspect: aspect,
+                              targetLabel: label,
+                              onDone: (croppedWebp) => {
+                                setMediaImageUrl(croppedWebp);
+                              },
+                            });
+                          } catch {
+                            setFeedback("Gagal memproses berkas gambar.");
+                          }
+                        }}
+                      />
+                    </label>
+
+                    {mediaImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const aspect =
+                            mediaSectionTab === "kenangan" ? 16 / 10 : 4 / 3;
+                          const label =
+                            mediaSectionTab === "hero"
+                              ? "4:3 Bingkai Hero 3D"
+                              : mediaSectionTab === "kenangan"
+                                ? `16:10 ${yearbookSlot}`
+                                : "4:3 Polaroid Galeri";
+                          setCropConfig({
+                            imageSrc: mediaImageUrl,
+                            title: `Atur Ulang Posisi & Crop: ${label}`,
+                            targetAspect: aspect,
+                            targetLabel: label,
+                            onDone: (croppedWebp) => {
+                              setMediaImageUrl(croppedWebp);
+                            },
+                          });
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                      >
+                        <Crop className="size-4" />
+                        <span>Crop Ulang</span>
+                      </button>
+                    )}
+
                     <button
-                      type="button"
-                      onClick={() => setMediaImageUrl("")}
-                      className="text-[11px] font-semibold text-red-600 hover:underline"
+                      type="submit"
+                      disabled={mediaUploading || !mediaImageUrl.trim()}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50"
                     >
-                      Ganti / Hapus Pratinjau
+                      <Save className="size-4" />
+                      <span>
+                        {mediaUploading
+                          ? "Menyimpan ke Database..."
+                          : "Simpan & Tampilkan di 3D/2D"}
+                      </span>
                     </button>
                   </div>
-                ) : (
-                  <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-                    Belum ada foto dipilih. Klik <strong>&ldquo;Pilih File Gambar dari Perangkat&rdquo;</strong> untuk mengunggah foto Hero 3D, Sampul Buku Kenangan, atau Foto Bersama.
-                  </p>
-                )}
-              </div>
-            </form>
+                </div>
 
-            {/* Daftar Foto Visual yang Sudah Tersimpan di Database */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-3 lg:col-span-5">
+                  {mediaImageUrl ? (
+                    <div className="w-full space-y-2 text-center">
+                      <div
+                        onClick={() =>
+                          setLightboxPhoto({
+                            url: mediaImageUrl,
+                            caption: mediaCaption || "Pratinjau Foto",
+                          })
+                        }
+                        className="relative mx-auto flex max-h-48 w-fit cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-[#efe4d0]"
+                      >
+                        <img
+                          src={mediaImageUrl}
+                          alt="Pratinjau Unggahan"
+                          referrerPolicy="no-referrer"
+                          className="max-h-48 w-auto object-contain"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMediaImageUrl("")}
+                        className="text-[11px] font-semibold text-red-600 hover:underline"
+                      >
+                        Ganti / Hapus Pratinjau
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="px-4 py-8 text-center text-xs text-muted-foreground">
+                      Belum ada foto dipilih. Klik <strong>&ldquo;Pilih & Crop Gambar (HP / Desktop)&rdquo;</strong> untuk mengunggah dan mengatur posisi/crop foto.
+                    </p>
+                  )}
+                </div>
+              </form>
+            )}
+
+            {/* Daftar Foto Aktif Sesuai Kanal yang Dipilih */}
             <div className="mt-5">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Koleksi Foto Hero 3D, Sampul Buku, Foto Bersama & Galeri Aktif ({data.moments.filter((m) => m.image_url && !m.image_url.startsWith("/api/moment-illustration")).length} Foto Asli)
+                {mediaSectionTab === "hero"
+                  ? `Koleksi Foto Khusus Model 3D Hero Kanan (${data.moments.filter((m) => m.category === "Foto Hero 3D").length} Foto)`
+                  : mediaSectionTab === "kenangan"
+                    ? `Koleksi Foto Aktif di Buku Kenangan — Sampul & Hal. 1–4 (${data.moments.filter((m) => m.category === "Foto Sampul Buku" || m.category === "Foto Bersama Kelas").length} Foto)`
+                    : `Koleksi Foto Galeri Momen Kelas (${data.moments.filter((m) => m.category !== "Foto Hero 3D" && m.category !== "Foto Sampul Buku" && m.category !== "Foto Bersama Kelas" && m.image_url && !m.image_url.startsWith("/api/moment-illustration")).length} Foto Asli)`}
               </h3>
               <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {data.moments
-                  .filter(
-                    (m) =>
-                      m.image_url &&
-                      !m.image_url.startsWith("/api/moment-illustration")
-                  )
-                  .slice(0, 8)
+                  .filter((m) => {
+                    if (
+                      !m.image_url ||
+                      m.image_url.startsWith("/api/moment-illustration")
+                    ) {
+                      return false;
+                    }
+                    if (mediaSectionTab === "hero") {
+                      return m.category === "Foto Hero 3D";
+                    }
+                    if (mediaSectionTab === "kenangan") {
+                      return (
+                        m.category === "Foto Sampul Buku" ||
+                        m.category === "Foto Bersama Kelas"
+                      );
+                    }
+                    return (
+                      m.category !== "Foto Hero 3D" &&
+                      m.category !== "Foto Sampul Buku" &&
+                      m.category !== "Foto Bersama Kelas"
+                    );
+                  })
+                  .slice(0, 12)
                   .map((m) => (
                     <div
                       key={m.id}
                       className="flex items-center justify-between gap-2.5 rounded-xl border border-border bg-background p-2.5"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                        <div
+                          onClick={() =>
+                            setLightboxPhoto({
+                              url: m.image_url,
+                              caption: m.caption,
+                              badge: `${m.category} · Kelas ${m.phase}`,
+                            })
+                          }
+                          className="relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted"
+                        >
                           <img
                             src={m.image_url}
                             alt={m.caption}
@@ -1957,6 +2451,65 @@ export function AdminClient() {
           </div>
         </div>
       )}
+
+      {/* Modal Pop-up Pratinjau Foto Sesuai Ukuran Asli (Tanpa Pinggiran Hitam) */}
+      {lightboxPhoto && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setLightboxPhoto(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-6 backdrop-blur-xs"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative flex max-h-[92vh] w-fit max-w-[94vw] flex-col overflow-hidden rounded-2xl border border-[#d6c3a5] bg-[#fbf6ec] text-[#231914] shadow-2xl"
+          >
+            <div className="relative flex items-center justify-center bg-[#efe4d0]">
+              <img
+                src={lightboxPhoto.url}
+                alt={lightboxPhoto.caption}
+                referrerPolicy="no-referrer"
+                className="block max-h-[68vh] w-auto max-w-[94vw] object-contain select-none"
+              />
+              <button
+                type="button"
+                onClick={() => setLightboxPhoto(null)}
+                aria-label="Tutup pratinjau foto"
+                className="absolute top-3 right-3 inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-[#231914]/75 text-[#fbf6ec] shadow-md backdrop-blur-xs transition hover:bg-[#231914]"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="max-w-xl p-4">
+              {lightboxPhoto.badge && (
+                <span className="inline-block rounded bg-[var(--color-accent-warm)]/15 px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--color-accent-warm)]">
+                  {lightboxPhoto.badge}
+                </span>
+              )}
+              <p className="mt-1 font-serif text-base font-bold text-[#231914]">
+                {lightboxPhoto.caption}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Crop & Atur Posisi Gambar Mandiri Terpadu di Admin */}
+      <ImageCropperModal
+        open={Boolean(cropConfig)}
+        imageSrc={cropConfig?.imageSrc ?? null}
+        title={cropConfig?.title}
+        targetAspect={cropConfig?.targetAspect ?? 1}
+        targetLabel={cropConfig?.targetLabel ?? "Otomatis Target"}
+        showCircleGuide={cropConfig?.showCircleGuide}
+        onCancel={() => setCropConfig(null)}
+        onComplete={(croppedWebp) => {
+          if (cropConfig) {
+            cropConfig.onDone(croppedWebp);
+          }
+          setCropConfig(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,23 +1,14 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { ArrowRight, BookOpen, Calendar, Music2, Sparkles, Users, Volume2 } from "lucide-react";
 import { Adaptive } from "@/components/three/adaptive";
+import { HeroDeskSceneHD } from "@/components/beranda/hero-desk-scene-hd";
 import { SITE_CONTENT } from "@/lib/content";
 import { useSadAudio } from "@/lib/sad-audio";
 import { notifyRouteTransitionStart, useLivePublicData } from "@/lib/use-public-data";
 import type { MomentRow } from "@/lib/types";
-
-const HeroDeskSceneHD = dynamic(
-  () =>
-    import("@/components/beranda/hero-desk-scene-hd").then(
-      (m) => m.HeroDeskSceneHD
-    ),
-  { ssr: false }
-);
 
 /**
  * Ilustrasi SVG Berlapis "Meja Belajar Saat Senja" untuk Mobile & Mode Ringan (SimpleView)
@@ -468,14 +459,7 @@ export function BerandaClient({
                       m.category === "Foto Hero 3D" &&
                       m.image_url &&
                       !m.image_url.startsWith("/api/moment-illustration")
-                  ) ??
-                  moments.find(
-                    (m) =>
-                      m.image_url &&
-                      !m.image_url.startsWith("/api/moment-illustration")
-                  ) ??
-                  moments[0] ??
-                  null
+                  ) ?? null
                 }
               />
             }

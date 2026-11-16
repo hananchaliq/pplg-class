@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { SubmitPayloadSchema, verifyClassCode } from "@/lib/domain-logic";
-import { createPendingSubmission } from "@/lib/db";
+import { createPendingSubmission, getSupabaseAdminClient } from "@/lib/db";
 
 // Rate limit sederhana per IP / perangkat di memori server
 const rateMap = new Map<string, { count: number; resetAt: number }>();
@@ -74,8 +74,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validasi tipe MIME dan ukuran untuk unggahan gambar momen
-    if (payload.type === "moment" && payload.imageDataUrl) {
+    // Validasi tipe MIME dan ukuran untuk unggahan gambar momen atau karya
+    if (
+      (payload.type === "moment" || payload.type === "work") &&
+      payload.imageDataUrl
+    ) {
       const validMime = /^data:image\/(webp|jpeg|jpg|png);base64,/i.test(
         payload.imageDataUrl
       );
@@ -100,6 +103,17 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await createPendingSubmission(payload);
+
+    if (payload.type === "work" && payload.imageDataUrl && created?.id) {
+      const supabase = getSupabaseAdminClient();
+      if (supabase) {
+        await supabase
+          .from("works")
+          .update({ image_url: payload.imageDataUrl })
+          .eq("id", created.id);
+      }
+    }
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({

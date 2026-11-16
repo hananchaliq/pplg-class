@@ -21,19 +21,15 @@ export function HeroDeskSceneHD({
   const scrollProgressRef = React.useRef(0);
 
   const heroPhotos = React.useMemo(() => {
-    const withRealImg = moments.filter(
-      (m) =>
-        m.image_url &&
-        m.image_url.trim().length > 0 &&
-        !m.image_url.startsWith("/api/moment-illustration")
-    );
-    const heroSpecific = withRealImg.filter(
-      (m) =>
-        m.category === "Foto Hero 3D" ||
-        m.category === "Foto Sampul Buku" ||
-        m.category === "Foto Bersama Kelas"
-    );
-    return [...heroSpecific, ...withRealImg, ...moments].slice(0, 3);
+    return moments
+      .filter(
+        (m) =>
+          m.category === "Foto Hero 3D" &&
+          m.image_url &&
+          m.image_url.trim().length > 0 &&
+          !m.image_url.startsWith("/api/moment-illustration")
+      )
+      .slice(0, 3);
   }, [moments]);
 
   const heroSceneKey = React.useMemo(

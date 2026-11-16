@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import {
   BookOpen,
@@ -28,7 +27,10 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
-import type { BookSpread } from "@/components/kenangan/buku-scene-hd";
+import {
+  BukuKenanganSceneHD,
+  type BookSpread,
+} from "@/components/kenangan/buku-scene-hd";
 import type {
   MemoryEntryRow,
   MomentRow,
@@ -36,14 +38,6 @@ import type {
   ThanksRow,
   TimeCapsuleRow,
 } from "@/lib/types";
-
-const BukuKenanganSceneHD = dynamic(
-  () =>
-    import("@/components/kenangan/buku-scene-hd").then(
-      (m) => m.BukuKenanganSceneHD
-    ),
-  { ssr: false }
-);
 
 type KenanganTab = "buku" | "kapsul" | "thanks";
 
@@ -176,15 +170,18 @@ export function KenanganClient({
   const [thFeedback, setThFeedback] = React.useState<string | null>(null);
   const [thSubmitting, setThSubmitting] = React.useState(false);
 
-  // 1 Foto Bersama untuk Sampul Depan Buku Kenangan (Prioritas: Kategori "Foto Sampul Buku" -> "Foto Bersama Kelas" -> Foto Upload Asli -> Momen Pertama)
+  // 1 Foto Bersama untuk Sampul Depan Buku Kenangan (Prioritas: Kategori "Foto Sampul Buku" -> "Foto Bersama Kelas" -> Foto Upload Asli non-Hero)
   const coverPhotoMoment = React.useMemo(() => {
     return (
       moments.find((m) => m.category === "Foto Sampul Buku") ||
       moments.find((m) => m.category === "Foto Bersama Kelas") ||
       moments.find(
         (m) =>
-          m.image_url && !m.image_url.startsWith("/api/moment-illustration")
+          m.category !== "Foto Hero 3D" &&
+          m.image_url &&
+          !m.image_url.startsWith("/api/moment-illustration")
       ) ||
+      moments.find((m) => m.category !== "Foto Hero 3D") ||
       moments[0]
     );
   }, [moments]);

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import {
   Camera,
@@ -11,9 +10,15 @@ import {
   Upload,
   X,
   CheckCircle2,
+  Crop,
 } from "lucide-react";
 import { Adaptive } from "@/components/three/adaptive";
+import { GaleriSceneHD } from "@/components/galeri/galeri-scene-hd";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import {
+  ImageCropperModal,
+  readFileAsDataUrl,
+} from "@/components/ui/image-cropper-modal";
 import { SITE_CONTENT } from "@/lib/content";
 import {
   useLivePublicData,
@@ -21,43 +26,11 @@ import {
 } from "@/lib/use-public-data";
 import type { MomentPhase, MomentRow } from "@/lib/types";
 
-const GaleriSceneHD = dynamic(
-  () =>
-    import("@/components/galeri/galeri-scene-hd").then((m) => m.GaleriSceneHD),
-  { ssr: false }
-);
-
-/**
- * Kompres gambar di sisi klien sebelum upload (WebP, sisi terpanjang maksimal 1600 px)
- */
-async function compressImageToWebp(file: File, maxSide = 1600): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Gagal membaca berkas gambar"));
-    reader.onload = () => {
-      const img = new window.Image();
-      img.onerror = () => reject(new Error("Berkas bukan gambar yang valid"));
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const width = Math.max(1, Math.round(img.width * scale));
-        const height = Math.max(1, Math.round(img.height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Kanvas kompresi tidak tersedia"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        const webpDataUrl = canvas.toDataURL("image/webp", 0.82);
-        resolve(webpDataUrl);
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
+const SPECIAL_NON_GALLERY_CATEGORIES = new Set([
+  "Foto Hero 3D",
+  "Foto Sampul Buku",
+  "Foto Bersama Kelas",
+]);
 
 const PHASES: Array<{ id: MomentPhase; label: string; subtitle: string }> = [
   {
@@ -81,7 +54,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
   const { data: liveData, refresh } = useLivePublicData({
     moments: initialMoments,
   });
-  const moments = liveData?.moments ?? initialMoments;
+  const rawMoments = liveData?.moments ?? initialMoments;
+
+  // Pisahkan secara ketat: Galeri hanya menampilkan foto momen Galeri (bukan Foto Hero 3D atau Sampul/Foto Bersama Buku Kenangan)
+  const moments = React.useMemo(
+    () =>
+      rawMoments.filter(
+        (m) => !SPECIAL_NON_GALLERY_CATEGORIES.has(m.category)
+      ),
+    [rawMoments]
+  );
 
   const [activePhase, setActivePhase] = React.useState<MomentPhase>("XII");
   const [activeCategory, setActiveCategory] = React.useState<string>("Semua");
@@ -94,14 +76,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
   const [momentPage, setMomentPage] = React.useState(1);
   const MOMENTS_PER_PAGE = 8;
 
-  // State Form Unggah Foto
+  // State Form Unggah Foto + Crop Mandiri (HP & Desktop)
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploaderName, setUploaderName] = React.useState("");
   const [caption, setCaption] = React.useState("");
   const [category, setCategory] = React.useState("Momen lucu");
   const [phase, setPhase] = React.useState<MomentPhase>("XII");
   const [classCode, setClassCode] = React.useState("XIIPPLG1");
+  const [rawUploadSource, setRawUploadSource] = React.useState<string>("");
   const [compressedPreview, setCompressedPreview] = React.useState<string>("");
+  const [cropModalOpen, setCropModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [uploadFeedback, setUploadFeedback] = React.useState<{
     ok: boolean;
@@ -181,13 +165,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageToWebp(file, 1600);
-      setCompressedPreview(dataUrl);
+      const rawDataUrl = await readFileAsDataUrl(file);
+      setRawUploadSource(rawDataUrl);
+      setCompressedPreview(rawDataUrl);
+      setCropModalOpen(true);
     } catch {
       setUploadFeedback({
         ok: false,
-        text: "Gagal mengompresi foto. Pastikan formatnya JPEG, PNG, atau WebP.",
+        text: "Gagal membaca foto. Pastikan formatnya JPEG, PNG, atau WebP.",
       });
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -562,21 +550,23 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         />
       </section>
 
-      {/* Modal Lightbox Bervisual Kertas Foto Fisik Asli & Tulisan Tangan */}
+      {/* Modal Lightbox Bervisual Kertas Foto Fisik Asli (Sesuai Ukuran Foto Asli, Tanpa Pinggiran Hitam) */}
       {currentLightboxMoment && lightboxIndex !== null && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Peninjau Lembar Kertas Foto Ukuran Penuh"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
+          onClick={() => setLightboxIndex(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-6 backdrop-blur-xs"
         >
           <motion.div
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.94, rotate: -1 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="real-photo-paper relative flex w-full max-w-3xl flex-col overflow-hidden rounded-xl p-4 pb-6 text-card-foreground shadow-2xl sm:p-6 sm:pb-8"
+            className="real-photo-paper relative mx-auto flex max-h-[92vh] w-fit max-w-[95vw] sm:max-w-4xl flex-col overflow-y-auto rounded-xl p-3.5 pb-5 text-card-foreground shadow-2xl sm:p-5 sm:pb-6"
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2 font-hand text-xl font-bold text-muted-foreground">
                 <span>Fase Kelas {currentLightboxMoment.phase}</span>
                 <span aria-hidden="true">·</span>
@@ -590,23 +580,24 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 whileTap={{ scale: 0.92 }}
                 aria-label="Tutup foto"
                 onClick={() => setLightboxIndex(null)}
-                className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-border bg-background/80 text-foreground hover:bg-muted"
+                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background/80 text-foreground hover:bg-muted"
               >
                 <X className="size-4" />
               </motion.button>
             </div>
 
-            <div className="photo-gloss-sheen relative aspect-[16/10] w-full overflow-hidden rounded-sm border-2 border-[#cbb799] bg-black/90 shadow-inner dark:border-[#544030]">
+            {/* Bingkai Foto Mengikuti Ukuran & Proporsi Asli Gambar Tanpa Pinggiran Hitam */}
+            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-sm border-2 border-[#cbb799] bg-[#f7efe2] shadow-sm dark:border-[#544030] dark:bg-[#231912]">
               <img
                 src={currentLightboxMoment.image_url}
                 alt={currentLightboxMoment.caption}
                 referrerPolicy="no-referrer"
-                className="size-full object-contain"
+                className="block h-auto max-h-[68vh] w-auto max-w-full object-contain"
               />
             </div>
 
-            <div className="mt-5 flex flex-col justify-between gap-4 border-t border-dashed border-[#cbb799] pt-4 sm:flex-row sm:items-center dark:border-[#544030]">
-              <div>
+            <div className="mt-4 flex flex-col justify-between gap-4 border-t border-dashed border-[#cbb799] pt-3.5 sm:flex-row sm:items-center dark:border-[#544030]">
+              <div className="max-w-xl">
                 <p className="font-hand text-3xl font-bold leading-snug text-foreground">
                   &ldquo;{currentLightboxMoment.caption}&rdquo;
                 </p>
@@ -652,7 +643,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         </div>
       )}
 
-      {/* Modal Unggah Foto Momen (Terkompresi WebP Klien) */}
+      {/* Modal Unggah Foto Momen + Crop Mandiri (HP & Desktop) */}
       {uploadOpen && (
         <div
           role="dialog"
@@ -684,24 +675,48 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
             </div>
 
             <form onSubmit={handleUploadSubmit} className="mt-4 space-y-4">
-              <div>
-                <label
-                  htmlFor="up-file"
-                  className="block text-xs font-semibold text-foreground"
-                >
-                  Pilih Foto (Otomatis dikompres ke WebP maks 1600px)
+              <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+                <label className="block text-xs font-semibold text-foreground">
+                  Pilih Foto dari HP atau Desktop & Atur Posisi (Crop)
                 </label>
-                <input
-                  id="up-file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileChange}
-                  className="mt-1.5 block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3.5 file:py-2 file:text-xs file:font-semibold file:text-foreground"
-                />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                    <Upload className="size-3.5" />
+                    <span>Pilih Foto (HP / Desktop)</span>
+                    <input
+                      id="up-file"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                  {(rawUploadSource || compressedPreview) && (
+                    <button
+                      type="button"
+                      onClick={() => setCropModalOpen(true)}
+                      className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <Crop className="size-3.5 text-[var(--color-accent-warm)]" />
+                      <span>Atur Posisi & Ukuran (Crop)</span>
+                    </button>
+                  )}
+                </div>
+
                 {compressedPreview && (
-                  <p className="mt-1 text-[11px] text-[var(--color-chart-2)]">
-                    ✓ Gambar berhasil dikompresi ke format WebP hemat kuota.
-                  </p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="overflow-hidden rounded-lg border border-border bg-background">
+                      <img
+                        src={compressedPreview}
+                        alt="Pratinjau foto"
+                        referrerPolicy="no-referrer"
+                        className="max-h-24 w-auto object-contain"
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--color-chart-2)]">
+                      ✓ Foto siap diunggah (posisi & ukuran sudah disesuaikan).
+                    </p>
+                  </div>
                 )}
               </div>
 
@@ -836,6 +851,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           </div>
         </div>
       )}
+
+      <ImageCropperModal
+        open={cropModalOpen}
+        imageSrc={rawUploadSource || compressedPreview}
+        title="Atur Posisi & Ukuran Foto Galeri"
+        targetAspect={4 / 3}
+        targetLabel="4:3 Polaroid Galeri"
+        onClose={() => setCropModalOpen(false)}
+        onConfirm={(croppedWebp) => setCompressedPreview(croppedWebp)}
+      />
     </div>
   );
 }
