@@ -264,6 +264,9 @@ export function GaleriSceneHD({
       camera: THREE.PerspectiveCamera;
       renderer: THREE.WebGLRenderer;
     }) => {
+      // Kalibrasi eksposur khusus Galeri 3D agar kertas foto tidak silau di bawah lampu panggung
+      renderer.toneMappingExposure = 0.88;
+
       const wood = createWoodTextures(renderer, "warm");
       const darkWood = createWoodTextures(renderer, "dark");
 
@@ -473,22 +476,20 @@ export function GaleriSceneHD({
               false
             );
 
-            // Gunakan MeshStandardMaterial dengan kilau satin kertas foto agar lekukan 3D menangkap cahaya
+            // Gunakan MeshStandardMaterial matte/satin hangat tanpa efek silau (anti-glare)
             const frontMat = new THREE.MeshStandardMaterial({
               map: frontTex,
-              roughness: 0.36,
-              metalness: 0.04,
-              emissive: new THREE.Color(0xffffff),
-              emissiveMap: frontTex,
-              emissiveIntensity: 0.24,
+              color: new THREE.Color(0xf5ede0),
+              roughness: 0.82,
+              metalness: 0.0,
+              envMapIntensity: 0.2,
             });
             const backMat = new THREE.MeshStandardMaterial({
               map: backTex,
-              roughness: 0.58,
-              metalness: 0.02,
-              emissive: new THREE.Color(0xffffff),
-              emissiveMap: backTex,
-              emissiveIntensity: 0.2,
+              color: new THREE.Color(0xf2e8d8),
+              roughness: 0.86,
+              metalness: 0.0,
+              envMapIntensity: 0.18,
             });
 
             const frontMesh = new THREE.Mesh(frontGeo, frontMat);

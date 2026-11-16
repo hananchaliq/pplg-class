@@ -798,47 +798,53 @@ export function createPolaroidTexture(
   const handFont = getHandwritingFont();
   const rand = seededRandom(opts.seed || 101);
 
-  // Dasar Kertas Foto Asli (Warm Pearl Photo Paper Base dengan gradasi halus & lengkungan tepi 3D)
+  const cleanCaption = (opts.caption || "Kenangan XII PPLG 1")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .trim();
+
+  // Dasar Kertas Foto Matte/Satin Hangat (Tidak Silau di Bawah Lampu 3D)
   const paperGrad = ctx.createLinearGradient(0, 0, width, height);
-  paperGrad.addColorStop(0, "#fffefb");
-  paperGrad.addColorStop(0.5, "#faf3e6");
-  paperGrad.addColorStop(0.88, "#f2e6d0");
-  paperGrad.addColorStop(1, "#e5d4b7");
+  paperGrad.addColorStop(0, "#f3eadb");
+  paperGrad.addColorStop(0.5, "#eadec9");
+  paperGrad.addColorStop(0.88, "#dfd0b6");
+  paperGrad.addColorStop(1, "#d2bfa1");
   ctx.fillStyle = paperGrad;
   ctx.fillRect(0, 0, width, height);
 
   // Shading lengkungan kertas 3D halus di sisi kiri-kanan & sudut bawah
-  const edgeShadeL = ctx.createLinearGradient(0, 0, 42, 0);
-  edgeShadeL.addColorStop(0, "rgba(75, 52, 30, 0.14)");
-  edgeShadeL.addColorStop(1, "rgba(75, 52, 30, 0)");
+  const edgeShadeL = ctx.createLinearGradient(0, 0, 46, 0);
+  edgeShadeL.addColorStop(0, "rgba(65, 44, 24, 0.18)");
+  edgeShadeL.addColorStop(1, "rgba(65, 44, 24, 0)");
   ctx.fillStyle = edgeShadeL;
-  ctx.fillRect(0, 0, 42, height);
+  ctx.fillRect(0, 0, 46, height);
 
-  const edgeShadeR = ctx.createLinearGradient(width - 42, 0, width, 0);
-  edgeShadeR.addColorStop(0, "rgba(75, 52, 30, 0)");
-  edgeShadeR.addColorStop(1, "rgba(75, 52, 30, 0.16)");
+  const edgeShadeR = ctx.createLinearGradient(width - 46, 0, width, 0);
+  edgeShadeR.addColorStop(0, "rgba(65, 44, 24, 0)");
+  edgeShadeR.addColorStop(1, "rgba(65, 44, 24, 0.2)");
   ctx.fillStyle = edgeShadeR;
-  ctx.fillRect(width - 42, 0, 42, height);
+  ctx.fillRect(width - 46, 0, 46, height);
 
   // Serat halus kertas cetak foto
-  ctx.fillStyle = "rgba(92, 68, 42, 0.035)";
+  ctx.fillStyle = "rgba(82, 58, 34, 0.04)";
   for (let i = 0; i < 120; i++) {
     ctx.fillRect(rand() * width, rand() * height, 3 + rand() * 7, 2);
   }
 
   // Bevel tepi luar kertas foto asli
-  ctx.strokeStyle = "#cdb696";
+  ctx.strokeStyle = "#bda380";
   ctx.lineWidth = 8;
   ctx.strokeRect(4, 4, width - 8, height - 8);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.strokeStyle = "rgba(248, 240, 226, 0.65)";
   ctx.lineWidth = 3;
   ctx.strokeRect(11, 11, width - 22, height - 22);
 
   if (opts.isBack) {
     // Sisi Belakang Kertas Foto Asli (Watermark Diagonal Archival Paper + Stempel + Tulisan Tangan Pena)
     ctx.save();
-    ctx.strokeStyle = "rgba(140, 112, 82, 0.11)";
-    ctx.fillStyle = "rgba(140, 112, 82, 0.13)";
+    ctx.strokeStyle = "rgba(120, 94, 66, 0.12)";
+    ctx.fillStyle = "rgba(120, 94, 66, 0.14)";
     ctx.font = "bold 22px monospace";
     for (let wy = -160; wy < height + 160; wy += 130) {
       ctx.save();
@@ -855,16 +861,16 @@ export function createPolaroidTexture(
     ctx.restore();
 
     // Bingkai kartu pos belakang foto
-    ctx.strokeStyle = "rgba(110, 86, 62, 0.36)";
+    ctx.strokeStyle = "rgba(96, 72, 48, 0.4)";
     ctx.lineWidth = 3;
     ctx.strokeRect(48, 96, width - 96, height - 148);
 
     // Kotak perangko / cap tanggal di kanan atas
-    ctx.strokeStyle = "rgba(168, 66, 50, 0.6)";
+    ctx.strokeStyle = "rgba(156, 58, 42, 0.65)";
     ctx.setLineDash([7, 5]);
     ctx.strokeRect(width - 190, 122, 114, 128);
     ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(168, 66, 50, 0.85)";
+    ctx.fillStyle = "rgba(156, 58, 42, 0.9)";
     ctx.font = `700 32px ${handFont}`;
     ctx.textAlign = "center";
     ctx.fillText("UNO", width - 133, 178);
@@ -872,7 +878,7 @@ export function createPolaroidTexture(
 
     // Header tulisan tangan di kiri atas
     ctx.textAlign = "left";
-    ctx.fillStyle = "#8c3b2b";
+    ctx.fillStyle = "#7a3020";
     ctx.font = `700 46px ${handFont}`;
     ctx.fillText(
       `Fase Kelas ${opts.phase} ~ ${opts.category}`,
@@ -881,7 +887,7 @@ export function createPolaroidTexture(
     );
 
     // Garis buku tipis untuk catatan di balik foto
-    ctx.strokeStyle = "rgba(110, 86, 62, 0.22)";
+    ctx.strokeStyle = "rgba(96, 72, 48, 0.24)";
     ctx.lineWidth = 2;
     for (let ly = 290; ly <= height - 165; ly += 74) {
       ctx.beginPath();
@@ -891,10 +897,10 @@ export function createPolaroidTexture(
     }
 
     // Catatan di balik foto dengan tulisan tangan pena biru/sepia asli yang mudah dibaca
-    ctx.fillStyle = "#16223b";
+    ctx.fillStyle = "#141f36";
     ctx.font = `700 56px ${handFont}`;
     const words = (
-      opts.caption || "Kenangan manis bersama keluarga UNO XII PPLG 1"
+      cleanCaption || "Kenangan manis bersama keluarga UNO XII PPLG 1"
     ).split(/\s+/);
     let line = "";
     let y = 278;
@@ -912,7 +918,7 @@ export function createPolaroidTexture(
     if (line && y <= height - 165) ctx.fillText(line, 76, y);
 
     // Tanda tangan tanggal di bawah dengan tulisan tangan
-    ctx.fillStyle = "#6e4e32";
+    ctx.fillStyle = "#5c3f24";
     ctx.font = `700 42px ${handFont}`;
     ctx.fillText(
       `Abadi di MAKN Ende · ${opts.dateStr || "2026"} ♥`,
@@ -935,9 +941,9 @@ export function createPolaroidTexture(
   const photoH = 576;
 
   // Bayangan cekung (emboss dalam) di sekeliling jendela emulsi foto kertas asli
-  ctx.fillStyle = "#cbb89d";
+  ctx.fillStyle = "#b8a082";
   ctx.fillRect(sidePad - 6, topPad - 6, photoW + 12, photoH + 12);
-  ctx.fillStyle = "#fffdf9";
+  ctx.fillStyle = "#e8dcc8";
   ctx.fillRect(sidePad - 2, topPad - 2, photoW + 4, photoH + 4);
 
   const rawImageUrl = (opts.imageUrl || "").trim();
@@ -946,24 +952,23 @@ export function createPolaroidTexture(
     !rawImageUrl.startsWith("/api/moment-illustration");
 
   const drawPhotoGlassAndFrame = () => {
-    // Efek Kilau Satin Kertas Foto Asli (Diagonal Gloss Reflection Sheen)
-    const sheenGrad = ctx.createLinearGradient(
-      sidePad,
-      topPad,
-      sidePad + photoW,
-      topPad + photoH
+    // Vignette tipis alami di tepi foto agar warna foto lebih pekat dan tidak silau
+    const vigGrad = ctx.createRadialGradient(
+      sidePad + photoW * 0.5,
+      topPad + photoH * 0.5,
+      photoW * 0.28,
+      sidePad + photoW * 0.5,
+      topPad + photoH * 0.5,
+      photoW * 0.72
     );
-    sheenGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-    sheenGrad.addColorStop(0.42, "rgba(255, 255, 255, 0.02)");
-    sheenGrad.addColorStop(0.5, "rgba(255, 252, 245, 0.2)");
-    sheenGrad.addColorStop(0.58, "rgba(255, 255, 255, 0.02)");
-    sheenGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = sheenGrad;
+    vigGrad.addColorStop(0, "rgba(0, 0, 0, 0)");
+    vigGrad.addColorStop(1, "rgba(22, 14, 8, 0.14)");
+    ctx.fillStyle = vigGrad;
     ctx.fillRect(sidePad, topPad, photoW, photoH);
 
-    // Garis tepi dalam emulsi foto
-    ctx.strokeStyle = "rgba(43, 33, 24, 0.45)";
-    ctx.lineWidth = 3.5;
+    // Garis tepi dalam emulsi foto yang tegas
+    ctx.strokeStyle = "rgba(38, 26, 16, 0.58)";
+    ctx.lineWidth = 4;
     ctx.strokeRect(sidePad, topPad, photoW, photoH);
   };
 
@@ -1044,17 +1049,17 @@ export function createPolaroidTexture(
 
   drawPhotoGlassAndFrame();
 
-  // Caption Tulisan Tangan Spidol Asli di dagu bawah kertas Polaroid (mendukung 2 baris penuh agar jelas terbaca)
+  // Caption Tulisan Tangan Spidol Asli di dagu bawah kertas Polaroid (tinta pekat kontras tinggi, mendukung 2 baris penuh)
   ctx.save();
   ctx.translate(width / 2, topPad + photoH + 74);
   ctx.rotate(((opts.seed % 5) - 2) * 0.008);
 
-  ctx.fillStyle = "#160e07";
+  ctx.fillStyle = "#120a04";
   ctx.font = `700 50px ${handFont}`;
   ctx.textAlign = "center";
 
   const maxLineW = width - 92;
-  const words = (opts.caption || "Kenangan XII PPLG 1").trim().split(/\s+/);
+  const words = cleanCaption.split(/\s+/);
   const lines: string[] = [];
   let cur = "";
   for (const w of words) {
@@ -1080,7 +1085,7 @@ export function createPolaroidTexture(
     ctx.fillText(lines[1] || "", 0, 44);
   }
 
-  ctx.fillStyle = "#8c4320";
+  ctx.fillStyle = "#6e3214";
   ctx.font = `700 34px ${handFont}`;
   ctx.fillText(
     `~ Kelas ${opts.phase} · ${opts.category} (${opts.dateStr || "2026"}) ~`,

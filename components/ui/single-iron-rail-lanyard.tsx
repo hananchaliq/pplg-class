@@ -7,6 +7,7 @@ import {
   type LanyardMember,
   type TeamLanyardRailLabels,
 } from "@/components/ui/team-lanyard-rail";
+import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 interface SingleIronRailLanyardProps {
   items: LanyardMember[];
@@ -41,6 +42,22 @@ export function SingleIronRailLanyard({
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [isTransitioningOut, setIsTransitioningOut] = React.useState(false);
+  const [railReady, setRailReady] = React.useState(false);
+  const [railProgress, setRailProgress] = React.useState(26);
+
+  React.useEffect(() => {
+    setRailReady(false);
+    setRailProgress(35);
+    const t1 = window.setTimeout(() => setRailProgress(82), 140);
+    const t2 = window.setTimeout(() => {
+      setRailProgress(100);
+      setRailReady(true);
+    }, 380);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [railKey]);
 
   React.useEffect(() => {
     const onRouteStart = () => {
@@ -195,6 +212,16 @@ export function SingleIronRailLanyard({
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card/75 py-4 shadow-sm">
+      {/* Tirai Merah Bioskop / Panggung 3D saat Model Kartu ID Lanyard 3D Di-Generate */}
+      <StageCurtainLoader
+        ready={railReady}
+        progress={railProgress}
+        label="Merangkai gantungan ID Card 3D..."
+        sceneTitle={
+          heading ? heading.toUpperCase() : "PANGGUNG 3D · KARTU ID XII PPLG 1"
+        }
+      />
+
       {(eyebrow || heading) && (
         <header className="relative z-10 flex flex-col items-center gap-1 px-4 pt-2 text-center sm:px-6">
           {eyebrow && (

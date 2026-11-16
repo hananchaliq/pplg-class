@@ -20,6 +20,7 @@ import {
   Layers,
   MessageSquareHeart,
 } from "lucide-react";
+import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 export type ExtendedStudentRecord = StudentRecord & {
   nis?: string;
@@ -403,6 +404,8 @@ export function DreamBoardSection({
   >({});
   const [isEditingModal, setIsEditingModal] = React.useState(false);
   const [isSavingEdit, setIsSavingEdit] = React.useState(false);
+  const [boardReady, setBoardReady] = React.useState(false);
+  const [boardProgress, setBoardProgress] = React.useState(24);
   const [editTitle, setEditTitle] = React.useState("");
   const [editReason, setEditReason] = React.useState("");
   const [editDesc, setEditDesc] = React.useState("");
@@ -1242,11 +1245,18 @@ export function DreamBoardSection({
       tick();
     };
     wrappedTick();
+    setBoardProgress(100);
+    const curtainTimer = window.setTimeout(() => {
+      if (!routeTransitionStopped) {
+        setBoardReady(true);
+      }
+    }, 340);
 
     return () => {
       routeTransitionStopped = true;
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(frameId);
+      window.clearTimeout(curtainTimer);
       window.removeEventListener("resize", onResize);
       window.removeEventListener(
         "app:route-transition-start",
@@ -1418,6 +1428,14 @@ export function DreamBoardSection({
             ref={mountRef}
             className="relative z-[2] h-full w-full"
             aria-label="Kanvas 3D Papan Tulis Cita-Cita Siswa XII PPLG 1"
+          />
+
+          {/* Tirai Merah Bioskop / Panggung 3D saat Papan Cita-Cita 3D Di-Generate */}
+          <StageCurtainLoader
+            ready={boardReady}
+            progress={boardProgress}
+            label="Menyiapkan papan cita-cita 3D..."
+            sceneTitle="PANGGUNG 3D · PAPAN IMPIAN XII PPLG 1"
           />
 
           {orderedStudents.length === 0 && (

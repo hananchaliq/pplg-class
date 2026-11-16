@@ -4,6 +4,7 @@ import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
+import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 export interface SceneShellContext {
   scene: THREE.Scene;
@@ -144,23 +145,25 @@ export function SceneShell({
     downgradeRef.current = downgradeToSimple;
   }, [onSetup, downgradeToSimple]);
 
-  const [progress, setProgressState] = React.useState(15);
+  const [progress, setProgressState] = React.useState(22);
   const [progressLabel, setProgressLabel] = React.useState(
     "Menyiapkan ruang kenangan 3D..."
   );
   const [ready, setReady] = React.useState(false);
 
   const setProgress = React.useCallback((pct: number, label?: string) => {
-    setProgressState(Math.min(100, Math.max(0, Math.round(pct))));
+    const clamped = Math.min(100, Math.max(0, Math.round(pct)));
+    setProgressState(clamped);
     if (label) setProgressLabel(label);
-    if (pct >= 100) {
-      setReady(true);
-    }
   }, []);
 
   React.useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
+
+    setReady(false);
+    setProgressState(28);
+    setProgressLabel("Membangun geometri & tekstur 3D...");
 
     const isSoftwareGl = isSoftwareWebGL();
     const width = Math.max(1, container.clientWidth);
@@ -213,6 +216,7 @@ export function SceneShell({
     let isTabVisible = !document.hidden;
     let frameId = 0;
     let timeoutId = 0;
+    let curtainTimerId = 0;
     let renderBusy = false;
     let renderDirty = false;
     let disposed = false;
@@ -250,7 +254,8 @@ export function SceneShell({
       frameId = requestAnimationFrame(() => {
         if (disposed) return;
         renderDirty = false;
-        userHooks.onTick?.(0.016, performance.now() / 1000);
+        const elapsedNow = performance.now() / 1000;
+        userHooks.onTick?.(0.016, elapsedNow);
         renderer.render(scene, camera);
         const done = () => {
           renderBusy = false;
@@ -270,10 +275,24 @@ export function SceneShell({
       setProgress,
     });
 
+    setProgressState(76);
+    setProgressLabel("Menyalakan tata cahaya panggung 3D...");
+
     if (!isSoftwareGl) {
       renderer.compile(scene, camera);
     }
-    setProgress(100, "Siap ditampilkan");
+
+    // Render frame pertama model 3D di balik tirai 3D
+    userHooks.onTick?.(0.016, 0);
+    renderer.render(scene, camera);
+    setProgressState(100);
+    setProgressLabel("Model 3D siap ditampilkan!");
+
+    curtainTimerId = window.setTimeout(() => {
+      if (!disposed) {
+        setReady(true);
+      }
+    }, 90);
 
     const clock = new THREE.Clock();
 
@@ -299,14 +318,13 @@ export function SceneShell({
 
     if (continuous) {
       tick();
-    } else {
-      requestRender();
     }
 
     const handleRouteTransitionStart = () => {
       disposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(timeoutId);
+      clearTimeout(curtainTimerId);
     };
     window.addEventListener(
       "app:route-transition-start",
@@ -352,6 +370,7 @@ export function SceneShell({
       disposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(timeoutId);
+      clearTimeout(curtainTimerId);
       observer.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -389,24 +408,13 @@ export function SceneShell({
         }}
       />
 
-      {/* Layar pemuatan hangat dengan progres */}
-      {!ready && (
-        <div
-          aria-live="polite"
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#231912] px-6 text-center text-[#f2e6d5]"
-        >
-          <p className="font-serif text-lg font-medium">{progressLabel}</p>
-          <div className="mt-3 h-2 w-48 overflow-hidden rounded-full bg-[#3a2a1f]">
-            <div
-              className="h-full bg-[#e09f4c] transition-all duration-200"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="mt-1.5 font-mono text-xs tabular-nums text-[#b8a38c]">
-            {progress}%
-          </p>
-        </div>
-      )}
+      {/* Tirai Merah Bioskop / Panggung 3D (Bukaan V-Terbalik \ / sesuai referensi Cs-IoT2lERQ) */}
+      <StageCurtainLoader
+        ready={ready}
+        progress={progress}
+        label={progressLabel}
+        sceneTitle={ariaLabel.toUpperCase()}
+      />
 
       {/* Sibling HTML HUD / Overlay */}
       {children}
