@@ -633,6 +633,7 @@ export function createPolaroidTexture(
     phase: string;
     dateStr: string;
     seed: number;
+    imageUrl?: string;
     isBack?: boolean;
   },
   renderer?: THREE.WebGLRenderer | null
@@ -760,81 +761,109 @@ export function createPolaroidTexture(
   ctx.fillStyle = "#dfd1bc";
   ctx.fillRect(sidePad - 3, topPad - 3, photoW + 6, photoH + 6);
 
-  const palettes = [
-    ["#c86d3b", "#e8a568", "#2d6a6e"],
-    ["#2d6a6e", "#6da89b", "#d98a4f"],
-    ["#3b593f", "#84a37c", "#e09f4c"],
-    ["#a84232", "#d9825b", "#3d312a"],
-  ];
-  const pal = palettes[opts.seed % palettes.length]!;
+  const rawImageUrl = (opts.imageUrl || "").trim();
+  const hasRealPhoto =
+    rawImageUrl.length > 0 &&
+    !rawImageUrl.startsWith("/api/moment-illustration");
 
-  const grad = ctx.createLinearGradient(sidePad, topPad, sidePad, topPad + photoH);
-  grad.addColorStop(0, pal[0]!);
-  grad.addColorStop(0.65, pal[1]!);
-  grad.addColorStop(1, pal[2]!);
-  ctx.fillStyle = grad;
-  ctx.fillRect(sidePad, topPad, photoW, photoH);
+  const drawPhotoGlassAndFrame = () => {
+    // Efek Kilau Satin Kertas Foto Asli (Diagonal Gloss Reflection Sheen)
+    const sheenGrad = ctx.createLinearGradient(
+      sidePad,
+      topPad,
+      sidePad + photoW,
+      topPad + photoH
+    );
+    sheenGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+    sheenGrad.addColorStop(0.42, "rgba(255, 255, 255, 0.02)");
+    sheenGrad.addColorStop(0.5, "rgba(255, 252, 245, 0.22)");
+    sheenGrad.addColorStop(0.58, "rgba(255, 255, 255, 0.03)");
+    sheenGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = sheenGrad;
+    ctx.fillRect(sidePad, topPad, photoW, photoH);
 
-  // Matahari / cahaya sore hangat
-  ctx.fillStyle = "rgba(255, 243, 214, 0.82)";
-  ctx.beginPath();
-  ctx.arc(
-    sidePad + photoW * (0.3 + rand() * 0.4),
-    topPad + photoH * 0.34,
-    46,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
+    // Garis tepi dalam emulsi foto
+    ctx.strokeStyle = "rgba(43, 33, 24, 0.42)";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(sidePad, topPad, photoW, photoH);
+  };
 
-  // Siluet bukit Ende
-  ctx.fillStyle = "rgba(38, 26, 18, 0.48)";
-  ctx.beginPath();
-  ctx.moveTo(sidePad, topPad + photoH);
-  ctx.quadraticCurveTo(
-    sidePad + photoW * 0.35,
-    topPad + photoH * 0.62,
-    sidePad + photoW,
-    topPad + photoH * 0.78
-  );
-  ctx.lineTo(sidePad + photoW, topPad + photoH);
-  ctx.closePath();
-  ctx.fill();
+  if (hasRealPhoto) {
+    // Latar emulsi hangat sambil menunggu berkas gambar dari DB selesai dirender ke kanvas
+    const baseGrad = ctx.createLinearGradient(
+      sidePad,
+      topPad,
+      sidePad,
+      topPad + photoH
+    );
+    baseGrad.addColorStop(0, "#3b2a1e");
+    baseGrad.addColorStop(1, "#241810");
+    ctx.fillStyle = baseGrad;
+    ctx.fillRect(sidePad, topPad, photoW, photoH);
+  } else {
+    const palettes = [
+      ["#c86d3b", "#e8a568", "#2d6a6e"],
+      ["#2d6a6e", "#6da89b", "#d98a4f"],
+      ["#3b593f", "#84a37c", "#e09f4c"],
+      ["#a84232", "#d9825b", "#3d312a"],
+    ];
+    const pal = palettes[opts.seed % palettes.length]!;
 
-  // Siluet 3-4 sahabat berfoto bersama
-  const peopleCount = 3 + (opts.seed % 3);
-  for (let p = 0; p < peopleCount; p++) {
-    const px =
-      sidePad + 85 + (p * (photoW - 170)) / Math.max(1, peopleCount - 1);
-    const py = topPad + photoH - 60;
-    ctx.fillStyle = "#241911";
+    const grad = ctx.createLinearGradient(
+      sidePad,
+      topPad,
+      sidePad,
+      topPad + photoH
+    );
+    grad.addColorStop(0, pal[0]!);
+    grad.addColorStop(0.65, pal[1]!);
+    grad.addColorStop(1, pal[2]!);
+    ctx.fillStyle = grad;
+    ctx.fillRect(sidePad, topPad, photoW, photoH);
+
+    // Matahari / cahaya sore hangat
+    ctx.fillStyle = "rgba(255, 243, 214, 0.82)";
     ctx.beginPath();
-    ctx.arc(px, py - 50, 21, 0, Math.PI * 2);
+    ctx.arc(
+      sidePad + photoW * (0.3 + rand() * 0.4),
+      topPad + photoH * 0.34,
+      46,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
+
+    // Siluet bukit Ende
+    ctx.fillStyle = "rgba(38, 26, 18, 0.48)";
     ctx.beginPath();
-    ctx.ellipse(px, py + 15, 35, 50, 0, Math.PI, 0, false);
+    ctx.moveTo(sidePad, topPad + photoH);
+    ctx.quadraticCurveTo(
+      sidePad + photoW * 0.35,
+      topPad + photoH * 0.62,
+      sidePad + photoW,
+      topPad + photoH * 0.78
+    );
+    ctx.lineTo(sidePad + photoW, topPad + photoH);
+    ctx.closePath();
     ctx.fill();
+
+    // Siluet 3-4 sahabat berfoto bersama (hanya jika tidak ada gambar asli di DB)
+    const peopleCount = 3 + (opts.seed % 3);
+    for (let p = 0; p < peopleCount; p++) {
+      const px =
+        sidePad + 85 + (p * (photoW - 170)) / Math.max(1, peopleCount - 1);
+      const py = topPad + photoH - 60;
+      ctx.fillStyle = "#241911";
+      ctx.beginPath();
+      ctx.arc(px, py - 50, 21, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(px, py + 15, 35, 50, 0, Math.PI, 0, false);
+      ctx.fill();
+    }
   }
 
-  // Efek Kilau Satin Kertas Foto Asli (Diagonal Gloss Reflection Sheen)
-  const sheenGrad = ctx.createLinearGradient(
-    sidePad,
-    topPad,
-    sidePad + photoW,
-    topPad + photoH
-  );
-  sheenGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-  sheenGrad.addColorStop(0.42, "rgba(255, 255, 255, 0.02)");
-  sheenGrad.addColorStop(0.5, "rgba(255, 252, 245, 0.22)");
-  sheenGrad.addColorStop(0.58, "rgba(255, 255, 255, 0.03)");
-  sheenGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-  ctx.fillStyle = sheenGrad;
-  ctx.fillRect(sidePad, topPad, photoW, photoH);
-
-  // Garis tepi dalam emulsi foto
-  ctx.strokeStyle = "rgba(43, 33, 24, 0.42)";
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(sidePad, topPad, photoW, photoH);
+  drawPhotoGlassAndFrame();
 
   // Caption Tulisan Tangan Spidol Asli di dagu bawah kertas Polaroid (sedikit miring alami)
   ctx.save();
@@ -857,7 +886,42 @@ export function createPolaroidTexture(
   );
   ctx.restore();
 
-  return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+  const tex = applyTextureSettings(
+    new THREE.CanvasTexture(canvas),
+    renderer,
+    true,
+    false
+  );
+
+  // Muat dan gambar foto asli dari database (data:image/... atau URL) ke dalam Polaroid 3D
+  if (typeof window !== "undefined" && rawImageUrl.length > 0) {
+    const img = new window.Image();
+    if (rawImageUrl.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      const imgW = img.naturalWidth || img.width || photoW;
+      const imgH = img.naturalHeight || img.height || photoH;
+      const scale = Math.max(photoW / imgW, photoH / imgH);
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+      const dx = sidePad + (photoW - drawW) / 2;
+      const dy = topPad + (photoH - drawH) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sidePad, topPad, photoW, photoH);
+      ctx.clip();
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.restore();
+
+      drawPhotoGlassAndFrame();
+      tex.needsUpdate = true;
+    };
+    img.src = rawImageUrl;
+  }
+
+  return tex;
 }
 
 export interface BookPageData {
@@ -868,6 +932,8 @@ export interface BookPageData {
   studentRole?: string;
   studentBio?: string;
   studentTags?: string[];
+  studentPhotoUrl?: string;
+  showPhoto?: boolean;
   messages?: { author: string; text: string; seed: number }[];
   tocEntries?: { name: string; spreadIndex: number }[];
   decorSeed: number;
@@ -1737,6 +1803,8 @@ export function createBookPageTexture(
 
     const photoShiftX = (rand() - 0.5) * 76;
     const photoRot = (rand() - 0.5) * 0.11;
+    (canvas as unknown as { __photoShiftX?: number; __photoRot?: number }).__photoShiftX = photoShiftX;
+    (canvas as unknown as { __photoShiftX?: number; __photoRot?: number }).__photoRot = photoRot;
 
     ctx.save();
     ctx.translate(width / 2 + photoShiftX, 345);
@@ -2162,7 +2230,74 @@ export function createBookPageTexture(
     height - 62
   );
 
-  return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+  const bookTex = applyTextureSettings(
+    new THREE.CanvasTexture(canvas),
+    renderer,
+    true,
+    false
+  );
+
+  // Jika halaman kiri siswa memiliki foto dari database (studentPhotoUrl) dan showPhoto aktif, gambar foto aslinya di atas bingkai potret
+  if (
+    typeof window !== "undefined" &&
+    page.type === "student-left" &&
+    page.showPhoto !== false &&
+    page.studentPhotoUrl &&
+    page.studentPhotoUrl.trim().length > 0
+  ) {
+    const stuImgUrl = page.studentPhotoUrl.trim();
+    const savedShiftX = (canvas as unknown as { __photoShiftX?: number }).__photoShiftX ?? 0;
+    const savedRot = (canvas as unknown as { __photoRot?: number }).__photoRot ?? 0;
+    const img = new window.Image();
+    if (stuImgUrl.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      ctx.save();
+      ctx.translate(width / 2 + savedShiftX, 345);
+      ctx.rotate(savedRot);
+      if (photoLayout === 1) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(0, -10, 158, 166, 0, 0, Math.PI * 2);
+        ctx.clip();
+        const scale = Math.max(320 / (img.naturalWidth || 320), 336 / (img.naturalHeight || 336));
+        const dw = (img.naturalWidth || 320) * scale;
+        const dh = (img.naturalHeight || 336) * scale;
+        ctx.drawImage(img, -dw / 2, -10 - dh / 2, dw, dh);
+        ctx.restore();
+
+        ctx.fillStyle = "#fffdf7";
+        ctx.fillRect(-160, 140, 320, 54);
+        ctx.strokeStyle = "#2b190d";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-160, 140, 320, 54);
+        ctx.fillStyle = "#170d05";
+        ctx.textAlign = "center";
+        ctx.font = `700 42px ${handFont}`;
+        ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 179);
+      } else {
+        const boxX = -158;
+        const boxY = -168;
+        const boxW = 316;
+        const boxH = 278;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(boxX, boxY, boxW, boxH);
+        ctx.clip();
+        const scale = Math.max(boxW / (img.naturalWidth || boxW), boxH / (img.naturalHeight || boxH));
+        const dw = (img.naturalWidth || boxW) * scale;
+        const dh = (img.naturalHeight || boxH) * scale;
+        ctx.drawImage(img, boxX + (boxW - dw) / 2, boxY + (boxH - dh) / 2, dw, dh);
+        ctx.restore();
+      }
+      ctx.restore();
+      bookTex.needsUpdate = true;
+    };
+    img.src = stuImgUrl;
+  }
+
+  return bookTex;
 }
 
 

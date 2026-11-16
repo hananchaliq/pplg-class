@@ -67,6 +67,7 @@ export function FlatIdCardRail({
   React.useEffect(() => {
     setActiveIndex(0);
     setFlippedId(null);
+    setFailedImages({});
   }, [items]);
 
   const handleToggleFlip = (item: LanyardMember, idx: number) => {

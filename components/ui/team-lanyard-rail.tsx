@@ -87,6 +87,8 @@ const DEFAULT_LABELS: TeamLanyardRailLabels = {
 };
 const METAL = "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 70%, black), color-mix(in oklab, var(--color-muted-foreground) 22%, white) 38%, var(--color-muted-foreground) 70%, color-mix(in oklab, var(--color-muted-foreground) 65%, black))";
 const PLASTIC = "linear-gradient(180deg, color-mix(in oklab, var(--color-muted-foreground) 30%, var(--color-background)), color-mix(in oklab, var(--color-muted-foreground) 72%, var(--color-background)))";
+const GOLD_METAL = "linear-gradient(to right, #854d0e 0%, #fef08a 36%, #eab308 68%, #713f12 100%)";
+const GOLD_PLASTIC = "linear-gradient(180deg, #fde047 0%, #ca8a04 58%, #854d0e 100%)";
 
 function clamp(value: number, min: number, max: number) {
    return Math.max(min, Math.min(max, value));
@@ -337,7 +339,21 @@ function LinkIcon({ label }: { label: string }) {
 
 const LINK_ROW = "inline-flex items-center gap-[0.25em] rounded-[0.35em] px-[0.25em] py-[0.12em] text-[0.64em] font-medium leading-tight";
 
-function Band({ tone, tall }: { tone: string; tall?: boolean }) {
+function Band({ tone, tall, isSpecial }: { tone: string; tall?: boolean; isSpecial?: boolean }) {
+   if (isSpecial) {
+      return (
+         <span
+            aria-hidden="true"
+            className={`absolute inset-x-0 top-0 block ${tall ? "h-[3.9em]" : "h-[1.95em]"}`}
+            style={{
+               background:
+                  "repeating-linear-gradient(135deg, transparent 0 0.45em, rgba(255, 251, 224, 0.24) 0.45em 0.56em), linear-gradient(180deg, #fde047 0%, #eab308 52%, #a16207 100%)",
+            }}
+         >
+            <span className="absolute inset-x-0 bottom-0 h-px bg-[#fef08a]/55" />
+         </span>
+      );
+   }
    return (
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 block ${tone} ${tall ? "h-[3.9em]" : "h-[1.95em]"}`} style={{ background: "repeating-linear-gradient(135deg, transparent 0 0.45em, color-mix(in oklab, white 10%, transparent) 0.45em 0.56em), linear-gradient(180deg, color-mix(in oklab, currentColor 80%, white), currentColor 72%, color-mix(in oklab, currentColor 86%, black))" }}>
          <span className="absolute inset-x-0 bottom-0 h-px bg-black/15" />
@@ -345,8 +361,18 @@ function Band({ tone, tall }: { tone: string; tall?: boolean }) {
    );
 }
 
-function Hole() {
-   return <span aria-hidden="true" className="absolute left-1/2 top-[0.64em] block h-[0.48em] w-[2.4em] -translate-x-1/2 rounded-full bg-background" style={{ boxShadow: "inset 0 0.08em 0.18em color-mix(in oklab, black 55%, transparent), 0 0.05em 0 color-mix(in oklab, white 30%, transparent)" }} />;
+function Hole({ isSpecial }: { isSpecial?: boolean }) {
+   return (
+      <span
+         aria-hidden="true"
+         className={`absolute left-1/2 top-[0.64em] block h-[0.48em] w-[2.4em] -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#221810]" : "bg-background"}`}
+         style={{
+            boxShadow: isSpecial
+               ? "inset 0 0.08em 0.18em rgba(0,0,0,0.8), 0 0.05em 0 rgba(254, 240, 138, 0.55)"
+               : "inset 0 0.08em 0.18em color-mix(in oklab, black 55%, transparent), 0 0.05em 0 color-mix(in oklab, white 30%, transparent)",
+         }}
+      />
+   );
 }
 
 function Finish() {
@@ -358,11 +384,133 @@ function Finish() {
    );
 }
 
-function Silhouette() {
+function Silhouette({ isSpecial }: { isSpecial?: boolean }) {
    return (
-      <svg aria-hidden="true" viewBox="0 0 40 40" className="size-full text-muted-foreground/60">
+      <svg aria-hidden="true" viewBox="0 0 40 40" className={`size-full ${isSpecial ? "text-[#fde047]" : "text-muted-foreground/60"}`}>
          <circle cx="20" cy="15" r="7" fill="currentColor" />
          <path d="M6 38c1.5-8 7-12 14-12s12.5 4 14 12z" fill="currentColor" />
+      </svg>
+   );
+}
+
+function SpecialCrownAndGarland({ uid }: { uid: string }) {
+   return (
+      <svg
+         aria-hidden="true"
+         viewBox="0 0 120 42"
+         className="pointer-events-none absolute -top-[1.15em] left-1/2 z-20 h-[2.35em] w-[7.2em] -translate-x-1/2 overflow-visible"
+      >
+         <defs>
+            <linearGradient id={`crown-gold-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
+               <stop offset="0%" stopColor="#fef08a" />
+               <stop offset="50%" stopColor="#facc15" />
+               <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+            <radialGradient id={`fairy-glow-${uid}`} cx="50%" cy="50%" r="50%">
+               <stop offset="0%" stopColor="#fffbeb" stopOpacity="1" />
+               <stop offset="38%" stopColor="#fda4af" stopOpacity="0.95" />
+               <stop offset="72%" stopColor="#f43f5e" stopOpacity="0.55" />
+               <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+            </radialGradient>
+         </defs>
+
+         {/* Untaian tali emas kiri & kanan */}
+         <path
+            d="M 6 16 Q 25 27 44 20"
+            fill="none"
+            stroke="#eab308"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+         />
+         <path
+            d="M 76 20 Q 95 27 114 16"
+            fill="none"
+            stroke="#eab308"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+         />
+
+         {/* Aksen titik daun emas di sepanjang untaian */}
+         <circle cx="13" cy="19" r="1.4" fill="#fde047" />
+         <circle cx="29" cy="23" r="1.4" fill="#fde047" />
+         <circle cx="91" cy="23" r="1.4" fill="#fde047" />
+         <circle cx="107" cy="19" r="1.4" fill="#fde047" />
+
+         {/* 4 Lampu bunga bercahaya pink-emas di kiri & kanan mahkota */}
+         {[
+            { cx: 20, cy: 19 },
+            { cx: 36, cy: 22 },
+            { cx: 84, cy: 22 },
+            { cx: 100, cy: 19 },
+         ].map((pt, idx) => (
+            <g key={idx}>
+               <circle cx={pt.cx} cy={pt.cy} r="6.5" fill={`url(#fairy-glow-${uid})`} />
+               <circle cx={pt.cx} cy={pt.cy} r="2.2" fill="#fef9c3" />
+            </g>
+         ))}
+
+         {/* Mahkota Emas 3 Puncak di Tengah */}
+         <path
+            d="M 45 26 L 42 11 L 52 18 L 60 7 L 68 18 L 78 11 L 75 26 Z"
+            fill={`url(#crown-gold-${uid})`}
+            stroke="#78350f"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+         />
+         <rect
+            x="45"
+            y="25.5"
+            width="30"
+            height="4.2"
+            rx="1.5"
+            fill="#d97706"
+            stroke="#78350f"
+            strokeWidth="1.1"
+         />
+         {/* Mutiara emas di pucuk mahkota */}
+         <circle cx="42" cy="10" r="1.9" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
+         <circle cx="60" cy="6" r="2.2" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
+         <circle cx="78" cy="10" r="1.9" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
+         {/* Permata mahkota (biru kiri-kanan, merah muda di tengah persis seperti gambar) */}
+         <circle cx="51" cy="21.5" r="1.7" fill="#38bdf8" />
+         <circle cx="60" cy="20.5" r="2.1" fill="#fb7185" />
+         <circle cx="69" cy="21.5" r="1.7" fill="#38bdf8" />
+      </svg>
+   );
+}
+
+function SpecialBarcodeGarland({ uid }: { uid: string }) {
+   return (
+      <svg
+         aria-hidden="true"
+         viewBox="0 0 120 18"
+         className="pointer-events-none absolute -top-[0.55em] left-1/2 z-20 h-[1.05em] w-full -translate-x-1/2 overflow-visible"
+      >
+         <defs>
+            <radialGradient id={`bar-glow-${uid}`} cx="50%" cy="50%" r="50%">
+               <stop offset="0%" stopColor="#fffbeb" stopOpacity="1" />
+               <stop offset="38%" stopColor="#fda4af" stopOpacity="0.95" />
+               <stop offset="75%" stopColor="#f43f5e" stopOpacity="0.55" />
+               <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+            </radialGradient>
+         </defs>
+         <path
+            d="M 14 12 Q 60 2 106 12"
+            fill="none"
+            stroke="#eab308"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+         />
+         {[
+            { cx: 33, cy: 8.5 },
+            { cx: 60, cy: 6.5 },
+            { cx: 87, cy: 8.5 },
+         ].map((pt, idx) => (
+            <g key={idx}>
+               <circle cx={pt.cx} cy={pt.cy} r="6.2" fill={`url(#bar-glow-${uid})`} />
+               <circle cx={pt.cx} cy={pt.cy} r="2.1" fill="#fef9c3" />
+            </g>
+         ))}
       </svg>
    );
 }
@@ -373,48 +521,154 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
    const bars = React.useMemo(() => barcode(seed), [seed]);
    const digits = String(seed % 1000000000).padStart(9, "0");
    const [failed, setFailed] = React.useState(false);
+   React.useEffect(() => {
+      setFailed(false);
+   }, [item.image]);
+
+   const isSpecial =
+      item.tone === 5 ||
+      Boolean(item.team && item.team.toUpperCase().includes("SAHABAT ISTIMEWA"));
+   const hasValidImage = Boolean(item.image && item.image.trim().length > 0) && !failed;
    const tags = (item.tags ?? []).slice(0, 3);
    const links = (item.links ?? []).slice(0, 3);
    return (
       <>
-         <span data-face="front" className="absolute inset-0 flex flex-col items-center overflow-hidden rounded-[0.8em] border border-border/80 bg-card px-[0.72em] pb-[0.6em] text-card-foreground [backface-visibility:hidden]" style={{ transform: "translateZ(1px)" }}>
-            <Band tone={tone} tall />
-            <Hole />
-            <span className="relative mt-[1.8em] block size-[4.8em] shrink-0 rounded-full bg-card p-[0.18em]" style={{ boxShadow: "0 0.14em 0.45em color-mix(in oklab, var(--color-foreground) 20%, transparent)" }}>
-               <span className="relative block size-full overflow-hidden rounded-full bg-muted">
-                  <Silhouette />
-                  {!failed && <img src={item.image} alt="" draggable={false} decoding="async" onError={() => setFailed(true)} className="pointer-events-none absolute inset-0 block size-full select-none object-cover" />}
+         <span
+            data-face="front"
+            className={`absolute inset-0 flex flex-col items-center overflow-hidden rounded-[0.8em] px-[0.72em] pb-[0.6em] [backface-visibility:hidden] ${
+               isSpecial
+                  ? "border-[1.6px] border-[#facc15] bg-[#221810] text-[#fffbeb]"
+                  : "border border-border/80 bg-card text-card-foreground"
+            }`}
+            style={{
+               transform: "translateZ(1px)",
+               boxShadow: isSpecial
+                  ? "0 0 18px rgba(250, 204, 21, 0.42), inset 0 0 10px rgba(234, 179, 8, 0.16)"
+                  : undefined,
+            }}
+         >
+            <Band tone={tone} tall isSpecial={isSpecial} />
+            <Hole isSpecial={isSpecial} />
+            <span
+               className={`relative mt-[1.8em] block size-[4.8em] shrink-0 rounded-full p-[0.2em] ${
+                  isSpecial ? "bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#78350f]" : "bg-card"
+               }`}
+               style={{
+                  boxShadow: isSpecial
+                     ? "0 0 0 1.5px #451a03, 0 0.16em 0.5em rgba(0, 0, 0, 0.55)"
+                     : "0 0.14em 0.45em color-mix(in oklab, var(--color-foreground) 20%, transparent)",
+               }}
+            >
+               {isSpecial && <SpecialCrownAndGarland uid={String(seed)} />}
+               <span
+                  className={`relative block size-full overflow-hidden rounded-full ${
+                     isSpecial
+                        ? "bg-gradient-to-b from-[#b47b18] via-[#85540e] to-[#543407]"
+                        : "bg-muted"
+                  }`}
+               >
+                  <Silhouette isSpecial={isSpecial} />
+                  {hasValidImage && (
+                     <img
+                        src={item.image}
+                        alt=""
+                        draggable={false}
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={() => setFailed(true)}
+                        className="pointer-events-none absolute inset-0 block size-full select-none object-cover"
+                     />
+                  )}
                </span>
             </span>
-            <span className="mt-[0.5em] block w-full truncate text-center text-[1.02em] font-semibold leading-tight tracking-tight">{item.name}</span>
-            <span className="mt-[0.12em] block w-full truncate text-center text-[0.75em] leading-snug text-muted-foreground">{item.role}</span>
-            {item.team && <span className="mt-[0.38em] block w-full truncate text-center text-[0.56em] font-medium uppercase tracking-[0.18em] text-muted-foreground/85">{item.team}</span>}
-            <span className="mt-auto block w-full border-t border-dashed border-border/75 pt-[0.42em]">
-               <svg aria-hidden="true" viewBox={`0 0 ${bars.width} 20`} preserveAspectRatio="none" className="block h-[1.4em] w-full text-foreground/80">
+            <span
+               className={`mt-[0.5em] block w-full truncate text-center text-[1.02em] font-semibold leading-tight tracking-tight ${
+                  isSpecial ? "font-bold text-[#fffbeb]" : ""
+               }`}
+            >
+               {item.name}
+            </span>
+            <span
+               className={`mt-[0.12em] block w-full truncate text-center text-[0.75em] leading-snug ${
+                  isSpecial ? "text-[#fde68a]/85" : "text-muted-foreground"
+               }`}
+            >
+               {item.role}
+            </span>
+            {item.team &&
+               (isSpecial ? (
+                  <span className="mt-[0.34em] block w-full truncate rounded-full border border-[#eab308]/85 bg-[#eab308]/18 px-[0.55em] py-[0.16em] text-center text-[0.53em] font-bold uppercase tracking-[0.06em] text-[#facc15] shadow-[0_0_8px_rgba(234,179,8,0.22)]">
+                     {item.team}
+                  </span>
+               ) : (
+                  <span className="mt-[0.38em] block w-full truncate text-center text-[0.56em] font-medium uppercase tracking-[0.18em] text-muted-foreground/85">
+                     {item.team}
+                  </span>
+               ))}
+            <span
+               className={`relative mt-auto block w-full border-t border-dashed pt-[0.42em] ${
+                  isSpecial ? "border-[#eab308]/50" : "border-border/75"
+               }`}
+            >
+               {isSpecial && <SpecialBarcodeGarland uid={String(seed)} />}
+               <svg
+                  aria-hidden="true"
+                  viewBox={`0 0 ${bars.width} 20`}
+                  preserveAspectRatio="none"
+                  className={`block h-[1.4em] w-full ${
+                     isSpecial ? "text-[#fef9c3]/90" : "text-foreground/80"
+                  }`}
+               >
                   <path d={bars.d} fill="currentColor" />
                </svg>
-               <span className="mt-[0.2em] block text-center font-mono text-[0.48em] tracking-[0.3em] text-muted-foreground">{digits}</span>
+               <span
+                  className={`mt-[0.2em] block text-center font-mono text-[0.48em] tracking-[0.3em] ${
+                     isSpecial ? "text-[#fde68a]/80" : "text-muted-foreground"
+                  }`}
+               >
+                  {digits}
+               </span>
             </span>
             <Finish />
          </span>
 
-         <span data-face="back" className="absolute inset-0 flex flex-col justify-between overflow-hidden rounded-[0.8em] border border-border/80 bg-card px-[0.78em] pb-[0.7em] pt-[2.3em] text-card-foreground [backface-visibility:hidden]" style={{ transform: "rotateY(180deg) translateZ(1px)" }}>
-            <Band tone={tone} />
-            <Hole />
+         <span
+            data-face="back"
+            className={`absolute inset-0 flex flex-col justify-between overflow-hidden rounded-[0.8em] px-[0.78em] pb-[0.7em] pt-[2.3em] [backface-visibility:hidden] ${
+               isSpecial
+                  ? "border-[1.6px] border-[#facc15] bg-[#221810] text-[#fffbeb]"
+                  : "border border-border/80 bg-card text-card-foreground"
+            }`}
+            style={{
+               transform: "rotateY(180deg) translateZ(1px)",
+               boxShadow: isSpecial
+                  ? "0 0 18px rgba(250, 204, 21, 0.42), inset 0 0 10px rgba(234, 179, 8, 0.16)"
+                  : undefined,
+            }}
+         >
+            <Band tone={tone} isSpecial={isSpecial} />
+            <Hole isSpecial={isSpecial} />
             <span className="flex flex-col gap-[0.42em] overflow-hidden">
                <span className="block">
                   <span className="block truncate text-[0.9em] font-semibold leading-tight">{item.name}</span>
-                  <span className="block truncate text-[0.68em] leading-snug text-muted-foreground">{item.role}</span>
+                  <span className={`block truncate text-[0.68em] leading-snug ${isSpecial ? "text-[#fde68a]/85" : "text-muted-foreground"}`}>{item.role}</span>
                </span>
                {item.bio && (
-                  <span data-bio className="line-clamp-3 block text-[0.68em] leading-[1.35] text-card-foreground/90">
+                  <span data-bio className={`line-clamp-3 block text-[0.68em] leading-[1.35] ${isSpecial ? "text-[#fef9c3]/90" : "text-card-foreground/90"}`}>
                      {item.bio}
                   </span>
                )}
                {tags.length > 0 && (
                   <span className="flex flex-wrap gap-[0.24em] pt-[0.1em]">
                      {tags.map(tag => (
-                        <span key={tag} className="block max-w-full truncate rounded-full border border-border/80 bg-muted/50 px-[0.52em] py-[0.12em] text-[0.56em] leading-tight text-muted-foreground">
+                        <span
+                           key={tag}
+                           className={`block max-w-full truncate rounded-full border px-[0.52em] py-[0.12em] text-[0.56em] leading-tight ${
+                              isSpecial
+                                 ? "border-[#eab308]/75 bg-[#eab308]/16 text-[#fde047]"
+                                 : "border-border/80 bg-muted/50 text-muted-foreground"
+                           }`}
+                        >
                            {tag}
                         </span>
                      ))}
@@ -435,7 +689,7 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                ) : (
                   <span />
                )}
-               <svg aria-hidden="true" viewBox="-1 -1 23 23" className="size-[3.4em] shrink-0 text-foreground/90">
+               <svg aria-hidden="true" viewBox="-1 -1 23 23" className={`size-[3.4em] shrink-0 ${isSpecial ? "text-[#fef08a]" : "text-foreground/90"}`}>
                   <path d={qr} fill="currentColor" />
                </svg>
             </span>
@@ -443,7 +697,16 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
          </span>
 
          {[0, 1].map(side => (
-            <span key={side} aria-hidden="true" className="absolute inset-y-[0.8em] block w-[2px]" style={{ [side ? "right" : "left"]: 0, transform: `translateX(${side ? 1 : -1}px) rotateY(90deg)`, background: "color-mix(in oklab, var(--color-foreground) 30%, var(--color-card))" }} />
+            <span
+               key={side}
+               aria-hidden="true"
+               className="absolute inset-y-[0.8em] block w-[2px]"
+               style={{
+                  [side ? "right" : "left"]: 0,
+                  transform: `translateX(${side ? 1 : -1}px) rotateY(90deg)`,
+                  background: isSpecial ? "#eab308" : "color-mix(in oklab, var(--color-foreground) 30%, var(--color-card))",
+               }}
+            />
          ))}
       </>
    );
@@ -1166,6 +1429,9 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
 
             {items.map((item, i) => {
                const tone = TONES[((item.tone ?? (i % 5) + 1) - 1) % TONES.length] ?? TONES[0];
+               const isSpecial =
+                  item.tone === 5 ||
+                  Boolean(item.team && item.team.toUpperCase().includes("SAHABAT ISTIMEWA"));
                const isActive = active === i;
                const isFlipped = flipped === i;
                const strap = g.straps[i] ?? 0;
@@ -1182,7 +1448,7 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                      data-lanyard={i}
                      className={`pointer-events-none absolute left-0 top-0 ${tone}`}
                      style={{ width: W, height: g.height, zIndex: isFlipped ? 40 : isActive ? 30 : 10 + i, transform: `translate3d(${((sim.current.x[i] ?? 0) - W / 2).toFixed(2)}px,0,0)` }}>
-                     <span aria-hidden="true" className="absolute block rounded-full" style={{ left: W / 2 - 4 * g.u, top: g.railY - g.ring, width: 8 * g.u, height: g.ring * 2, border: `${Math.max(1.4, 2 * g.u).toFixed(2)}px solid color-mix(in oklab, var(--color-muted-foreground) 45%, white)`, boxShadow: "inset 1px 0 0 color-mix(in oklab, black 25%, transparent), 1px 1px 2px color-mix(in oklab, black 20%, transparent)" }} />
+                     <span aria-hidden="true" className="absolute block rounded-full" style={{ left: W / 2 - 4 * g.u, top: g.railY - g.ring, width: 8 * g.u, height: g.ring * 2, border: `${Math.max(1.4, 2 * g.u).toFixed(2)}px solid ${isSpecial ? "#fde047" : "color-mix(in oklab, var(--color-muted-foreground) 45%, white)"}`, boxShadow: "inset 1px 0 0 color-mix(in oklab, black 25%, transparent), 1px 1px 2px color-mix(in oklab, black 20%, transparent)" }} />
                      <span
                         ref={node => {
                            swings.current[i] = node;
@@ -1206,17 +1472,27 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                  top: g.pivotY - 2,
                                  width: g.strapW,
                                  height: strap + 2,
-                                 background: ["repeating-linear-gradient(135deg, color-mix(in oklab, white 16%, transparent) 0 1px, transparent 1px 3px)", "repeating-linear-gradient(45deg, color-mix(in oklab, black 13%, transparent) 0 1px, transparent 1px 3px)", "linear-gradient(90deg, color-mix(in oklab, currentColor 68%, black) 0%, currentColor 16%, color-mix(in oklab, currentColor 86%, white) 48%, currentColor 80%, color-mix(in oklab, currentColor 66%, black) 100%)"].join(","),
+                                 background: isSpecial
+                                    ? [
+                                         "repeating-linear-gradient(135deg, rgba(255,255,255,0.22) 0 1px, transparent 1px 3px)",
+                                         "repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 3px)",
+                                         "linear-gradient(90deg, #92400e 0%, #eab308 18%, #fef08a 50%, #eab308 82%, #92400e 100%)",
+                                      ].join(",")
+                                    : [
+                                         "repeating-linear-gradient(135deg, color-mix(in oklab, white 16%, transparent) 0 1px, transparent 1px 3px)",
+                                         "repeating-linear-gradient(45deg, color-mix(in oklab, black 13%, transparent) 0 1px, transparent 1px 3px)",
+                                         "linear-gradient(90deg, color-mix(in oklab, currentColor 68%, black) 0%, currentColor 16%, color-mix(in oklab, currentColor 86%, white) 48%, currentColor 80%, color-mix(in oklab, currentColor 66%, black) 100%)",
+                                      ].join(","),
                               }}>
                               <span className="absolute inset-y-0 left-[1.5px] right-[1.5px] block border-x border-dashed border-white/35" />
                               <span className="absolute inset-x-0 top-0 block bg-black/25" style={{ height: 6 * g.u }} />
                               <span className="absolute inset-x-[2px] block border-t border-dashed border-white/45" style={{ top: 8 * g.u }} />
                            </span>
                            <svg aria-hidden="true" className="absolute overflow-visible" style={{ left: W / 2 - g.strapW * 0.75, top: g.pivotY - 3.5 * g.u, width: g.strapW * 1.5, height: 7 * g.u }} viewBox="0 0 30 16" preserveAspectRatio="none">
-                              <rect x="2" y="3" width="26" height="10" rx="5" fill="none" stroke="color-mix(in oklab, var(--color-muted-foreground) 40%, white)" strokeWidth="3" />
+                              <rect x="2" y="3" width="26" height="10" rx="5" fill="none" stroke={isSpecial ? "#fde047" : "color-mix(in oklab, var(--color-muted-foreground) 40%, white)"} strokeWidth="3" />
                               <path d="M7 4.5 H23" stroke="white" strokeOpacity="0.6" strokeWidth="1" />
                            </svg>
-                           <span className="absolute block rounded-[2px]" style={{ left: W / 2 - g.strapW / 2 - 1.2, top: g.pivotY + strap - g.crimp * 0.4, width: g.strapW + 2.4, height: g.crimp, background: METAL, boxShadow: "0 1px 1.5px color-mix(in oklab, black 30%, transparent)" }} />
+                           <span className="absolute block rounded-[2px]" style={{ left: W / 2 - g.strapW / 2 - 1.2, top: g.pivotY + strap - g.crimp * 0.4, width: g.strapW + 2.4, height: g.crimp, background: isSpecial ? GOLD_METAL : METAL, boxShadow: "0 1px 1.5px color-mix(in oklab, black 30%, transparent)" }} />
                            <span
                               className="absolute block rounded-full"
                               style={{
@@ -1224,17 +1500,19 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                  top: reelTop,
                                  width: g.reel,
                                  height: g.reel,
-                                 background: "radial-gradient(circle at 34% 30%, color-mix(in oklab, var(--color-foreground) 48%, var(--color-background)) 0%, var(--color-foreground) 58%, color-mix(in oklab, var(--color-foreground) 82%, var(--color-background)) 100%)",
+                                 background: isSpecial
+                                    ? "radial-gradient(circle at 34% 30%, #fef08a 0%, #eab308 58%, #854d0e 100%)"
+                                    : "radial-gradient(circle at 34% 30%, color-mix(in oklab, var(--color-foreground) 48%, var(--color-background)) 0%, var(--color-foreground) 58%, color-mix(in oklab, var(--color-foreground) 82%, var(--color-background)) 100%)",
                                  boxShadow: "inset 0 -1px 2px color-mix(in oklab, black 40%, transparent), 0 2px 3px color-mix(in oklab, black 28%, transparent)",
                               }}>
                               <span className="absolute inset-[14%] block rounded-full border border-white/20" />
-                              <span className="absolute left-1/2 top-1/2 block size-[32%] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: METAL }} />
+                              <span className="absolute left-1/2 top-1/2 block size-[32%] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: isSpecial ? GOLD_METAL : METAL }} />
                            </span>
                            <span
                               ref={node => {
                                  cords.current[i] = node;
                               }}
-                              className="absolute block w-[1.5px] bg-foreground/60"
+                              className={`absolute block w-[1.5px] ${isSpecial ? "bg-[#facc15]" : "bg-foreground/60"}`}
                               style={{ left: W / 2 - 0.75, top: reelTop + g.reel * 0.82, height: g.cordRest, transformOrigin: "50% 0" }}
                            />
                         </span>
@@ -1291,10 +1569,10 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                               </span>
                            </button>
                            <span aria-hidden="true" className="pointer-events-none absolute block" style={{ left: W / 2 - g.clipW / 2, top: 0, width: g.clipW, height: g.clipH + 9 * g.u }}>
-                              <span className="absolute left-1/2 block -translate-x-1/2 rounded-b-[2px]" style={{ top: g.clipH * 0.7, width: g.clipW * 0.42, height: cardOffset - g.clipH * 0.7 + 0.64 * base + 0.26 * base, background: PLASTIC }} />
-                              <span className="absolute inset-x-0 top-0 block" style={{ height: g.clipH, clipPath: "polygon(24% 0, 76% 0, 100% 72%, 94% 100%, 6% 100%, 0 72%)", background: PLASTIC }} />
+                              <span className="absolute left-1/2 block -translate-x-1/2 rounded-b-[2px]" style={{ top: g.clipH * 0.7, width: g.clipW * 0.42, height: cardOffset - g.clipH * 0.7 + 0.64 * base + 0.26 * base, background: isSpecial ? GOLD_PLASTIC : PLASTIC }} />
+                              <span className="absolute inset-x-0 top-0 block" style={{ height: g.clipH, clipPath: "polygon(24% 0, 76% 0, 100% 72%, 94% 100%, 6% 100%, 0 72%)", background: isSpecial ? GOLD_PLASTIC : PLASTIC }} />
                               <span className="absolute block bg-white/50" style={{ left: "30%", right: "30%", top: 1, height: 1 }} />
-                              <span className="absolute left-1/2 block -translate-x-1/2 rounded-full bg-background" style={{ top: g.clipH * 0.14, width: g.clipH * 0.34, height: g.clipH * 0.34, boxShadow: "inset 0 1px 1px color-mix(in oklab, black 45%, transparent)" }} />
+                              <span className={`absolute left-1/2 block -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#451a03]" : "bg-background"}`} style={{ top: g.clipH * 0.14, width: g.clipH * 0.34, height: g.clipH * 0.34, boxShadow: "inset 0 1px 1px color-mix(in oklab, black 45%, transparent)" }} />
                            </span>
                            {isFlipped && links.length > 0 && (
                               <div

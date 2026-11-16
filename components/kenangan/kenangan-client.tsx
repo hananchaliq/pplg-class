@@ -214,6 +214,8 @@ export function KenanganClient({
             : "Pernah Bersama Kita",
           studentBio: stu.bio,
           studentTags: stu.tags,
+          studentPhotoUrl: stu.photo_url,
+          showPhoto: stu.show_photo,
           decorSeed: 300 + idx * 19,
         },
         rightPage: {
@@ -634,13 +636,23 @@ export function KenanganClient({
                               }}
                               className="real-photo-paper photo-gloss-sheen w-48 rounded-lg p-3 pb-5 shadow-md"
                             >
-                              <div className="flex aspect-square items-center justify-center rounded bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] text-[#fbf6ec]">
-                                <span className="font-hand text-4xl font-bold">
-                                  {currentSpread.leftPage.studentNickname?.slice(
-                                    0,
-                                    2
-                                  )}
-                                </span>
+                              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] text-[#fbf6ec]">
+                                {currentSpread.leftPage.studentPhotoUrl &&
+                                currentSpread.leftPage.showPhoto !== false ? (
+                                  <img
+                                    src={currentSpread.leftPage.studentPhotoUrl}
+                                    alt={currentSpread.leftPage.studentName || ""}
+                                    referrerPolicy="no-referrer"
+                                    className="size-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="font-hand text-4xl font-bold">
+                                    {currentSpread.leftPage.studentNickname?.slice(
+                                      0,
+                                      2
+                                    )}
+                                  </span>
+                                )}
                               </div>
                               <p className="mt-2.5 font-hand text-2xl font-bold text-[#2b2118]">
                                 ★ {currentSpread.leftPage.studentNickname} ★

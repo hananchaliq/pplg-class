@@ -44,13 +44,18 @@ export function GaleriSceneHD({
     onSelectRef.current = onSelectMoment;
   }, [activePhase, selectedMoment, onSelectMoment]);
 
-  // Rebuild key when filtered moments list changes significantly
+  // Rebuild key when moments list or uploaded image URLs change
   const sceneKey = React.useMemo(
-    () => `${moments.length}-${moments[0]?.id ?? "none"}`,
+    () =>
+      moments
+        .map((m) => `${m.id}:${m.phase}:${(m.image_url || "").length}`)
+        .join("|") || "empty",
     [moments]
   );
 
-  const cameraTargetYRef = React.useRef(3.05);
+  const initialCameraY =
+    activePhase === "X" ? 3.05 : activePhase === "XI" ? -0.15 : -3.35;
+  const cameraTargetYRef = React.useRef(initialCameraY);
   const flipStateRef = React.useRef({ flipped: false });
 
   React.useEffect(() => {
@@ -137,7 +142,7 @@ export function GaleriSceneHD({
       phases.forEach((ph) => {
         const shelfY = ph === "X" ? 3.2 : ph === "XI" ? 0 : -3.2;
         const phaseMoments = moments
-          .filter((m) => m.phase === ph)
+          .filter((m) => String(m.phase || "XII").trim().toUpperCase() === ph)
           .slice(0, 12);
 
         // Dua baris tali katenari per fase dengan jarak vertikal lega (1.36 unit) agar jepitan bawah tidak menyentuh kartu atas
@@ -195,6 +200,7 @@ export function GaleriSceneHD({
                 phase: m.phase,
                 dateStr: m.taken_at,
                 seed: seedNum,
+                imageUrl: m.image_url,
                 isBack: false,
               },
               renderer
@@ -446,7 +452,7 @@ export function GaleriSceneHD({
     <SceneShell
       key={sceneKey}
       onSetup={handleSetup}
-      cameraPosition={[0, 3.05, 5.1]}
+      cameraPosition={[0, initialCameraY, 5.1]}
       cameraFov={42}
       continuous={true}
       ariaLabel="Rak Tali Polaroid 3D Galeri Momen XII PPLG 1"
