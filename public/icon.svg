@@ -1,42 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="unoBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#fff8ec" />
-      <stop offset="55%" stop-color="#f6e3c2" />
-      <stop offset="100%" stop-color="#e8c28d" />
-    </linearGradient>
-    <linearGradient id="unoBadge" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#d97736" />
+    <radialGradient id="uCoreGrad" cx="30%" cy="22%" r="78%">
+      <stop offset="0%" stop-color="#e88d3f" />
       <stop offset="50%" stop-color="#b84a27" />
-      <stop offset="100%" stop-color="#8c2d1b" />
+      <stop offset="100%" stop-color="#58190e" />
+    </radialGradient>
+    <linearGradient id="uGoldRing" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffebb8" />
+      <stop offset="50%" stop-color="#e2a850" />
+      <stop offset="100%" stop-color="#965618" />
+    </linearGradient>
+    <linearGradient id="uLetterGrad" x1="20" y1="16" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="70%" stop-color="#fff4df" />
+      <stop offset="100%" stop-color="#f7d294" />
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="16" fill="url(#unoBg)" />
-  <rect x="4" y="4" width="56" height="56" rx="13" fill="url(#unoBadge)" stroke="#f3ca82" stroke-width="2" />
-  <circle cx="50" cy="14" r="3" fill="#ffd98e" opacity="0.9" />
-  <path d="M12 47 H52" stroke="#ffd98e" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 3" opacity="0.75" />
-  <text
-    x="32"
-    y="37"
-    text-anchor="middle"
-    font-family="Georgia, serif"
-    font-size="19"
-    font-weight="900"
-    letter-spacing="1"
-    fill="#fff9f0"
-  >
-    UNO
-  </text>
-  <text
-    x="32"
-    y="55"
-    text-anchor="middle"
-    font-family="monospace"
-    font-size="6.5"
-    font-weight="700"
-    letter-spacing="1.2"
-    fill="#ffe2a8"
-  >
-    PPLG · ENDE
-  </text>
+
+  <!-- Lingkaran Utama Bulat Penuh (Unity of XII PPLG 1) -->
+  <circle cx="32" cy="32" r="30.5" fill="url(#uCoreGrad)" stroke="url(#uGoldRing)" stroke-width="3" />
+
+  <!-- Cincin Tenun Ikat Ende di Bagian Dalam -->
+  <circle cx="32" cy="32" r="25.5" stroke="#fce0a6" stroke-width="1.2" stroke-dasharray="3 2.5" opacity="0.7" />
+
+  <!-- 3 Bintang/Berlian Puncak: 3 Danau Kelimutu & 3 Tahun Perjalanan (X, XI, XII) -->
+  <polygon points="32,7.5 34.2,11 32,14.5 29.8,11" fill="#ffe8b3" />
+  <circle cx="23.5" cy="12" r="1.8" fill="#f7ce7e" />
+  <circle cx="40.5" cy="12" r="1.8" fill="#f7ce7e" />
+
+  <!-- Monogram Huruf "U" Berwibawa di Tengah -->
+  <path
+    d="M19 20 H27.5 V22.5 H25.8 V34.5 C25.8 39.2 28.2 41.8 32 41.8 C35.8 41.8 38.2 39.2 38.2 34.5 V22.5 H36.5 V20 H45 V22.5 H43.2 V34.8 C43.2 42.2 38.8 46.5 32 46.5 C25.2 46.5 20.8 42.2 20.8 34.8 V22.5 H19 V20 Z"
+    fill="url(#uLetterGrad)"
+  />
+
+  <!-- Simbol Node Kode PPLG & Berlian Persaudaraan di Bawah Huruf U -->
+  <path d="M23 50.5 L20 52.5 L23 54.5" stroke="#ffdca0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+  <polygon points="32,50.3 34.3,52.5 32,54.7 29.7,52.5" fill="#ffdca0" />
+  <path d="M41 50.5 L44 52.5 L41 54.5" stroke="#ffdca0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

@@ -6,6 +6,7 @@ import {
   useLivePublicData,
   notifyRouteTransitionStart,
 } from "@/lib/use-public-data";
+import { UnoLogo } from "@/components/ui/uno-logo";
 
 export function Footer() {
   const { data: liveData } = useLivePublicData();
@@ -43,18 +44,13 @@ export function Footer() {
   }, [liveData]);
 
   return (
-    <footer className="mt-12 sm:mt-16 border-t border-border bg-card pb-20 lg:pb-0 text-card-foreground">
+    <footer className="mt-12 sm:mt-16 border-t border-border bg-card pb-28 lg:pb-0 text-card-foreground">
       <div className="ikat-divider" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-8">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          {/* Identitas Singkat UNO XII PPLG 1 */}
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="inline-flex h-9 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[#f3ca82] bg-gradient-to-br from-[#d97736] via-[#b84a27] to-[#872b19] font-serif text-xs font-black tracking-wider text-[#fff8ec] shadow-2xs"
-            >
-              UNO
-            </span>
+          {/* Identitas Singkat & Logo Bulat UNO XII PPLG 1 */}
+          <div className="flex items-center gap-3.5">
+            <UnoLogo size="md" />
             <div>
               <p className="font-serif text-base font-bold tracking-tight text-foreground">
                 UNO · {SITE_CONTENT.school.className} — {SITE_CONTENT.school.shortSchool}
@@ -65,6 +61,9 @@ export function Footer() {
                   {homeroomTeacherName}
                 </span>{" "}
                 · Angkatan {SITE_CONTENT.school.cohortYears}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/85">
+                Lambang Lingkaran UNO: 1 Keluarga Utuh · 3 Bintang Kelimutu (X–XII) · Kode &amp; Tenun Ende
               </p>
             </div>
           </div>
