@@ -314,7 +314,7 @@ export function FlatIdCardRail({
       )}
 
       {/* Keterangan dan tombol aksi di bawah rail */}
-      <div className="mt-3 flex flex-col items-center gap-2 px-4 text-center">
+      <div className="mt-3 flex flex-col items-center gap-2.5 px-4 text-center">
         <div aria-live="polite" className="min-h-[2.2rem]">
           <p className="text-xs font-medium text-foreground">
             {activePerson ? `${activePerson.name} — ${activePerson.role}` : caption}
@@ -323,7 +323,7 @@ export function FlatIdCardRail({
             {activePerson ? (isShowingBack ? labels.back : labels.flip) : ""}
           </p>
         </div>
-        {action}
+        {action && <div className="flex w-full justify-center sm:w-auto">{action}</div>}
       </div>
     </section>
   );

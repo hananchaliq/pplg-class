@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Fraunces, Plus_Jakarta_Sans, Caveat } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { VisualTierProvider } from "@/lib/visual-tier";
@@ -7,27 +6,6 @@ import { SadAudioProvider } from "@/lib/sad-audio";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { AmbientParticles } from "@/components/layout/ambient-particles";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  weight: ["600", "700"],
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
-
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-caveat",
-  display: "swap",
-  weight: ["600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Album Kenangan XII PPLG 1 — MAKN Ende",
@@ -61,11 +39,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="id"
-      suppressHydrationWarning
-      className={`${fraunces.variable} ${jakarta.variable} ${caveat.variable}`}
-    >
+    <html lang="id" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        />
+      </head>
       <body
         suppressHydrationWarning
         className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-[var(--color-accent-warm)] selection:text-[#fbf6ec]"

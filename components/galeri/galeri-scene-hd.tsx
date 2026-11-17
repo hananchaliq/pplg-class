@@ -836,22 +836,22 @@ export function GaleriSceneHD({
       cameraFov={42}
       continuous={true}
       ariaLabel="Rak Tali Polaroid 3D Galeri Momen XII PPLG 1"
-      className="relative w-full h-[560px] sm:h-[630px]"
+      className="relative w-full h-[460px] sm:h-[630px]"
     >
       {/* Bar Info Fase di Kiri Atas */}
-      <div className="pointer-events-none absolute top-3.5 left-3.5 z-10 flex items-center gap-2 rounded-xl border border-[#463629] bg-[#231912]/90 px-3.5 py-2 text-xs text-[#f2e6d5] shadow-md backdrop-blur-xs">
+      <div className="pointer-events-none absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-10 flex items-center gap-2 rounded-xl border border-[#463629] bg-[#231912]/90 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs text-[#f2e6d5] shadow-md backdrop-blur-xs">
         <span className="font-serif font-bold text-[#f3ca82]">
-          Gantungan Fase Kelas {activePhase}
+          Fase Kelas {activePhase}
         </span>
         <span aria-hidden="true">·</span>
-        <span>{currentBounds.items.length} Lembar Kertas Foto 3D</span>
+        <span>{currentBounds.items.length} Foto</span>
       </div>
 
-      {/* Pop-Up Panel Baca Jelas Saat Foto Diklik di 3D (Teks & Foto Terbaca Jelas Tanpa Terpotong) */}
+      {/* Pop-Up Panel Baca Jelas Saat Foto Diklik di 3D (Di Mobile Berada di Atas Slider Bawah agar Tidak Menutupi Badge Atas) */}
       {selectedMoment && (
-        <div className="pointer-events-auto absolute top-3.5 right-3.5 z-20 w-[300px] sm:w-[340px] rounded-2xl border border-[#cbb799] bg-[#fbf5e8]/95 p-3.5 text-[#221811] shadow-2xl backdrop-blur-md">
+        <div className="pointer-events-auto absolute inset-x-2.5 bottom-16 sm:inset-x-auto sm:bottom-auto sm:top-3.5 sm:right-3.5 z-20 sm:w-[340px] rounded-2xl border border-[#cbb799] bg-[#fbf5e8]/95 p-3 sm:p-3.5 text-[#221811] shadow-2xl backdrop-blur-md">
           <div className="flex items-start justify-between gap-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8c5a2b]">
+            <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#8c5a2b]">
               Fase Kelas {selectedMoment.phase} · {selectedMoment.category}
             </div>
             <button
@@ -864,8 +864,8 @@ export function GaleriSceneHD({
             </button>
           </div>
 
-          <div className="mt-2 flex items-center gap-3">
-            <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-md border border-[#cbb799] bg-[#efe3ce]">
+          <div className="mt-1.5 sm:mt-2 flex items-center gap-2.5 sm:gap-3">
+            <div className="relative h-14 w-18 sm:h-16 sm:w-20 shrink-0 overflow-hidden rounded-md border border-[#cbb799] bg-[#efe3ce]">
               <img
                 src={selectedMoment.image_url}
                 alt={selectedMoment.caption}
@@ -874,23 +874,23 @@ export function GaleriSceneHD({
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-hand text-xl font-bold leading-snug text-[#1f1610] break-words">
+              <p className="line-clamp-2 sm:line-clamp-none font-hand text-lg sm:text-xl font-bold leading-snug text-[#1f1610] break-words">
                 &ldquo;{selectedMoment.caption}&rdquo;
               </p>
-              <p className="mt-0.5 text-[11px] font-medium text-[#654d38]">
+              <p className="mt-0.5 text-[11px] font-medium text-[#654d38] truncate">
                 Oleh {selectedMoment.uploader_name} · {selectedMoment.taken_at}
               </p>
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-2.5 sm:mt-3 flex items-center gap-2">
             <button
               type="button"
               onClick={() => triggerFlipRef.current?.()}
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#bfa582] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#2b1e14] hover:bg-[#f2e5d0]"
             >
               <RotateCw className="size-3.5" />
-              <span>Balik Kertas 3D</span>
+              <span>Balik 3D</span>
             </button>
             {onOpenLightbox && (
               <button
@@ -899,29 +899,29 @@ export function GaleriSceneHD({
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#b96434] px-2.5 py-1.5 text-xs font-semibold text-[#fbf6ec] hover:opacity-95"
               >
                 <Maximize2 className="size-3.5" />
-                <span>Pop-Up Penuh</span>
+                <span>Layar Penuh</span>
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Kontrol Geser Kiri & Kanan Sepanjang Gantungan Foto */}
-      <div className="pointer-events-auto absolute right-3.5 bottom-3.5 left-3.5 z-10 mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#463629] bg-[#231912]/92 px-3.5 py-2.5 text-xs text-[#f2e6d5] shadow-lg backdrop-blur-xs">
+      {/* Kontrol Geser Kiri & Kanan Ringkas */}
+      <div className="pointer-events-auto absolute right-2.5 bottom-2.5 left-2.5 sm:right-3.5 sm:bottom-3.5 sm:left-3.5 z-10 mx-auto flex max-w-xl items-center justify-between gap-1.5 sm:gap-2 rounded-2xl border border-[#463629] bg-[#231912]/92 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs text-[#f2e6d5] shadow-lg backdrop-blur-xs">
         <button
           type="button"
           onClick={() => nudgePan(-1.7)}
-          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#5c4736] bg-[#312319] px-3 py-1.5 font-semibold text-[#f3ca82] transition-colors hover:bg-[#423023] active:scale-95"
+          className="inline-flex min-h-[34px] shrink-0 items-center gap-1 rounded-lg border border-[#5c4736] bg-[#312319] px-2 sm:px-2.5 py-1 font-semibold text-[#f3ca82] transition-colors hover:bg-[#423023] active:scale-95"
         >
-          <ChevronLeft className="size-4" />
-          <span>Geser Kiri</span>
+          <ChevronLeft className="size-3.5" />
+          <span className="hidden xs:inline">Kiri</span>
         </button>
 
-        <div className="flex min-w-[160px] flex-1 flex-col items-center gap-1 px-2">
-          <div className="flex w-full items-center justify-between text-[11px] text-[#d9c7b0]">
-            <span>Tarik kanvas / geser sepanjang foto</span>
-            <span className="font-mono text-[#f3ca82]">
-              Kelas {activePhase} ({currentBounds.items.length} Foto)
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1.5 sm:px-2">
+          <div className="flex w-full items-center justify-between font-mono text-[10px] text-[#d9c7b0]">
+            <span className="truncate">Geser · Klik: Baca</span>
+            <span className="shrink-0 text-[#f3ca82]">
+              {activePhase} ({currentBounds.items.length})
             </span>
           </div>
           <input
@@ -943,10 +943,10 @@ export function GaleriSceneHD({
         <button
           type="button"
           onClick={() => nudgePan(1.7)}
-          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#5c4736] bg-[#312319] px-3 py-1.5 font-semibold text-[#f3ca82] transition-colors hover:bg-[#423023] active:scale-95"
+          className="inline-flex min-h-[34px] shrink-0 items-center gap-1 rounded-lg border border-[#5c4736] bg-[#312319] px-2 sm:px-2.5 py-1 font-semibold text-[#f3ca82] transition-colors hover:bg-[#423023] active:scale-95"
         >
-          <span>Geser Kanan</span>
-          <ChevronRight className="size-4" />
+          <span className="hidden xs:inline">Kanan</span>
+          <ChevronRight className="size-3.5" />
         </button>
       </div>
     </SceneShell>

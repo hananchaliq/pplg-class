@@ -41,13 +41,6 @@ export function AnggotaClient({
   const [selectedMobileMember, setSelectedMobileMember] =
     React.useState<LanyardMember | null>(null);
 
-  const [specialActiveIdx, setSpecialActiveIdx] = React.useState<number | null>(
-    0
-  );
-  const [specialFlippedIdx, setSpecialFlippedIdx] = React.useState<
-    number | null
-  >(null);
-
   const [modalStudent, setModalStudent] = React.useState<LanyardMember | null>(
     null
   );
@@ -80,11 +73,6 @@ export function AnggotaClient({
     [activeStudents]
   );
 
-  const movedRailMembers = React.useMemo(
-    () => movedStudents.map((s, idx) => studentToLanyardMember(s, idx)),
-    [movedStudents]
-  );
-
   // Semua kartu berada pada 1 gagang besi tunggal yang dapat digeser ke kiri/kanan.
   // Pada mode "family" (default), sahabat istimewa tampil di barisan depan dengan ID Card Emas Bermahkota.
   const railMembers = React.useMemo(() => {
@@ -111,12 +99,6 @@ export function AnggotaClient({
     railMembers[0] ??
     null;
 
-  const selectedSpecialMember =
-    (specialFlippedIdx !== null ? movedRailMembers[specialFlippedIdx] : null) ??
-    (specialActiveIdx !== null ? movedRailMembers[specialActiveIdx] : null) ??
-    movedRailMembers[0] ??
-    null;
-
   const renderMessageButton = (targetMember: LanyardMember | null) => {
     if (!targetMember) return null;
     return (
@@ -128,10 +110,10 @@ export function AnggotaClient({
           setModalStudent(targetMember);
           setFeedback(null);
         }}
-        className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
-        <MessageSquareHeart className="size-4" />
-        <span>Tulis pesan untuk {targetMember.name.split(" ")[0]}</span>
+        <MessageSquareHeart className="size-4 shrink-0" />
+        <span className="truncate">Tulis pesan untuk {targetMember.name.split(" ")[0]}</span>
       </motion.button>
     );
   };
@@ -183,63 +165,61 @@ export function AnggotaClient({
 
   const filterTitle =
     filter === "family"
-      ? `Kartu ID Berwarna-warni & ${movedStudents.length} Sahabat Istimewa (${students.length} Anggota)`
+      ? `Keluarga Besar XII PPLG 1 (${students.length} Anggota)`
       : filter === "all"
-        ? `Seluruh Anggota Aktif XII PPLG 1 (${activeStudents.length} Siswa)`
+        ? `Anggota Aktif (${activeStudents.length} Siswa)`
         : filter === "moved"
-          ? `♛ Sahabat Istimewa — Pernah Bersama Kita (${movedStudents.length} Anggota Edisi Emas)`
+          ? `♛ Sahabat Istimewa — Pernah Bersama Kita (${movedStudents.length} Anggota)`
           : filter === "L"
-            ? `Barisan Putra XII PPLG 1 (${maleStudentsCount} Siswa)`
-            : `Barisan Putri XII PPLG 1 (${femaleStudentsCount} Siswi)`;
+            ? `Barisan Putra (${maleStudentsCount} Siswa)`
+            : `Barisan Putri (${femaleStudentsCount} Siswi)`;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className="mx-auto max-w-7xl px-4 py-10 sm:px-6"
+      className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
     >
-      {/* Header Halaman Anggota */}
-      <header className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      {/* Header Halaman Anggota Ringkas */}
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
           Keluarga Besar XII PPLG 1 · MAKN Ende
         </p>
-        <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          {activeStudents.length} Kepala Aktif & {movedStudents.length} Sahabat Istimewa, Seribu Baris Cerita
+        <h1 className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          {activeStudents.length} Siswa Aktif & {movedStudents.length} Sahabat Istimewa
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Semua kartu ID tergantung pada satu gagang besi utuh—klik langsung
-          kartu mana saja untuk membalik (Depan/Belakang), tarik ke bawah untuk
-          efek pegas, atau geser gagang besi ke samping.
+        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+          Klik kartu untuk membalik profil, tarik untuk efek pegas, atau kirim pesan langsung.
         </p>
       </header>
 
-      {/* Filter Tab untuk 1 Gagang Besi */}
+      {/* Filter Tab untuk 1 Gagang Besi: Horizontal Swipe di Mobile, Wrap di Desktop */}
       <div
         role="tablist"
         aria-label="Filter Barisan Siswa pada Gagang Besi"
-        className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-xs"
+        className="no-scrollbar mx-auto mt-5 flex max-w-3xl flex-nowrap items-center justify-start gap-1.5 overflow-x-auto rounded-xl border border-border bg-card p-1.5 shadow-2xs sm:mt-6 sm:flex-wrap sm:justify-center"
       >
         {(
           [
             {
               id: "family",
-              label: `Semua Keluarga (${students.length})`,
+              label: `Semua (${students.length})`,
               isCrown: true,
             },
             {
               id: "all",
-              label: `Anggota Aktif (${activeStudents.length})`,
+              label: `Aktif (${activeStudents.length})`,
               isCrown: false,
             },
             {
               id: "L",
-              label: `Siswa Putra (${maleStudentsCount})`,
+              label: `Putra (${maleStudentsCount})`,
               isCrown: false,
             },
             {
               id: "P",
-              label: `Siswi Putri (${femaleStudentsCount})`,
+              label: `Putri (${femaleStudentsCount})`,
               isCrown: false,
             },
             {
@@ -252,7 +232,7 @@ export function AnggotaClient({
           const active = filter === tab.id;
           return (
             <motion.button
-              whileHover={{ y: -2, scale: 1.02 }}
+              whileHover={{ y: -1.5 }}
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 380, damping: 24 }}
               key={tab.id}
@@ -260,9 +240,9 @@ export function AnggotaClient({
               type="button"
               aria-selected={active}
               onClick={() => setFilter(tab.id)}
-              className={`inline-flex min-h-[42px] flex-1 items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors whitespace-nowrap ${
+              className={`inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
                 active
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -277,15 +257,29 @@ export function AnggotaClient({
         })}
       </div>
 
-      {/* SATU GAGANG BESI UTUH (Single Iron Rail) yang Bisa Digeser & Diklik untuk Flip */}
-      <div className="mt-6">
+      {/* Keterangan Singkat Saat Tab Sahabat Istimewa Dipilih */}
+      {filter === "moved" && (
+        <div
+          data-testid="special-friends-section"
+          className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-[#eab308]/40 bg-[#eab308]/10 px-4 py-2 text-center text-xs font-medium text-foreground"
+        >
+          <Crown className="size-4 shrink-0 text-[#ca8a04]" />
+          <span>
+            Edisi Emas Kehormatan untuk {movedStudents.length} sahabat yang pernah berjuang bersama di Kelas X.
+          </span>
+          <Sparkles className="size-3.5 shrink-0 text-[#ca8a04]" />
+        </div>
+      )}
+
+      {/* SATU GAGANG BESI UTUH (Single Iron Rail) — Tanpa Duplikasi Rail Kedua di Bawah */}
+      <div className="mt-5">
         <Adaptive
           simple={
             <FlatIdCardRail
               items={railMembers}
               eyebrow={`GAGANG BESI TUNGGAL · ${railMembers.length} KARTU ID`}
               heading={filterTitle}
-              caption="Klik kartu untuk membalik (Depan/Belakang) atau ketuk panah < > untuk berpindah anggota"
+              caption="Klik: Balik Kartu · Panah < >: Geser"
               labels={SITE_CONTENT.lanyardLabels}
               onSelectMember={setSelectedMobileMember}
               action={renderMessageButton(
@@ -299,7 +293,7 @@ export function AnggotaClient({
               items={railMembers}
               eyebrow={`GAGANG BESI TUNGGAL · ${railMembers.length} KARTU ID`}
               heading={filterTitle}
-              caption="Klik kartu ID untuk membalik (Depan/Belakang) · Geser Kiri/Kanan untuk melihat semua anggota"
+              caption="Klik: Balik Kartu · Tarik: Pegas · Geser: Jelajah"
               labels={SITE_CONTENT.lanyardLabels}
               active={activeIndex}
               onActiveChange={setActiveIndex}
@@ -311,64 +305,7 @@ export function AnggotaClient({
         />
       </div>
 
-      {/* Bagian Khusus "Pernah Bersama Kita" — Menggunakan Komponen ID Card Lanyard yang Sama (Edisi Emas Bermahkota & Untaian Bunga) */}
-      <section
-        aria-labelledby="pernah-bersama-heading"
-        data-testid="special-friends-section"
-        className="relative mt-14 overflow-hidden rounded-3xl border border-[#eab308]/50 bg-gradient-to-b from-[#241b14] via-[#1e1610] to-[#17110c] p-6 text-[#fbf6ec] shadow-xl sm:p-8"
-      >
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#eab308]/60 bg-[#eab308]/15 px-4 py-1 text-xs font-bold text-[#fde047]">
-            <Crown className="size-4 text-[#fde047]" />
-            <span>PERNAH BERSAMA KITA · EDISI EMAS KEHORMATAN</span>
-            <Sparkles className="size-3.5 text-[#fde047]" />
-          </div>
-          <h2
-            id="pernah-bersama-heading"
-            className="mt-3 font-serif text-2xl font-bold text-[#fbf6ec] sm:text-3xl"
-          >
-            Dua Sahabat Istimewa Selamanya
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-[#d6c7b2]">
-            Menggunakan ID Card gantung yang sama dengan hiasan khusus mahkota
-            emas, untaian rantai bunga, dan tali lanyard emas untuk kedua
-            sahabat kita yang pernah berjuang bersama di Kelas X. Klik kartu
-            untuk membalik dan membaca kisahnya.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <Adaptive
-            simple={
-              <FlatIdCardRail
-                items={movedRailMembers}
-                eyebrow="GAGANG BESI TUNGGAL · EDISI EMAS"
-                heading="Sahabat Istimewa XII PPLG 1"
-                caption="Klik kartu untuk membalik (Depan/Belakang)"
-                labels={SITE_CONTENT.lanyardLabels}
-                action={renderMessageButton(selectedSpecialMember)}
-              />
-            }
-            hd={
-              <SingleIronRailLanyard
-                railKey="special-friends-gold-rail"
-                items={movedRailMembers}
-                eyebrow="GAGANG BESI TUNGGAL · KEDUANYA BERWARNA EMAS"
-                heading="Sahabat Istimewa XII PPLG 1"
-                caption="Klik kartu untuk membalik (Depan/Belakang) atau tarik ke bawah untuk efek pegas"
-                labels={SITE_CONTENT.lanyardLabels}
-                active={specialActiveIdx}
-                onActiveChange={setSpecialActiveIdx}
-                flipped={specialFlippedIdx}
-                onFlippedChange={setSpecialFlippedIdx}
-                action={renderMessageButton(selectedSpecialMember)}
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* Dialog Tulis Pesan ke Buku Kenangan Siswa */}
+      {/* Dialog Tulis Pesan ke Buku Kenangan Siswa (Bottom Sheet di Mobile) */}
       <AnimatePresence>
         {modalStudent && (
           <motion.div
@@ -378,13 +315,13 @@ export function AnggotaClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-memory-title"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 12 }}
+              initial={{ scale: 0.96, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 12 }}
-              className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl"
+              exit={{ scale: 0.96, y: 20 }}
+              className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-2xl sm:p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>

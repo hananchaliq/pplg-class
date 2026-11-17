@@ -2,11 +2,10 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { ArrowRight, BookOpen, Calendar, Music2, Sparkles, Users, Volume2 } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar, Sparkles, Users } from "lucide-react";
 import { Adaptive } from "@/components/three/adaptive";
 import { HeroDeskSceneHD } from "@/components/beranda/hero-desk-scene-hd";
 import { SITE_CONTENT } from "@/lib/content";
-import { useSadAudio } from "@/lib/sad-audio";
 import { notifyRouteTransitionStart, useLivePublicData } from "@/lib/use-public-data";
 import type { MomentRow } from "@/lib/types";
 
@@ -205,7 +204,6 @@ export function BerandaClient({
   const moments = liveData?.moments ?? initialMoments;
   const heroSectionRef = React.useRef<HTMLElement | null>(null);
   const [daysLeft, setDaysLeft] = React.useState<number | null>(null);
-  const { playing, toggleAudio, currentTrack } = useSadAudio();
 
   const graduationDate =
     liveData?.settings?.graduation_date || initialGraduationDate;
@@ -251,7 +249,7 @@ export function BerandaClient({
         return {
           ...card,
           subtitle: `${stats.activeStudents} Siswa Aktif & ${stats.movedStudents} Sahabat`,
-          description: `Deretan kartu ID gantung interaktif ${stats.activeStudents} siswa aktif beserta ruang khusus 'Pernah Bersama Kita' untuk ${stats.movedStudents} sahabat yang pindah di Kelas X.`,
+          description: `Kartu ID gantung 3D ${stats.activeStudents} siswa aktif & ${stats.movedStudents} sahabat istimewa.`,
         };
       }
       if (card.href === "/guru") {
@@ -261,29 +259,30 @@ export function BerandaClient({
             ? `${homeroomTeacherName} & ${stats.totalTeachers} Pendidik`
             : `${stats.totalTeachers} Pendidik`,
           description: homeroomTeacherName
-            ? `Ucapan terima kasih tulus untuk Wali Kelas kita, ${homeroomTeacherName}, serta kartu apresiasi untuk guru kejuruan, agama, dan akademik.`
-            : `Kartu apresiasi dan ucapan terima kasih untuk para guru pembimbing di database.`,
+            ? `Kartu apresiasi Wali Kelas ${homeroomTeacherName} & seluruh guru pembimbing.`
+            : `Kartu apresiasi untuk seluruh guru pembimbing MAKN Ende.`,
         };
       }
       if (card.href === "/galeri") {
         return {
           ...card,
-          subtitle: `Kelas X · XI · XII (${stats.totalMoments} Jepretan)`,
+          subtitle: `Kelas X · XI · XII (${stats.totalMoments} Foto)`,
           description:
-            "Foto-foto polaroid yang tergantung di tali jemuran kayu dari masa awal masuk madrasah hingga senja terakhir Kelas XII.",
+            "Gantungan kertas foto polaroid 3D dari masa orientasi hingga kelulusan.",
         };
       }
       if (card.href === "/dream-board") {
         return {
           ...card,
-          description: `Papan tulis kelas tempat ${stats.totalDreams} lembar cita-cita ditempel dengan pin warna-warni. Klik untuk membaca alasan dan mengirim doa semangat.`,
+          subtitle: `${stats.totalDreams} Lembar Cita-Cita`,
+          description: `Papan tulis 3D berisi ${stats.totalDreams} impian siswa & kirim doa semangat.`,
         };
       }
       if (card.href === "/karya") {
         return {
           ...card,
-          subtitle: `${stats.totalWorks} Proyek Terbaik XII PPLG 1`,
-          description: `Etalase satu karya unggulan dari tiap siswa lengkap dengan jaringan keahlian (Skill Map) yang menghubungkan talenta kelas kita.`,
+          subtitle: `${stats.totalWorks} Proyek & Peta Skill`,
+          description: `Etalase karya aplikasi unggulan siswa beserta jaringan talenta kelas.`,
         };
       }
       return card;
@@ -326,12 +325,12 @@ export function BerandaClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
       {/* HERO SECTION: Split / Full Viewport Presence dengan Meja Belajar Senja 3D & Hitung Mundur */}
       <section
         ref={heroSectionRef}
         aria-labelledby="hero-title"
-        className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12"
+        className="grid grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12"
       >
         {/* Kolom Kiri: Tipografi Hangat, Hitung Mundur, & CTA */}
         <motion.div
@@ -340,68 +339,49 @@ export function BerandaClient({
           transition={{ duration: 0.45, ease: "easeOut" }}
           className="flex flex-col items-start lg:col-span-5"
         >
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+          <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
             <Sparkles className="size-3.5" />
             <span>{SITE_CONTENT.hero.eyebrow}</span>
           </div>
 
           <h1
             id="hero-title"
-            className="mt-2 font-serif text-4xl font-bold tracking-tight text-foreground sm:text-5xl [text-wrap:balance]"
+            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:mt-2 sm:text-5xl [text-wrap:balance]"
           >
             {SITE_CONTENT.hero.title}
           </h1>
 
-          <p className="mt-1 font-serif text-lg italic text-muted-foreground">
+          <p className="mt-1 font-serif text-base sm:text-lg italic text-muted-foreground">
             {SITE_CONTENT.hero.subtitle} — {SITE_CONTENT.school.schoolName}
           </p>
 
           {homeroomTeacherName ? (
-            <p className="mt-2 text-xs font-semibold text-[var(--color-chart-2)]">
+            <p className="mt-1.5 text-xs font-semibold text-[var(--color-chart-2)]">
               Wali Kelas Pembimbing: {homeroomTeacherName}
             </p>
           ) : null}
 
-          <p className="mt-3 text-base leading-relaxed text-foreground/90">
+          <p className="mt-2 text-xs sm:text-base leading-relaxed text-foreground/90">
             {SITE_CONTENT.school.tagline}
           </p>
 
-          {/* Kotak Hitung Mundur "Tinggal X hari bersama" */}
+          {/* Kotak Hitung Mundur "Tinggal X hari bersama" (Tanpa duplikasi tombol musik) */}
           <motion.div
             whileHover={{ y: -2 }}
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="mt-5 w-full rounded-xl border border-border bg-card p-4 shadow-sm"
+            className="mt-4 sm:mt-5 w-full rounded-xl border border-border bg-card p-3.5 sm:p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-[var(--color-accent-warm)]" />
-                <span>{SITE_CONTENT.hero.countdownLabel}</span>
-              </div>
-              <button
-                type="button"
-                onClick={toggleAudio}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
-              >
-                {playing ? (
-                  <>
-                    <Volume2 className="size-3.5 animate-pulse text-[var(--color-accent-warm)]" />
-                    <span>Musik Sedih Aktif</span>
-                  </>
-                ) : (
-                  <>
-                    <Music2 className="size-3.5 text-muted-foreground" />
-                    <span>Putar Backsound Sedih</span>
-                  </>
-                )}
-              </button>
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <Calendar className="size-4 text-[var(--color-accent-warm)]" />
+              <span>{SITE_CONTENT.hero.countdownLabel}</span>
             </div>
-            <p className="mt-1.5 font-serif text-xl font-bold text-foreground sm:text-2xl">
+            <p className="mt-1 font-serif text-lg font-bold text-foreground sm:text-2xl">
               {daysLeft === null ? (
                 "Menghitung hari kebersamaan..."
               ) : daysLeft > 0 ? (
                 <>
                   {SITE_CONTENT.hero.countdownPrefix}{" "}
-                  <span className="font-mono text-3xl text-[var(--color-accent-warm)] tabular-nums">
+                  <span className="font-mono text-2xl sm:text-3xl text-[var(--color-accent-warm)] tabular-nums">
                     {daysLeft}
                   </span>{" "}
                   {SITE_CONTENT.hero.countdownSuffix}
@@ -410,34 +390,29 @@ export function BerandaClient({
                 SITE_CONTENT.hero.countdownPassed
               )}
             </p>
-            {playing && (
-              <p className="mt-1 text-[11px] italic text-muted-foreground">
-                ♪ Sedang diputar: {currentTrack.title} ({currentTrack.subtitle})
-              </p>
-            )}
           </motion.div>
 
-          {/* Tombol Aksi Utama */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          {/* Tombol Aksi Utama: Side-by-side proporsional di Mobile */}
+          <div className="mt-4 sm:mt-6 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
               <a
                 href="/kenangan"
                 onClick={(e) => handleNavigate(e, "/kenangan")}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-accent-warm)] px-5 py-2.5 text-sm font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[var(--color-accent-warm)] px-3 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
               >
-                <BookOpen className="size-4" />
-                <span>{SITE_CONTENT.hero.ctaPrimary}</span>
+                <BookOpen className="size-4 shrink-0" />
+                <span className="truncate">{SITE_CONTENT.hero.ctaPrimary}</span>
               </a>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
               <a
                 href="/anggota"
                 onClick={(e) => handleNavigate(e, "/anggota")}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-card px-3 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
               >
-                <Users className="size-4 text-[var(--color-chart-1)]" />
-                <span>{SITE_CONTENT.hero.ctaSecondary}</span>
+                <Users className="size-4 shrink-0 text-[var(--color-chart-1)]" />
+                <span className="truncate">{SITE_CONTENT.hero.ctaSecondary}</span>
               </a>
             </motion.div>
           </div>
@@ -468,24 +443,24 @@ export function BerandaClient({
         </motion.div>
       </section>
 
-      {/* Baris Statistik Ramah di Bawah Hero Split */}
+      {/* Baris Statistik Ringkas di Bawah Hero */}
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.4 }}
         aria-label="Ringkasan Angka Kelas XII PPLG 1"
-        className="mt-10 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-4 sm:p-6"
+        className="mt-8 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-4 sm:p-5"
       >
         <div>
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.activeStudents}{" "}
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-xs font-normal text-muted-foreground">
               (+{stats.movedStudents} sahabat)
             </span>
           </p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Anggota Keluarga Kelas
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+            Anggota Keluarga
           </p>
         </div>
 
@@ -493,10 +468,8 @@ export function BerandaClient({
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.totalTeachers}
           </p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            {homeroomTeacherName
-              ? `Guru & Wali Kelas (${homeroomTeacherName})`
-              : "Guru & Wali Kelas"}
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+            Guru & Wali Kelas
           </p>
         </div>
 
@@ -504,79 +477,77 @@ export function BerandaClient({
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.totalMoments}
           </p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Jepretan Polaroid Kelas X–XII
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+            Foto Kelas X–XII
           </p>
         </div>
 
         <div>
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.totalDreams}
+            {stats.totalWorks}
           </p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Lembar Cita-Cita & {stats.totalWorks} Karya
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+            Karya & {stats.totalDreams} Cita-Cita
           </p>
         </div>
       </motion.section>
 
-      <div className="ikat-divider my-14" aria-hidden="true" />
+      <div className="ikat-divider my-10" aria-hidden="true" />
 
-      {/* PETA HALAMAN: Kartu Besar Cuplikan Tiap Menu Sebagai Pintu Masuk */}
+      {/* PETA HALAMAN RINGKAS */}
       <section aria-labelledby="map-heading">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Peta Ruang Album Digital
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+            Peta Ruang Album
           </p>
           <h2
             id="map-heading"
-            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground [text-wrap:balance]"
+            className="mt-1 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
           >
-            Pilih Sudut Kenangan yang Ingin Kamu Kunjungi
+            Jelajahi Sudut Kenangan
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             {SITE_CONTENT.school.subTagline}
           </p>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {dynamicMapCards.map((card, idx) => (
             <motion.div
               key={card.href}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.35, delay: idx * 0.05 }}
-              whileHover={{ y: -4 }}
+              transition={{ duration: 0.3, delay: idx * 0.04 }}
+              whileHover={{ y: -3 }}
             >
               <a
                 href={card.href}
                 onClick={(e) => handleNavigate(e, card.href)}
-                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-colors hover:border-[var(--color-accent-warm)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-2xs transition-colors hover:border-[var(--color-accent-warm)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="font-mono font-bold text-[var(--color-accent-warm)]">
-                      {card.index}.
+                      {card.index}
                     </span>
-                    <span>{card.meta}</span>
+                    <span className="font-mono text-[11px]">{card.meta}</span>
                   </div>
 
-                  <h3 className="mt-3 font-serif text-xl font-bold text-foreground group-hover:text-[var(--color-accent-warm)] transition-colors">
-                    {card.title}
-                  </h3>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <h3 className="font-serif text-lg font-bold text-foreground transition-colors group-hover:text-[var(--color-accent-warm)]">
+                      {card.title}
+                    </h3>
+                    <ArrowRight className="size-4 shrink-0 text-[var(--color-accent-warm)] transition-transform group-hover:translate-x-1" />
+                  </div>
 
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">
+                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
                     {card.subtitle}
                   </p>
 
-                  <p className="mt-3 text-sm leading-relaxed text-card-foreground/90">
+                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-card-foreground/85">
                     {card.description}
                   </p>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between border-t border-dashed border-border pt-3.5 text-xs font-semibold text-foreground">
-                  <span>Masuk ke Halaman {card.title}</span>
-                  <ArrowRight className="size-4 text-[var(--color-accent-warm)] transition-transform group-hover:translate-x-1" />
                 </div>
               </a>
             </motion.div>

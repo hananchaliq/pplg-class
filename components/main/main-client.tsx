@@ -97,34 +97,33 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <header className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Sudut Santai & Nostalgia · XII PPLG 1 MAKN Ende
+    <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+          Sudut Nostalgia · XII PPLG 1 MAKN Ende
         </p>
-        <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          Kuis &ldquo;Seberapa Kenal Kelasmu&rdquo; & Polling Momen
+        <h1 className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          Kuis &amp; Polling Kelas
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Uji ingatanmu tentang kebiasaan unik penghuni laboratorium RPL dan
-          pilih momen terbaik kita bersama.
+        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+          Uji ingatanmu tentang kisah laboratorium RPL dan pilih momen terbaik kita.
         </p>
       </header>
 
-      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-12">
         {/* Bagian Kiri: Kuis Seberapa Kenal Kelasmu */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           aria-labelledby="quiz-heading"
-          className="rounded-2xl border border-border bg-card p-6 sm:p-8 lg:col-span-6 shadow-sm"
+          className="rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6 shadow-sm"
         >
-          <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center justify-between gap-2 border-b border-border pb-3.5 sm:pb-4">
             <div>
               <h2
                 id="quiz-heading"
-                className="font-serif text-xl font-bold text-foreground"
+                className="font-serif text-lg sm:text-xl font-bold text-foreground"
               >
                 Kuis: Seberapa Kenal Kelasmu?
               </h2>
@@ -132,7 +131,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                 5 Pertanyaan Kenangan XII PPLG 1
               </p>
             </div>
-            <span className="font-mono text-xs font-bold tabular-nums text-[var(--color-accent-warm)]">
+            <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-[var(--color-accent-warm)]">
               Soal {currentQ + 1} / {questions.length}
             </span>
           </div>
@@ -143,9 +142,9 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25 }}
-              className="mt-6"
+              className="mt-5 sm:mt-6"
             >
-              <p className="font-serif text-lg font-bold leading-snug text-foreground">
+              <p className="font-serif text-base sm:text-lg font-bold leading-snug text-foreground">
                 {activeQuestion.question}
               </p>
 
@@ -162,7 +161,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                       whileHover={{ x: 3 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => handleSelectOption(idx)}
-                      className={`flex min-h-[48px] w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
+                      className={`flex min-h-[48px] w-full items-center justify-between rounded-xl border px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-xs sm:text-sm transition-colors ${
                         chosen
                           ? isCorrect
                             ? "border-[var(--color-chart-2)] bg-[var(--color-chart-2)]/15 font-semibold text-foreground"
@@ -191,16 +190,16 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                 </motion.p>
               )}
 
-              <div className="mt-6 flex items-center justify-between">
+              <div className="mt-5 sm:mt-6 flex items-center justify-between gap-2">
                 <motion.button
                   whileHover={{ x: -2 }}
                   whileTap={{ scale: 0.96 }}
                   type="button"
                   disabled={currentQ === 0}
                   onClick={() => setCurrentQ((p) => Math.max(0, p - 1))}
-                  className="min-h-[44px] rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
+                  className="min-h-[42px] sm:min-h-[44px] rounded-lg border border-border px-3 sm:px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
                 >
-                  ← Soal Sebelumnya
+                  ← Sebelumnya
                 </motion.button>
 
                 {currentQ < questions.length - 1 ? (
@@ -212,9 +211,9 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     onClick={() =>
                       setCurrentQ((p) => Math.min(questions.length - 1, p + 1))
                     }
-                    className="min-h-[44px] rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
+                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-[var(--color-accent-warm)] px-4 sm:px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
                   >
-                    Soal Berikutnya →
+                    Berikutnya →
                   </motion.button>
                 ) : (
                   <motion.button
@@ -223,7 +222,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     type="button"
                     disabled={selectedAnswerIdx === undefined}
                     onClick={() => setQuizFinished(true)}
-                    className="min-h-[44px] rounded-lg bg-[var(--color-chart-2)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
+                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-[var(--color-chart-2)] px-4 sm:px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
                   >
                     Lihat Hasil Akhir
                   </motion.button>
@@ -240,10 +239,10 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
               <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Skor Akhir Kamu
               </p>
-              <p className="mt-1 font-serif text-5xl font-bold tabular-nums text-foreground">
+              <p className="mt-1 font-serif text-4xl sm:text-5xl font-bold tabular-nums text-foreground">
                 {totalScore} / 100
               </p>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-3 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">
                 {totalScore >= 80
                   ? "Luar biasa! Kamu benar-benar penghuni sejati laboratorium XII PPLG 1 yang hafal setiap sudut cerita kita."
                   : "Terima kasih sudah ikut bernostalgia! Buka kembali halaman Anggota dan Galeri untuk menyegarkan ingatanmu."}
@@ -267,7 +266,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
         {/* Bagian Kanan: Polling Kelas dengan Batang 3D Ringan */}
         <section
           aria-labelledby="poll-heading"
-          className="rounded-2xl border border-border bg-card p-6 sm:p-8 lg:col-span-6"
+          className="rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6"
         >
           {polls.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-12 text-center">

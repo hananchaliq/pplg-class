@@ -264,55 +264,56 @@ export function SingleIronRailLanyard({
         </div>
       </div>
 
-      {/* Bar Kontrol Geser Gagang Besi + Info Kartu Aktif & Tombol Balik Cepat */}
-      <div className="relative z-10 mt-1 flex flex-col items-center justify-between gap-3 border-t border-border/60 px-4 pt-3 sm:flex-row sm:px-6">
-        <div className="flex items-center gap-2">
+      {/* Bar Kontrol Geser Gagang Besi + Petunjuk Ikon Singkat */}
+      <div className="relative z-10 mt-1 flex flex-col items-stretch justify-between gap-2.5 border-t border-border/60 px-3 pt-3 sm:flex-row sm:items-center sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:justify-start">
           {items.length > 5 && (
-            <>
-              <button
-                type="button"
-                onClick={() => scrollByAmount(-1)}
-                disabled={!canScrollLeft}
-                aria-label="Geser gagang besi ke kiri"
-                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition hover:bg-muted disabled:opacity-40"
-              >
-                <ChevronLeft className="size-4" />
-                <span>Geser Kiri</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollByAmount(1)}
-                disabled={!canScrollRight}
-                aria-label="Geser gagang besi ke kanan"
-                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition hover:bg-muted disabled:opacity-40"
-              >
-                <span>Geser Kanan</span>
-                <ChevronRight className="size-4" />
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => scrollByAmount(-1)}
+              disabled={!canScrollLeft}
+              aria-label="Geser gagang besi ke kiri"
+              className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition hover:bg-muted disabled:opacity-40"
+            >
+              <ChevronLeft className="size-3.5" />
+              <span>Kiri</span>
+            </button>
           )}
-        </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 text-center">
-          <span className="text-xs text-muted-foreground">
-            {caption ||
-              "Klik kartu ID untuk membalik (Depan/Belakang) atau tarik ke bawah untuk efek pegas"}
-          </span>
           {active !== null && items[active] && (
             <button
               type="button"
               onClick={() => setFlipped(flipped === active ? null : active)}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[var(--color-accent-warm)]/50 bg-[var(--color-accent-warm)]/10 px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-[var(--color-accent-warm)]/20"
+              className="inline-flex min-h-[36px] flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl border border-[var(--color-accent-warm)]/50 bg-[var(--color-accent-warm)]/10 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-[var(--color-accent-warm)]/20"
             >
               <RotateCw className="size-3.5 text-[var(--color-accent-warm)]" />
               <span>
-                {flipped === active ? "Tutup Sisi Belakang" : "Balik Kartu Ini"}
+                {flipped === active ? "Tutup" : "Balik Kartu"}
               </span>
+            </button>
+          )}
+
+          {items.length > 5 && (
+            <button
+              type="button"
+              onClick={() => scrollByAmount(1)}
+              disabled={!canScrollRight}
+              aria-label="Geser gagang besi ke kanan"
+              className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition hover:bg-muted disabled:opacity-40"
+            >
+              <span>Kanan</span>
+              <ChevronRight className="size-3.5" />
             </button>
           )}
         </div>
 
-        {action && <div className="shrink-0">{action}</div>}
+        <div className="flex items-center justify-center text-center">
+          <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">
+            {caption || "Klik: Balik · Tarik: Pegas · Geser: Jelajah"}
+          </span>
+        </div>
+
+        {action && <div className="flex w-full justify-center sm:w-auto sm:shrink-0">{action}</div>}
       </div>
     </div>
   );

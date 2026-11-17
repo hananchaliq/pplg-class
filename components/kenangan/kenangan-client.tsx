@@ -524,18 +524,17 @@ export function KenanganClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      {/* Header Halaman Kenangan */}
-      <header className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+      {/* Header Halaman Kenangan Ringkas */}
+      <header className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
           Ruang Memori & Surat Masa Depan · UNO XII PPLG 1
         </p>
-        <h1 className="mt-2 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          Buku Kenangan, Kapsul Waktu & Dinding Terima Kasih
+        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          Buku Kenangan, Kapsul Waktu & Apresiasi
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Buka sampul buku kenangan XII PPLG 1 untuk melihat album foto bersama,
-          daftar isi, dan lembar tulisan tangan setiap sahabat lengkap dengan foto ID Card.
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
+          Album foto bersama, catatan tulisan tangan tiap siswa, dan surat masa depan.
         </p>
       </header>
 
@@ -543,7 +542,7 @@ export function KenanganClient({
       <div
         role="tablist"
         aria-label="Menu Ruang Kenangan"
-        className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-card p-1.5"
+        className="no-scrollbar mx-auto mt-6 flex max-w-xl flex-nowrap items-center justify-start gap-1.5 overflow-x-auto rounded-xl border border-border bg-card p-1.5 sm:flex-wrap sm:justify-center"
       >
         <motion.button
           role="tab"
@@ -552,7 +551,7 @@ export function KenanganClient({
           whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "buku"}
           onClick={() => setActiveTab("buku")}
-          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "buku"
               ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -569,7 +568,7 @@ export function KenanganClient({
           whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "kapsul"}
           onClick={() => setActiveTab("kapsul")}
-          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "kapsul"
               ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -586,7 +585,7 @@ export function KenanganClient({
           whileTap={{ scale: 0.96 }}
           aria-selected={activeTab === "thanks"}
           onClick={() => setActiveTab("thanks")}
-          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "thanks"
               ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -624,18 +623,18 @@ export function KenanganClient({
           </div>
 
           {/* Kontrol Navigasi Buku & Daftar Isi Cepat */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
-            <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:flex-wrap sm:gap-2.5 sm:pb-0">
               <motion.button
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setIsBookOpen((prev) => !prev)}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 whitespace-nowrap"
+                className="inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-lg bg-[var(--color-accent-warm)] px-3.5 sm:px-4 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 whitespace-nowrap"
               >
                 <BookOpen className="size-4" />
                 <span>
-                  {isBookOpen ? "Tutup Sampul Buku" : "Buka Sampul Buku"}
+                  {isBookOpen ? "Tutup Sampul" : "Buka Sampul"}
                 </span>
               </motion.button>
 
@@ -647,7 +646,7 @@ export function KenanganClient({
                   setIsBookOpen(true);
                   setSpreadIndex(0);
                 }}
-                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
+                className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
                   isBookOpen && (spreadIndex === 0 || spreadIndex === 1)
                     ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
                     : "border-border bg-background text-foreground hover:bg-muted"
@@ -665,7 +664,7 @@ export function KenanganClient({
                   setIsBookOpen(true);
                   setSpreadIndex(TOC_SPREAD_INDEX);
                 }}
-                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
+                className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
                   isBookOpen && spreadIndex === TOC_SPREAD_INDEX
                     ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
                     : "border-border bg-background text-foreground hover:bg-muted"
@@ -676,7 +675,7 @@ export function KenanganClient({
               </motion.button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-1.5 sm:gap-2 lg:w-auto">
               <label htmlFor="jump-student" className="sr-only">
                 Loncat ke halaman buku
               </label>
@@ -687,7 +686,7 @@ export function KenanganClient({
                   setIsBookOpen(true);
                   setSpreadIndex(Number(e.target.value));
                 }}
-                className="min-h-[44px] rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground"
+                className="min-h-[40px] sm:min-h-[44px] min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 sm:px-3 py-2 text-xs font-medium text-foreground lg:flex-initial"
               >
                 <option value={0}>Hal. 1–2 · Foto Bersama Bagian I</option>
                 <option value={1}>Hal. 3–4 · Foto Bersama Bagian II</option>
@@ -711,12 +710,12 @@ export function KenanganClient({
                     setSpreadIndex((p) => Math.max(0, p - 1));
                   }
                 }}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                className="inline-flex min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronLeft className="size-5" />
               </motion.button>
 
-              <span className="font-mono text-xs tabular-nums text-muted-foreground px-1">
+              <span className="shrink-0 font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground px-1">
                 {!isBookOpen ? "Sampul" : `${spreadIndex + 1} / ${spreads.length}`}
               </span>
 
@@ -732,7 +731,7 @@ export function KenanganClient({
                     setSpreadIndex((p) => Math.min(spreads.length - 1, p + 1));
                   }
                 }}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                className="inline-flex min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronRight className="size-5" />
               </motion.button>
@@ -745,8 +744,8 @@ export function KenanganClient({
               <div className="overflow-hidden rounded-2xl border-2 border-[#782f24]/60 bg-[#fbf5e8] text-[#2b2118] shadow-lg">
                 {!isBookOpen ? (
                   /* Sampul Buku 2D Tertutup dengan 1 Foto Bersama XII PPLG 1 */
-                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-6 py-12 text-center text-[#f3ca82]">
-                    <div className="w-full max-w-lg rounded-2xl border-2 border-[#e0a958] bg-[#592017]/60 p-6 sm:p-8 shadow-inner">
+                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-4 py-8 sm:px-6 sm:py-12 text-center text-[#f3ca82]">
+                    <div className="w-full max-w-lg rounded-2xl border-2 border-[#e0a958] bg-[#592017]/60 p-4 sm:p-8 shadow-inner">
                       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#ebd0a0]">
                         Album Memori Madrasah · UNO
                       </p>
@@ -806,12 +805,12 @@ export function KenanganClient({
                   /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Halaman Foto Bersama, Daftar Isi, dan Halaman Siswa */
                   <div className="relative grid grid-cols-1 divide-y divide-[#d8c7ae] md:grid-cols-2 md:divide-x md:divide-y-0">
                     {/* Halaman Kiri */}
-                    <div className="relative flex flex-col justify-between p-6 sm:p-8">
+                    <div className="relative flex flex-col justify-between p-4 sm:p-8">
                       <div>
                         {/* Hiasan Washi Tape */}
                         <div
                           aria-hidden="true"
-                          className="mx-auto -mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
+                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
                         />
                         {currentSpread.leftPage.type === "group-photo" ? (
                           <div>
@@ -955,10 +954,10 @@ export function KenanganClient({
                                 transform: `rotate(${
                                   ((spreadIndex * 7) % 5) - 2
                                 }deg) translateX(${
-                                  ((spreadIndex * 11) % 16) - 8
+                                  ((spreadIndex * 11) % 8) - 4
                                 }px)`,
                               }}
-                              className="relative mt-5 w-full max-w-md rounded-2xl border-2 border-[#6e4e32] bg-[#fffaf0] p-5 shadow-sm"
+                              className="relative mt-5 w-full max-w-md rounded-2xl border-2 border-[#6e4e32] bg-[#fffaf0] p-4 sm:p-5 shadow-sm"
                             >
                               <span
                                 aria-hidden="true"
@@ -990,11 +989,11 @@ export function KenanganClient({
                     </div>
 
                     {/* Halaman Kanan */}
-                    <div className="relative flex flex-col justify-between p-6 sm:p-8">
+                    <div className="relative flex flex-col justify-between p-4 sm:p-8">
                       <div>
                         <div
                           aria-hidden="true"
-                          className="mx-auto -mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
+                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
                         />
                         {currentSpread.rightPage.type === "group-photo" ? (
                           <div>
@@ -1100,10 +1099,10 @@ export function KenanganClient({
                                 ];
                                 const rotDeg =
                                   (((m.seed || 10) + idx * 7 + spreadIndex * 3) %
-                                    7) -
-                                  3;
+                                    5) -
+                                  2;
                                 const shiftPx =
-                                  (((m.seed || 10) + idx * 13) % 20) - 10;
+                                  (((m.seed || 10) + idx * 13) % 8) - 4;
 
                                 return (
                                   <motion.blockquote

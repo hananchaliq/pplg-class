@@ -642,7 +642,7 @@ export function HeroDeskSceneHD({
       cameraFov={42}
       continuous={true}
       ariaLabel="Scene 3D Meja Belajar Saat Senja XII PPLG 1 MAKN Ende"
-      className="relative w-full h-[460px] sm:h-[540px]"
+      className="relative w-full h-[360px] sm:h-[540px]"
     />
   );
 }

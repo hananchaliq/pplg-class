@@ -35,18 +35,18 @@ const SPECIAL_NON_GALLERY_CATEGORIES = new Set([
 const PHASES: Array<{ id: MomentPhase; label: string; subtitle: string }> = [
   {
     id: "X",
-    label: "Kelas X (Awal Perjumpaan)",
-    subtitle: "Masa orientasi madrasah, pengenalan algoritma pertama, dan teman sebangku baru.",
+    label: "Kelas X",
+    subtitle: "Awal perjumpaan & orientasi madrasah",
   },
   {
     id: "XI",
-    label: "Kelas XI (Masa PKL & Proyek)",
-    subtitle: "Praktik Kerja Lapangan, lomba kompetensi, dan malam-malam panjang menyusun kode.",
+    label: "Kelas XI",
+    subtitle: "Masa PKL, lomba & proyek rekayasa",
   },
   {
     id: "XII",
-    label: "Kelas XII (Senja Terakhir)",
-    subtitle: "Ujian komprehensif, doa bersama, dan detik-detik menjelang perpisahan.",
+    label: "Kelas XII",
+    subtitle: "Ujian akhir & senja perpisahan",
   },
 ];
 
@@ -235,23 +235,22 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     lightboxIndex !== null ? filteredMoments[lightboxIndex] ?? null : null;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      {/* Header Galeri Momen */}
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
+      {/* Header Galeri Momen Ringkas */}
+      <div className="flex flex-col items-start justify-between gap-3.5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Arsip Foto Tiga Tahun · {moments.length} Momen Tersimpan
+          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+            Arsip Foto Tiga Tahun · {moments.length} Momen
           </p>
-          <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          <h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
             Tali Polaroid & Dinding Kenangan
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Setiap fase punya warnanya sendiri—dari canggungnya hari pertama
-            Kelas X hingga hangatnya perpisahan Kelas XII.
+          <p className="mt-1 max-w-xl text-xs sm:text-sm text-muted-foreground">
+            Jepretan kenangan Kelas X, XI, hingga XII. Klik foto untuk tampilan penuh.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <motion.button
             type="button"
             whileHover={{ scale: 1.02 }}
@@ -260,13 +259,13 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-card px-3 sm:px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap shrink-0"
           >
-            <Grid className="size-4 text-[var(--color-chart-1)]" />
-            <span>
+            <Grid className="size-3.5 sm:size-4 shrink-0 text-[var(--color-chart-1)]" />
+            <span className="truncate">
               {showAllGrid
-                ? "Tampilkan Per Fase Kelas"
-                : `Semua Fase (${filteredMoments.length})`}
+                ? "Mode Gantungan"
+                : `Semua Grid (${filteredMoments.length})`}
             </span>
           </motion.button>
 
@@ -278,16 +277,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setUploadOpen(true);
               setUploadFeedback(null);
             }}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[var(--color-accent-warm)] px-3 sm:px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0"
           >
-            <Upload className="size-4" />
-            <span>Unggah Foto Kelas</span>
+            <Upload className="size-3.5 sm:size-4 shrink-0" />
+            <span>Unggah Foto</span>
           </motion.button>
         </div>
       </div>
 
-      {/* Pilihan Timeline Fase (Kelas X, XI, XII) — Masing-Masing Fase Terpisah */}
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Pilihan Timeline Fase (Kelas X, XI, XII): 3 Kolom Kompak di Mobile */}
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-2.5">
         {PHASES.map((p) => {
           const active = activePhase === p.id;
           const countInPhase = filteredMoments.filter(
@@ -304,21 +303,21 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 setSelected3DMoment(null);
                 setMomentPage(1);
               }}
-              className={`flex flex-col items-start rounded-xl border p-4 text-left transition-colors ${
+              className={`flex flex-col items-start rounded-xl border p-2.5 sm:p-3.5 text-left transition-colors ${
                 active
-                  ? "border-[var(--color-accent-warm)] bg-card shadow-sm"
+                  ? "border-[var(--color-accent-warm)] bg-card shadow-2xs"
                   : "border-border bg-card/40 hover:bg-card/80"
               }`}
             >
-              <div className="flex w-full items-center justify-between gap-2">
-                <span className="font-serif text-base font-bold text-foreground">
+              <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                <span className="font-serif text-sm sm:text-base font-bold text-foreground">
                   {p.label}
                 </span>
-                <span className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground">
+                <span className="w-fit rounded-md border border-border bg-muted px-1.5 sm:px-2 py-0.5 font-mono text-[10px] sm:text-[11px] font-semibold text-foreground">
                   {countInPhase} Foto
                 </span>
               </div>
-              <span className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              <span className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                 {p.subtitle}
               </span>
             </motion.button>
@@ -326,11 +325,11 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Filter Kategori dengan Animasi Interaktif */}
+      {/* Filter Kategori: Horizontal Swipe di Mobile, Wrap di Desktop */}
       <div
         role="group"
         aria-label="Filter Kategori Momen"
-        className="mt-5 flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/60 p-1.5"
+        className="no-scrollbar mt-3.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/60 p-1.5 sm:mt-4 sm:flex-wrap"
       >
         {SITE_CONTENT.momentCategories.map((cat) => {
           const active = activeCategory === cat;
@@ -338,13 +337,13 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
             <motion.button
               key={cat}
               type="button"
-              whileHover={{ y: -1, scale: 1.03 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => {
                 setActiveCategory(cat);
                 setMomentPage(1);
               }}
-              className={`min-h-[40px] rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`min-h-[34px] sm:min-h-[36px] rounded-lg px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 active
                   ? "bg-foreground text-background font-semibold shadow-2xs"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -356,40 +355,40 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Rak Polaroid (Adaptive: 3D Verlet Catenary di Desktop HD, Deret Gantungan Bisa Digeser Kiri-Kanan di Mobile Simple) */}
+      {/* Rak Polaroid (Adaptive: 3D di Desktop HD, Deret Gantungan di Mobile Simple) */}
       {!showAllGrid && (
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-5">
           <Adaptive
             simple={
               <section
                 aria-label={`Deretan Polaroid Fase Kelas ${activePhase}`}
-                className="rounded-2xl border border-border bg-card/70 p-5"
+                className="rounded-2xl border border-border bg-card/70 p-3.5 sm:p-4"
               >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="font-serif text-lg font-bold text-foreground">
-                      Gantungan Kertas Foto Kelas {activePhase} ({phaseRackMoments.length} Lembar)
+                    <h2 className="font-serif text-sm sm:text-base font-bold text-foreground">
+                      Fase Kelas {activePhase} ({phaseRackMoments.length} Foto)
                     </h2>
-                    <span className="font-hand text-base text-muted-foreground">
-                      Geser ke kiri & kanan sepanjang tali · Ketuk foto untuk mode baca pop-up jelas
+                    <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">
+                      Geser: Kiri/Kanan · Ketuk: Perbesar
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => scrollSimpleRack(-1)}
-                      className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                      className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                     >
-                      <ChevronLeft className="size-4" />
-                      <span>Geser Kiri</span>
+                      <ChevronLeft className="size-3.5" />
+                      <span>Kiri</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => scrollSimpleRack(1)}
-                      className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                      className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                     >
-                      <span>Geser Kanan</span>
-                      <ChevronRight className="size-4" />
+                      <span>Kanan</span>
+                      <ChevronRight className="size-3.5" />
                     </button>
                   </div>
                 </div>
@@ -419,7 +418,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                           onClick={() =>
                             setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)
                           }
-                          className={`real-photo-paper relative w-[212px] shrink-0 snap-start rounded-md p-2.5 pb-4 pt-3.5 text-left shadow-md transition-shadow [transform:perspective(680px)_rotateX(2deg)] ${tiltClass}`}
+                          className={`real-photo-paper relative w-[200px] sm:w-[212px] shrink-0 snap-start rounded-md p-2.5 pb-4 pt-3.5 text-left shadow-md transition-shadow [transform:perspective(680px)_rotateX(2deg)] ${tiltClass}`}
                         >
                           {/* Jepitan Kayu di Tepi Atas */}
                           <span
@@ -475,7 +474,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         className="h-16 w-20 shrink-0 rounded-md border border-[#cbb799] object-cover shadow-xs"
                       />
                       <div>
-                        <div className="flex flex-wrap items-center gap-2 font-hand text-lg font-bold text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 font-hand text-base sm:text-lg font-bold text-muted-foreground">
                           <span>Fase Kelas {selected3DMoment.phase}</span>
                           <span aria-hidden="true">·</span>
                           <span>{selected3DMoment.category}</span>
@@ -484,7 +483,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                           <span aria-hidden="true">·</span>
                           <span>Ditulis oleh {selected3DMoment.uploader_name}</span>
                         </div>
-                        <p className="mt-0.5 font-hand text-2xl sm:text-3xl font-bold text-foreground">
+                        <p className="mt-0.5 font-hand text-xl sm:text-3xl font-bold text-foreground">
                           &ldquo;{selected3DMoment.caption}&rdquo;
                         </p>
                       </div>
@@ -499,7 +498,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         );
                         if (idx >= 0) setLightboxIndex(idx);
                       }}
-                      className="min-h-[40px] rounded-lg border border-border bg-background px-3.5 py-2 font-hand text-lg font-bold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
+                      className="min-h-[40px] w-full sm:w-auto rounded-lg border border-border bg-background px-3.5 py-2 font-hand text-lg font-bold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
                     >
                       Buka Mode Baca Pop-Up Penuh →
                     </motion.button>
@@ -512,18 +511,18 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
       )}
 
       {/* Daftar Momen Terpaginasi Bervisual Kertas Foto Cetak Asli & Font Tulisan Tangan */}
-      <section aria-labelledby="all-photos-heading" className="mt-12">
+      <section aria-labelledby="all-photos-heading" className="mt-8 sm:mt-12">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
           <div>
             <h2
               id="all-photos-heading"
-              className="font-serif text-xl font-bold text-foreground"
+              className="font-serif text-lg sm:text-xl font-bold text-foreground"
             >
               {showAllGrid
                 ? `Seluruh Koleksi Lembar Foto (${listSourceMoments.length} Momen)`
                 : `Album Kertas Foto Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
             </h2>
-            <p className="font-hand text-lg text-muted-foreground">
+            <p className="font-hand text-base sm:text-lg text-muted-foreground">
               Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk membuka pop-up foto dan cerita lengkap.
             </p>
           </div>
@@ -535,7 +534,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="font-hand text-xl font-bold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
+            className="font-hand text-lg sm:text-xl font-bold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
           >
             {showAllGrid
               ? `← Filter Hanya Kelas ${activePhase}`
@@ -543,7 +542,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           </motion.button>
         </div>
 
-        <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {pagedMoments.map((m, idx) => {
             const globalIdx = filteredMoments.findIndex((x) => x.id === m.id);
             const naturalRot = ((idx % 4) - 1.5) * 1.1;
@@ -557,7 +556,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 whileHover={{ y: -6, rotate: 0, scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
-                className="real-photo-paper group relative flex flex-col justify-between rounded-md p-3.5 pb-5 pt-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className="real-photo-paper group relative flex flex-col justify-between rounded-md p-2.5 pb-3.5 pt-3 text-left sm:p-3.5 sm:pb-5 sm:pt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {/* Jepitan Kayu di Atas Bingkai Kertas Foto */}
                 <span
@@ -575,16 +574,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     />
                   </div>
                   {/* Tulisan Tangan Spidol di Dagu Kertas Polaroid */}
-                  <p className="mt-3.5 line-clamp-2 font-hand text-2xl font-bold leading-snug text-foreground">
+                  <p className="mt-2 sm:mt-3.5 line-clamp-2 font-hand text-lg sm:text-2xl font-bold leading-snug text-foreground">
                     {m.caption}
                   </p>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-dashed border-[#cbb799]/70 pt-2 font-hand text-base font-bold text-muted-foreground dark:border-[#544030]">
-                  <span>
-                    ~ Kelas {m.phase} · {m.category}
+                <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-dashed border-[#cbb799]/70 pt-1.5 sm:pt-2 font-hand text-xs sm:text-base font-bold text-muted-foreground dark:border-[#544030]">
+                  <span className="truncate">
+                    ~ {m.phase} · {m.category}
                   </span>
-                  <span>{m.taken_at}</span>
+                  <span className="shrink-0">{m.taken_at}</span>
                 </div>
               </motion.button>
             );
@@ -608,17 +607,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           aria-modal="true"
           aria-label="Peninjau Lembar Kertas Foto Ukuran Penuh"
           onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 backdrop-blur-xs sm:items-center sm:p-6"
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, scale: 0.94, rotate: -0.5 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="real-photo-paper relative mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl p-4 pb-5 text-card-foreground shadow-2xl sm:p-6"
+            className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-4 pb-6 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
           >
-            <div className="mb-3 flex items-center justify-between gap-4 border-b border-dashed border-[#cbb799]/80 pb-2.5 dark:border-[#544030]">
-              <div className="flex flex-wrap items-center gap-2 font-hand text-xl font-bold text-muted-foreground">
+            <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-[#cbb799]/80 pb-2.5 dark:border-[#544030]">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-hand text-base sm:text-xl font-bold text-muted-foreground">
                 <span className="rounded-md bg-[var(--color-accent-warm)]/15 px-2.5 py-0.5 text-foreground">
                   Fase Kelas {currentLightboxMoment.phase}
                 </span>
@@ -645,22 +644,22 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 src={currentLightboxMoment.image_url}
                 alt={currentLightboxMoment.caption}
                 referrerPolicy="no-referrer"
-                className="block h-auto max-h-[52vh] sm:max-h-[56vh] w-auto max-w-full object-contain"
+                className="block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
               />
             </div>
 
             {/* Area Teks Cerita & Keterangan yang Jelas Terbaca */}
-            <div className="mt-4 rounded-xl border border-[#cbb799]/80 bg-background/75 p-4 shadow-2xs dark:border-[#544030]">
-              <p className="font-hand text-2xl sm:text-3xl font-bold leading-snug text-foreground break-words">
+            <div className="mt-3.5 sm:mt-4 rounded-xl border border-[#cbb799]/80 bg-background/75 p-3.5 sm:p-4 shadow-2xs dark:border-[#544030]">
+              <p className="font-hand text-xl sm:text-3xl font-bold leading-snug text-foreground break-words">
                 &ldquo;{currentLightboxMoment.caption}&rdquo;
               </p>
-              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-border pt-2.5">
-                <p className="font-hand text-lg font-bold text-muted-foreground">
-                  ~ Diabadikan oleh {currentLightboxMoment.uploader_name} · Lembar Foto{" "}
-                  {lightboxIndex + 1} dari {filteredMoments.length} ~
+              <div className="mt-2.5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 sm:gap-3 border-t border-dashed border-border pt-2.5">
+                <p className="font-hand text-base sm:text-lg font-bold text-muted-foreground">
+                  ~ Diabadikan oleh {currentLightboxMoment.uploader_name} · Foto{" "}
+                  {lightboxIndex + 1}/{filteredMoments.length} ~
                 </p>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.04, x: -2 }}
@@ -672,7 +671,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                           filteredMoments.length
                       )
                     }
-                    className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    className="inline-flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     <ChevronLeft className="size-4" />
                     <span>Sebelumnya</span>
@@ -687,7 +686,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         (lightboxIndex + 1) % filteredMoments.length
                       )
                     }
-                    className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    className="inline-flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     <span>Berikutnya</span>
                     <ChevronRight className="size-4" />
@@ -705,9 +704,9 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
           role="dialog"
           aria-modal="true"
           aria-labelledby="upload-moment-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
         >
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl">
+          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">

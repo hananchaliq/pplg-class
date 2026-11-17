@@ -474,19 +474,18 @@ export function KaryaClient({
   }, [radarNodes, maxWeight]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      {/* Header Karya & Skill Map */}
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+      {/* Header Karya & Skill Map Ringkas */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Etalase Projek Akhir · 1 Siswa = 1 Karya Pilihan
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+            Etalase Projek Akhir · 1 Siswa 1 Karya Pilihan
           </p>
-          <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-            Karya Siswa & Ekosistem Skill Map XII PPLG 1
+          <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+            Karya Siswa & Skill Map XII PPLG 1
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Dari aplikasi layanan desa di Flores hingga gim edukasi tenun ikat—inilah
-            buah tangan tiga tahun belajar rekayasa perangkat lunak di MAKN Ende.
+          <p className="mt-1.5 max-w-xl text-xs sm:text-sm text-muted-foreground">
+            Koleksi proyek aplikasi web, mobile, UI/UX, dan gim karya siswa MAKN Ende.
           </p>
         </div>
 
@@ -498,73 +497,71 @@ export function KaryaClient({
             setModalOpen(true);
             setFeedback(null);
           }}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm hover:opacity-90 whitespace-nowrap shrink-0"
+          className="inline-flex min-h-[42px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm hover:opacity-90 whitespace-nowrap shrink-0"
         >
           <PlusCircle className="size-4" />
-          <span>Daftarkan / Perbarui Karya</span>
+          <span>Daftarkan Karya</span>
         </motion.button>
       </div>
 
       {/* EKOSISTEM SKILL MAP INTERAKTIF & ANIMATIF */}
       <section
         aria-labelledby="skill-map-heading"
-        className="mt-10 overflow-hidden rounded-2xl border border-border bg-card shadow-md"
+        className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-md"
       >
         {/* Top Bar Skill Map + Switcher Mode Visual */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-muted/40 px-6 py-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
               <Sparkles className="size-3.5" />
-              <span>Visualisasi Keahlian Hidup · Real-Time Data Kelas</span>
+              <span>Jaringan Talenta Kelas</span>
             </div>
             <h2
               id="skill-map-heading"
-              className="mt-0.5 font-serif text-2xl font-bold text-foreground"
+              className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground"
             >
-              Peta Konstelasi & Radar Keahlian XII PPLG 1
+              Peta Keahlian XII PPLG 1
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-background p-1">
+          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-background p-1">
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("constellation")}
-              className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "constellation"
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
+                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Network className="size-3.5" />
-              <span>Konstelasi Orbit</span>
+              <span>Konstelasi</span>
             </motion.button>
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("radar")}
-              className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "radar"
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
+                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Radar className="size-3.5" />
-              <span>Radar Spektrum</span>
+              <span>Radar</span>
             </motion.button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 items-stretch gap-0 lg:grid-cols-12">
           {/* Kolom Kiri: Panel Detail Skill, Bar Kemahiran Hidup & Daftar Siswa */}
-          <div className="flex flex-col justify-between border-b border-border p-6 lg:col-span-5 lg:border-r lg:border-b-0">
+          <div className="flex flex-col justify-between border-b border-border p-5 sm:p-6 lg:col-span-5 lg:border-r lg:border-b-0">
             <div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Arahkan kursor atau klik simpul keahlian pada visualisasi di
-                samping untuk memantau denyut jaringan proyek dan menyaring
-                karya siswa secara langsung.
+              <p className="text-xs text-muted-foreground">
+                Klik simpul keahlian untuk menyaring karya siswa secara langsung.
               </p>
 
               {/* Kartu Fokus Skill Aktif dengan Animasi Transisi */}
@@ -702,7 +699,7 @@ export function KaryaClient({
 
             {/* Tombol Filter Cepat */}
             <div className="mt-5 border-t border-border pt-4">
-              <div className="flex flex-wrap gap-1.5">
+              <div className="no-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:pb-0">
                 <motion.button
                   whileHover={{ y: -1.5, scale: 1.03 }}
                   whileTap={{ scale: 0.95 }}
@@ -711,7 +708,7 @@ export function KaryaClient({
                     setSelectedSkill(null);
                     setWorkPage(1);
                   }}
-                  className={`min-h-[36px] rounded-lg border px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-h-[36px] shrink-0 rounded-lg border px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap ${
                     selectedSkill === null
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-background text-muted-foreground hover:text-foreground"
@@ -731,7 +728,7 @@ export function KaryaClient({
                         setSelectedSkill(active ? null : node.skill);
                         setWorkPage(1);
                       }}
-                      className={`min-h-[36px] rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
+                      className={`min-h-[36px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
                         active
                           ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)] text-[#fbf6ec] font-semibold"
                           : "border-border bg-background text-foreground hover:bg-muted"
@@ -1207,13 +1204,13 @@ export function KaryaClient({
           aria-modal="true"
           aria-label={`Pratinjau Karya ${previewWork.work.title}`}
           onClick={() => setPreviewWork(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-6 backdrop-blur-xs"
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative mx-auto flex max-h-[92vh] w-full max-w-4xl flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl"
+            className="relative mx-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl"
           >
             <div className="mb-3 flex items-start justify-between gap-4 border-b border-border pb-3">
               <div>
@@ -1296,9 +1293,9 @@ export function KaryaClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="work-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4"
         >
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl">
+          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">

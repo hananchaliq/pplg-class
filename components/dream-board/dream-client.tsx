@@ -163,16 +163,16 @@ export function DreamBoardClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="dream-cheer-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-xs sm:items-center sm:p-4"
         >
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 340, damping: 26 }}
             style={{
               borderTopColor: cheerTargetDream.paper_color || "#e09f4c",
             }}
-            className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border border-t-[6px] bg-card p-6 text-card-foreground shadow-2xl"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
@@ -325,14 +325,14 @@ export function DreamBoardClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-dream-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-xs sm:items-center sm:p-4"
         >
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 340, damping: 26 }}
             style={{ borderTopColor: dreamColor }}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border border-t-[6px] bg-card p-6 text-card-foreground shadow-2xl"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>

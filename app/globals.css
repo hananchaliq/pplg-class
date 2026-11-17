@@ -117,10 +117,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), Georgia, Cambria, "Times New Roman", serif;
-  --font-hand: var(--font-caveat), "Caveat", "Segoe Print", "Bradley Hand", cursive;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
+  --font-hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
@@ -131,13 +131,23 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased selection:bg-[#c86d3b]/25 selection:text-foreground;
+    overflow-x: clip;
     background-image:
       radial-gradient(circle at 18% 12%, rgba(200, 109, 59, 0.07), transparent 42%),
       radial-gradient(circle at 84% 82%, rgba(45, 106, 110, 0.06), transparent 45%);
   }
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Custom Theme-Aware Scrollbars for All Scrollable Elements (Light & Dark) */

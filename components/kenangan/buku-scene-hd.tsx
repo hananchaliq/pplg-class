@@ -757,7 +757,7 @@ export function BukuKenanganSceneHD({
       cameraFov={42}
       continuous={true}
       ariaLabel="Buku Kenangan Scrapbook 3D di Atas Meja Belajar (Kamera Statis dari Atas)"
-      className="relative w-full h-[540px] sm:h-[650px]"
+      className="relative w-full h-[430px] sm:h-[650px]"
     />
   );
 }

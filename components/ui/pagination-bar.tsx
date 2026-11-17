@@ -34,9 +34,9 @@ export function PaginationBar({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
       aria-label="Navigasi Halaman"
-      className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/85 px-4 py-3 shadow-sm backdrop-blur-sm ${className}`}
+      className={`mt-6 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 rounded-xl border border-border bg-card/85 px-3.5 py-3 sm:px-4 shadow-sm backdrop-blur-sm ${className}`}
     >
-      <p className="text-xs font-medium text-muted-foreground">
+      <p className="text-center sm:text-left text-xs font-medium text-muted-foreground">
         Menampilkan{" "}
         <span className="font-bold tabular-nums text-foreground">
           {startItem}–{endItem}
@@ -48,7 +48,7 @@ export function PaginationBar({
         {itemLabel}
       </p>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.94 }}
