@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useVisualTier } from "@/lib/visual-tier";
-import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 interface AdaptiveProps {
   /** SimpleView rendered first on the server and on mobile/low-power devices */
@@ -15,16 +14,7 @@ export function Adaptive({ simple, hd }: AdaptiveProps) {
   const { tier, isClientReady } = useVisualTier();
 
   if (!isClientReady) {
-    return (
-      <div className="relative overflow-hidden rounded-2xl">
-        {simple}
-        <StageCurtainLoader
-          ready={false}
-          progress={18}
-          label="Menyiapkan panggung visual 3D..."
-        />
-      </div>
-    );
+    return <div className="relative overflow-hidden rounded-xl">{simple}</div>;
   }
 
   if (tier === "simple") {
@@ -33,4 +23,3 @@ export function Adaptive({ simple, hd }: AdaptiveProps) {
 
   return <>{hd}</>;
 }
-

@@ -58,22 +58,22 @@ export function sanitizeText(raw: string): string {
 }
 
 const AVATAR_COLOR_PALETTE_16 = [
-  "#c85a32", // Terracotta
-  "#2d6a6e", // Teal Kelimutu
-  "#b84357", // Rose Berry
-  "#3b6e52", // Forest Emerald
-  "#7b4b94", // Royal Plum
-  "#c47d2b", // Amber Honey
-  "#2b5b84", // Ocean Cobalt
-  "#9e473b", // Crimson Clay
-  "#4f6d3a", // Moss Olive
-  "#8c4a70", // Mulberry Wine
-  "#c76542", // Sunset Coral
-  "#2f6f7a", // Deep Lagoon
-  "#635294", // Indigo Dusk
-  "#a6632c", // Cinnamon Bronze
-  "#3d6b5e", // Pine Sage
-  "#9c3d4c", // Ruby Garnet
+  "#2D6366",
+  "#A95A42",
+  "#B5843F",
+  "#475B78",
+  "#4E6E52",
+  "#7D4B5A",
+  "#8C583A",
+  "#38687A",
+  "#6C7046",
+  "#9E6B43",
+  "#585175",
+  "#3D6E62",
+  "#964C4C",
+  "#5E6B7A",
+  "#857444",
+  "#664E6B",
 ];
 
 function hashNameIndex(name: string): number {
@@ -97,7 +97,7 @@ export function createAvatarPlaceholderDataUri(
     return "";
   }
   const colorIdx = (hashNameIndex(name) + tone) % AVATAR_COLOR_PALETTE_16.length;
-  const bg = AVATAR_COLOR_PALETTE_16[colorIdx] ?? "#2d6a6e";
+  const bg = AVATAR_COLOR_PALETTE_16[colorIdx] ?? "#383734";
   const initials = name
     .split(" ")
     .filter(Boolean)
@@ -105,7 +105,7 @@ export function createAvatarPlaceholderDataUri(
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" fill="${bg}"/><circle cx="80" cy="60" r="28" fill="#fbf6ec" fill-opacity="0.86"/><path d="M28 152c6-30 26-46 52-46s46 16 52 46z" fill="#fbf6ec" fill-opacity="0.86"/><text x="80" y="144" text-anchor="middle" font-family="Georgia,serif" font-size="18" font-weight="bold" fill="${bg}">${initials}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" fill="${bg}"/><circle cx="80" cy="60" r="28" fill="#ECE9E1" fill-opacity="0.88"/><path d="M28 152c6-30 26-46 52-46s46 16 52 46z" fill="#ECE9E1" fill-opacity="0.88"/><text x="80" y="144" text-anchor="middle" font-family="Old Standard TT,Georgia,serif" font-size="18" font-weight="bold" fill="${bg}">${initials}</text></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

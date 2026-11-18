@@ -7,7 +7,7 @@ export const SITE_CONTENT = {
     city: "Ende, Flores, Nusa Tenggara Timur",
     cohortYears: "2024 — 2027",
     tagline:
-      "Jejak kode, tawa, dan cerita senja keluarga XII PPLG 1 di MAKN Ende.",
+      "Jejak kode, tawa, dan arsip kelulusan keluarga XII PPLG 1 di MAKN Ende.",
     subTagline:
       "22 siswa aktif, 2 sahabat istimewa, dan para pendidik yang menjaga langkah kami.",
     defaultGraduationDate: "2027-05-15T08:00:00+08:00",
@@ -32,7 +32,7 @@ export const SITE_CONTENT = {
     show: "Pilih",
   },
   hero: {
-    eyebrow: "Album Kenangan Digital · MAKN Ende",
+    eyebrow: "Arsip Film & Buku Tahunan · MAKN Ende",
     title: "Kelas XII PPLG 1",
     subtitle: "Pengembangan Perangkat Lunak dan Gim",
     countdownLabel: "Menuju Hari Kelulusan",
@@ -41,8 +41,8 @@ export const SITE_CONTENT = {
     countdownPassed: "Selamat melangkah ke babak baru, keluarga XII PPLG 1",
     ctaPrimary: "Buka Buku Kenangan",
     ctaSecondary: "Kenali Anggota Kelas",
-    deskHintHd: "Geser kursor: Sudut meja · Gulir: Zoom layar",
-    deskHintSimple: "Ilustrasi meja belajar senja MAKN Ende",
+    deskHintHd: "Jendela Bidik 35mm · ISO 400 · 1/125s · F/2.8",
+    deskHintSimple: "Arsip foto keluarga besar XII PPLG 1 MAKN Ende",
   },
   mapCards: [
     {
@@ -51,8 +51,8 @@ export const SITE_CONTENT = {
       title: "Anggota Kelas",
       subtitle: "22 Siswa Aktif & 2 Sahabat Istimewa",
       description:
-        "Kartu ID gantung 3D interaktif lengkap dengan profil & kirim pesan.",
-      meta: "Lanyard 3D",
+        "Kartu ID gantung interaktif lengkap dengan profil & kirim pesan kenangan.",
+      meta: "Arsip Lanyard",
     },
     {
       href: "/guru",
@@ -67,10 +67,10 @@ export const SITE_CONTENT = {
       href: "/galeri",
       index: "03",
       title: "Galeri Momen",
-      subtitle: "Jepretan Kelas X, XI, hingga XII",
+      subtitle: "Edisi Koran Kenangan Bersama",
       description:
-        "Rentangan tali polaroid 3D per fase angkatan dari orientasi hingga kelulusan.",
-      meta: "3 Fase Kelas",
+        "Lembar koran cetak klasik yang dapat dibolak-balik dari Kelas X, XI, hingga XII.",
+      meta: "Koran Jadul",
     },
     {
       href: "/dream-board",
@@ -78,8 +78,8 @@ export const SITE_CONTENT = {
       title: "Dream Board",
       subtitle: "Papan Cita-Cita & Doa Teman",
       description:
-        "Lembar impian masa depan di papan tulis 3D. Klik kertas untuk kirim doa.",
-      meta: "Papan 3D",
+        "Lembar impian masa depan di papan gabus 3D. Klik kertas untuk kirim doa.",
+      meta: "Papan Impian",
     },
     {
       href: "/kenangan",
@@ -87,7 +87,7 @@ export const SITE_CONTENT = {
       title: "Buku Kenangan",
       subtitle: "Album Kelas, Kapsul Waktu & Wall of Thanks",
       description:
-        "Lembar catatan tulisan tangan, segel surat masa depan, dan papan apresiasi.",
+        "Lembar catatan kenangan, segel surat masa depan, dan papan apresiasi.",
       meta: "Buku Interaktif",
     },
     {
@@ -114,7 +114,7 @@ export const SITE_CONTENT = {
       id: "q1",
       question: "Di ruang lab mana anak-anak XII PPLG 1 paling sering lupa waktu saat nge-debug projek?",
       options: [
-        "Lab Rekaysa Perangkat Lunak lantai dua dekat jendela timur",
+        "Lab Rekayasa Perangkat Lunak lantai dua dekat jendela timur",
         "Perpustakaan pojok belakang",
         "Kantin madrasah sambil nunggu gorengan hangat",
         "Lapangan apel sore hari",
@@ -148,15 +148,15 @@ export const SITE_CONTENT = {
     },
     {
       id: "q4",
-      question: "Tiga warna aksen kartu lanyard kelas kita terinspirasi dari keajaiban alam apa di dekat Ende?",
+      question: "Apa nama panggilan resmi angkatan kelas XII PPLG 1 MAKN Ende?",
       options: [
-        "Pantai Batu Biru Penggajawa",
-        "Tiga warna kawah Danau Kelimutu",
-        "Bukit Cinta Ende",
-        "Air Terjun Murundao",
+        "DUO (Dual Code)",
+        "UNO (Satu Keluarga Besar)",
+        "TRIO (Three Years Together)",
+        "NOVA (New Era)",
       ],
       correctIndex: 1,
-      explanation: "Teal Tiwu Ata Mbupu, Hijau Tiwu Nuwa Muri Koo Fai, dan Merah Bata Tiwu Ata Polo.",
+      explanation: "UNO berarti satu atap, satu cerita, dan satu keluarga selamanya untuk XII PPLG 1 MAKN Ende.",
     },
     {
       id: "q5",

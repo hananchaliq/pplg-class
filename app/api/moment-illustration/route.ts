@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const PALETTES = [
-  { skyTop: "#c86d3b", skyBottom: "#f0b67f", hill: "#2d6a6e", ground: "#3b281c" },
-  { skyTop: "#2d6a6e", skyBottom: "#8bb8a8", hill: "#3b593f", ground: "#2a2019" },
-  { skyTop: "#a84232", skyBottom: "#e49b6c", hill: "#4d382b", ground: "#241913" },
-  { skyTop: "#3b593f", skyBottom: "#c4b07b", hill: "#2d524d", ground: "#281f17" },
+  { skyTop: "#3D3D3A", skyBottom: "#C9C4B8", hill: "#5C5A54", ground: "#1F1F1D" },
+  { skyTop: "#2A2A28", skyBottom: "#B5B1A7", hill: "#4A4843", ground: "#1A1A18" },
+  { skyTop: "#4A4843", skyBottom: "#D6D2C9", hill: "#6E6B64", ground: "#222220" },
+  { skyTop: "#333330", skyBottom: "#C5C1B6", hill: "#52504A", ground: "#1C1C1A" },
 ];
 
 export async function GET(req: NextRequest) {
@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
       </linearGradient>
     </defs>
     <rect width="800" height="600" fill="url(#sky)" />
-    <circle cx="${sunX}" cy="${sunY}" r="68" fill="#fbf3dc" fill-opacity="0.78" />
-    <path d="M0 430 Q 240 310 520 390 T 800 360 L 800 600 L 0 600 Z" fill="${pal.hill}" fill-opacity="0.85" />
+    <circle cx="${sunX}" cy="${sunY}" r="68" fill="#F3F1EA" fill-opacity="0.72" />
+    <path d="M0 430 Q 240 310 520 390 T 800 360 L 800 600 L 0 600 Z" fill="${pal.hill}" fill-opacity="0.88" />
     <path d="M0 475 Q 360 395 800 465 L 800 600 L 0 600 Z" fill="${pal.ground}" />
     <!-- Siluet Kebersamaan Siswa XII PPLG 1 -->
-    <g fill="#1c140e">
+    <g fill="#161614">
       <circle cx="310" cy="430" r="24" />
       <path d="M272 520 C278 468 342 468 348 520 Z" />
       <circle cx="400" cy="422" r="26" />
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
       <circle cx="490" cy="432" r="23" />
       <path d="M454 520 C460 470 520 470 526 520 Z" />
     </g>
-    <rect x="20" y="20" width="760" height="560" fill="none" stroke="#fbf6ec" stroke-opacity="0.35" stroke-width="3" />
-    <text x="48" y="552" font-family="Georgia, serif" font-size="22" fill="#fbf6ec" fill-opacity="0.85">Arsip Momen XII PPLG 1 · MAKN Ende #${seed}</text>
+    <rect x="20" y="20" width="760" height="560" fill="none" stroke="#F3F1EA" stroke-opacity="0.38" stroke-width="3" />
+    <text x="48" y="552" font-family="'Special Elite', 'Courier New', monospace" font-size="20" fill="#F3F1EA" fill-opacity="0.88" letter-spacing="1.2">ARSIP MOMEN XII PPLG 1 · MAKN ENDE · NO. ${String(seed).padStart(3, "0")}</text>
   </svg>`;
 
   return new NextResponse(svg, {

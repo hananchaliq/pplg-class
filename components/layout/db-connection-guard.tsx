@@ -128,13 +128,13 @@ export function DbConnectionGuard({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <div className="overflow-hidden rounded-3xl border-2 border-[var(--color-accent-warm)]/60 bg-card text-card-foreground shadow-xl">
+      <div className="overflow-hidden rounded-3xl border-2 border-primary/50 bg-card text-card-foreground shadow-xl">
         <div className="ikat-divider" aria-hidden="true" />
 
         <div className="p-6 sm:p-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent-warm)]/15 text-[var(--color-accent-warm)]">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 {missingTables ? (
                   <Database className="size-6" />
                 ) : (
@@ -142,7 +142,7 @@ export function DbConnectionGuard({
                 )}
               </div>
               <div>
-                <p className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--color-accent-warm)]">
+                <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Peringatan Koneksi Database Supabase
                 </p>
                 <h1 className="mt-0.5 font-serif text-2xl font-bold text-foreground sm:text-3xl">
@@ -185,9 +185,9 @@ export function DbConnectionGuard({
           {dbError && (
             <div
               role="alert"
-              className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs leading-relaxed text-foreground"
+              className="mt-5 flex items-start gap-3 rounded-2xl border border-border bg-muted/60 p-4 text-xs leading-relaxed text-foreground"
             >
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-primary" />
               <div>
                 <p className="font-bold">Detail Status dari Supabase:</p>
                 <p className="mt-0.5 font-mono text-[11px] opacity-90">
@@ -199,7 +199,7 @@ export function DbConnectionGuard({
 
           {/* OPSI 1: AUTO-CREATE TABLES VIA DATABASE_URL DARI WEB */}
           <div className="mt-6 rounded-2xl border border-border bg-background p-5 sm:p-6">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-chart-2)]">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
               <Sparkles className="size-4" />
               <span>
                 Cara 1: Biarkan Web Ini Membuat Seluruh Tabel & Relasi Otomatis
@@ -244,7 +244,7 @@ export function DbConnectionGuard({
                 <button
                   type="submit"
                   disabled={initializing}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-[var(--color-accent-warm)] px-5 py-2.5 text-xs font-semibold text-[#fbf6ec] shadow-sm transition hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
                 >
                   <Database className="size-4" />
                   <span>
@@ -262,7 +262,7 @@ export function DbConnectionGuard({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
-                  <Terminal className="size-4 text-[var(--color-accent-warm)]" />
+                  <Terminal className="size-4 text-primary" />
                   <span>
                     Cara 2: Tanpa DATABASE_URL (Gunakan SQL Generator Web Ini)
                   </span>
@@ -306,7 +306,7 @@ export function DbConnectionGuard({
             </div>
 
             {showSql && (
-              <pre className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-border bg-[#140e0a] p-4 font-mono text-[11px] leading-relaxed text-[#f3ca82]">
+              <pre className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-border bg-[#161614] p-4 font-mono text-[11px] leading-relaxed text-[#E8E5DC]">
                 {AUTO_MIGRATE_SQL}
               </pre>
             )}
@@ -317,11 +317,11 @@ export function DbConnectionGuard({
               role="status"
               className={`mt-5 flex items-start gap-2.5 rounded-2xl border p-4 text-xs font-medium ${
                 statusMsg.ok
-                  ? "border-[var(--color-chart-2)] bg-[var(--color-chart-2)]/10 text-foreground"
-                  : "border-red-500/40 bg-red-500/10 text-foreground"
+                  ? "border-primary/40 bg-primary/10 text-foreground"
+                  : "border-destructive/50 bg-destructive/10 text-foreground"
               }`}
             >
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
               <span>{statusMsg.text}</span>
             </div>
           )}

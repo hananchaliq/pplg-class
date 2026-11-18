@@ -86,27 +86,27 @@ function createProjectFallbackDataUri(work: {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
     <defs>
       <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#172326"/>
-        <stop offset="55%" stop-color="#22383c"/>
-        <stop offset="100%" stop-color="#3c261a"/>
+        <stop offset="0%" stop-color="#161614"/>
+        <stop offset="55%" stop-color="#222220"/>
+        <stop offset="100%" stop-color="#2E2E2B"/>
       </linearGradient>
     </defs>
     <rect width="800" height="500" fill="url(#bg)"/>
-    <rect x="28" y="24" width="744" height="452" rx="14" fill="#101719" stroke="#476468" stroke-width="2"/>
-    <rect x="28" y="24" width="744" height="42" rx="14" fill="#1c282b"/>
-    <circle cx="54" cy="45" r="6" fill="#e06c58"/>
-    <circle cx="74" cy="45" r="6" fill="#e5b567"/>
-    <circle cx="94" cy="45" r="6" fill="#6ca87c"/>
-    <rect x="124" y="33" width="520" height="24" rx="6" fill="#101719"/>
-    <text x="140" y="49" font-family="monospace" font-size="13" fill="#9ec4c8">${safeUrl}</text>
-    <rect x="64" y="102" width="160" height="28" rx="6" fill="#c86d3b" fill-opacity="0.25" stroke="#c86d3b"/>
-    <text x="144" y="121" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="13" fill="#f3ca82">${safeTag}</text>
-    <text x="64" y="176" font-family="Georgia,serif" font-weight="bold" font-size="30" fill="#fbf6ec">${safeTitle}</text>
-    <rect x="64" y="210" width="420" height="12" rx="6" fill="#324b4f"/>
-    <rect x="64" y="234" width="340" height="12" rx="6" fill="#273b3e"/>
-    <rect x="64" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#355257"/>
-    <rect x="294" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#355257"/>
-    <rect x="524" y="280" width="210" height="130" rx="10" fill="#182427" stroke="#c86d3b" stroke-opacity="0.6"/>
+    <rect x="28" y="24" width="744" height="452" rx="14" fill="#181816" stroke="#4A4843" stroke-width="2"/>
+    <rect x="28" y="24" width="744" height="42" rx="14" fill="#222220"/>
+    <circle cx="54" cy="45" r="6" fill="#A8A49B"/>
+    <circle cx="74" cy="45" r="6" fill="#7D7A72"/>
+    <circle cx="94" cy="45" r="6" fill="#D6D2C9"/>
+    <rect x="124" y="33" width="520" height="24" rx="6" fill="#161614"/>
+    <text x="140" y="49" font-family="Special Elite,monospace" font-size="13" fill="#C9C4B8">${safeUrl}</text>
+    <rect x="64" y="102" width="160" height="28" rx="6" fill="#5C5A54" fill-opacity="0.28" stroke="#A8A49B"/>
+    <text x="144" y="121" text-anchor="middle" font-family="Source Serif 4,serif" font-weight="bold" font-size="13" fill="#E8E5DC">${safeTag}</text>
+    <text x="64" y="176" font-family="Old Standard TT,Georgia,serif" font-weight="bold" font-size="30" fill="#F3F1EA">${safeTitle}</text>
+    <rect x="64" y="210" width="420" height="12" rx="6" fill="#3D3D3A"/>
+    <rect x="64" y="234" width="340" height="12" rx="6" fill="#2A2A28"/>
+    <rect x="64" y="280" width="210" height="130" rx="10" fill="#1C1C1A" stroke="#4A4843"/>
+    <rect x="294" y="280" width="210" height="130" rx="10" fill="#1C1C1A" stroke="#4A4843"/>
+    <rect x="524" y="280" width="210" height="130" rx="10" fill="#1C1C1A" stroke="#A8A49B" stroke-opacity="0.6"/>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
@@ -172,10 +172,10 @@ function TiltWorkCard({
   };
 
   const bannerTones = [
-    "from-[#2d6a6e] to-[#1e4649]",
-    "from-[#3b593f] to-[#263b29]",
-    "from-[#a84232] to-[#752b20]",
-    "from-[#c86d3b] to-[#8f4922]",
+    "from-[#2A2A28] to-[#1A1A18]",
+    "from-[#3D3D3A] to-[#222220]",
+    "from-[#4A4843] to-[#2A2A28]",
+    "from-[#333330] to-[#1C1C1A]",
   ];
   const toneGrad = bannerTones[index % bannerTones.length]!;
   const lanyardCard = React.useMemo(
@@ -200,7 +200,7 @@ function TiltWorkCard({
       transition={{ duration: 0.32, delay: (index % 6) * 0.05 }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-[var(--color-accent-warm)]/60"
+      className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-foreground/50"
     >
       <div>
         {/* Pratinjau Screenshot Otomatis dari Link Demo (Gaya Vercel) + Kartu ID Siswa */}
@@ -208,7 +208,7 @@ function TiltWorkCard({
           onClick={() => {
             if (onPreviewImage) onPreviewImage(work, imgSrc);
           }}
-          className={`relative flex h-52 cursor-pointer flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-3.5 text-[#fbf6ec]`}
+          className={`relative flex h-52 cursor-pointer flex-col justify-between overflow-hidden bg-gradient-to-br ${toneGrad} p-3.5 text-[#F3F1EA]`}
         >
           {/* Bingkai Browser Mini & Auto-Screenshot */}
           <img
@@ -217,31 +217,31 @@ function TiltWorkCard({
             referrerPolicy="no-referrer"
             loading="lazy"
             onError={handleImgError}
-            className="pointer-events-none absolute inset-0 size-full object-cover object-top opacity-90 transition-transform duration-500 group-hover:scale-105"
+            className="public-film-photo pointer-events-none absolute inset-0 size-full object-cover object-top opacity-90 transition-transform duration-500 group-hover:scale-105"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/55"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#2D241C]/82 via-[#2D241C]/20 to-[#2D241C]/48"
           />
 
           <div className="relative z-10 flex items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-1.5 rounded-md border border-white/20 bg-black/55 px-2 py-1 font-mono text-[10px] font-semibold text-[#f3ca82] backdrop-blur-xs">
-              <span className="size-2 rounded-full bg-[#4ade80]" />
+            <div className="flex items-center gap-1.5 rounded-md border border-[#EFE5CE]/30 bg-[#2D241C]/68 px-2 py-1 font-mono text-[10px] font-semibold text-[#EFE5CE] backdrop-blur-xs">
+              <span className="size-2 rounded-full bg-[#D8C7A6]" />
               <span className="max-w-[115px] truncate">{hostnameLabel}</span>
             </div>
 
             {/* Mini Badge Kartu ID Siswa */}
-            <div className="flex items-center gap-2 rounded-full border border-white/25 bg-black/55 py-1 pr-3 pl-1 backdrop-blur-xs">
-              <div className="relative size-7 shrink-0 overflow-hidden rounded-full border border-[#f3ca82] bg-[#2b1f18]">
+            <div className="flex items-center gap-2 rounded-full border border-[#EFE5CE]/30 bg-[#2D241C]/68 py-1 pr-3 pl-1 backdrop-blur-xs">
+              <div className="relative size-7 shrink-0 overflow-hidden rounded-full border border-[#D8C7A6] bg-[#3B3025]">
                 {lanyardCard?.image ? (
                   <img
                     src={lanyardCard.image}
                     alt={student?.full_name || work.student_name}
                     referrerPolicy="no-referrer"
-                    className="size-full object-cover"
+                    className="public-film-photo size-full object-cover"
                   />
                 ) : (
-                  <span className="flex size-full items-center justify-center font-serif text-[10px] font-bold text-[#fbf6ec]">
+                  <span className="flex size-full items-center justify-center font-serif text-[10px] font-bold text-[#F3F1EA]">
                     {(student?.full_name || work.student_name || "S")
                       .slice(0, 2)
                       .toUpperCase()}
@@ -249,10 +249,10 @@ function TiltWorkCard({
                 )}
               </div>
               <div className="text-left leading-none">
-                <p className="max-w-[125px] truncate text-[11px] font-bold text-[#fbf6ec]">
+                <p className="max-w-[125px] truncate text-[11px] font-bold text-[#F3F1EA]">
                   {student?.full_name || work.student_name}
                 </p>
-                <p className="mt-0.5 text-[9px] text-[#ebd0a0]">
+                <p className="mt-0.5 text-[9px] text-[#C9C4B8]">
                   {lanyardCard?.role || "Siswa XII PPLG 1"}
                 </p>
               </div>
@@ -261,14 +261,14 @@ function TiltWorkCard({
 
           <div className="relative z-10 flex items-end justify-between gap-2">
             <div>
-              <span className="inline-block rounded bg-black/45 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#f3ca82]">
-                KARYA #{String(index + 1).padStart(2, "0")}
+              <span className="inline-block rounded bg-[#161614]/65 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-[#E8E5DC]">
+                PROYEK #{String(index + 1).padStart(2, "0")}
               </span>
-              <p className="mt-1 font-serif text-lg font-bold leading-snug text-white drop-shadow-xs">
+              <p className="mt-1 font-serif text-lg font-bold leading-snug text-[#F3F1EA] drop-shadow-xs">
                 {work.title}
               </p>
             </div>
-            <span className="shrink-0 rounded-md border border-white/25 bg-black/50 px-2 py-1 text-[10px] font-semibold text-[#fbf6ec] opacity-90 group-hover:bg-[var(--color-accent-warm)]">
+            <span className="shrink-0 rounded-md border border-[#E8E5DC]/25 bg-[#161614]/65 px-2 py-1 text-[10px] font-semibold text-[#F3F1EA] opacity-90 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               Klik Perbesar
             </span>
           </div>
@@ -276,7 +276,7 @@ function TiltWorkCard({
 
         <div className="p-5">
           {/* Metadata tanpa pill sesuai disiplin Zero-Pill */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-[var(--color-accent-warm)]">
+          <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs font-semibold text-muted-foreground">
             {work.tags.map((t, idx) => (
               <React.Fragment key={t}>
                 {idx > 0 && <span aria-hidden="true">·</span>}
@@ -296,7 +296,7 @@ function TiltWorkCard({
           href={work.demo_url || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-[36px] items-center gap-1.5 text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
+          className="inline-flex min-h-[36px] items-center gap-1.5 text-foreground hover:underline whitespace-nowrap"
         >
           <span>Lihat Demo</span>
           <ExternalLink className="size-3.5" />
@@ -478,11 +478,11 @@ export function KaryaClient({
       {/* Header Karya & Skill Map Ringkas */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+          <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Etalase Projek Akhir · 1 Siswa 1 Karya Pilihan
           </p>
           <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-            Karya Siswa & Skill Map XII PPLG 1
+            Karya Siswa &amp; Skill Map XII PPLG 1
           </h1>
           <p className="mt-1.5 max-w-xl text-xs sm:text-sm text-muted-foreground">
             Koleksi proyek aplikasi web, mobile, UI/UX, dan gim karya siswa MAKN Ende.
@@ -497,7 +497,7 @@ export function KaryaClient({
             setModalOpen(true);
             setFeedback(null);
           }}
-          className="inline-flex min-h-[42px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm hover:opacity-90 whitespace-nowrap shrink-0"
+          className="inline-flex min-h-[42px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 whitespace-nowrap shrink-0"
         >
           <PlusCircle className="size-4" />
           <span>Daftarkan Karya</span>
@@ -512,7 +512,7 @@ export function KaryaClient({
         {/* Top Bar Skill Map + Switcher Mode Visual */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-muted/40 px-6 py-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
+            <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Sparkles className="size-3.5" />
               <span>Jaringan Talenta Kelas</span>
             </div>
@@ -532,7 +532,7 @@ export function KaryaClient({
               onClick={() => setVisualMode("constellation")}
               className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "constellation"
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -546,7 +546,7 @@ export function KaryaClient({
               onClick={() => setVisualMode("radar")}
               className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "radar"
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -573,11 +573,11 @@ export function KaryaClient({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.22 }}
-                    className="mt-4 rounded-xl border border-[var(--color-accent-warm)]/40 bg-background p-4 shadow-sm"
+                    className="mt-4 rounded-xl border border-foreground/30 bg-background p-4 shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-warm)]">
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                           Simpul Keahlian Aktif
                         </span>
                         <h3 className="font-serif text-xl font-bold text-foreground">
@@ -618,7 +618,7 @@ export function KaryaClient({
                             )}%`,
                           }}
                           transition={{ duration: 0.55, ease: "easeOut" }}
-                          className="h-full rounded-full bg-gradient-to-r from-[#2d6a6e] via-[#c86d3b] to-[#e0a958]"
+                          className="h-full rounded-full bg-gradient-to-r from-[#5C5A54] via-[#3D3D3A] to-[#1B1B1A] dark:from-[#A8A49B] dark:via-[#C9C4B8] dark:to-[#E8E5DC]"
                         />
                       </div>
                     </div>
@@ -626,7 +626,7 @@ export function KaryaClient({
                     {/* Daftar Siswa Penggiat Skill */}
                     <div className="mt-3.5 border-t border-dashed border-border pt-3">
                       <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                        <Users className="size-3.5 text-[var(--color-chart-1)]" />
+                        <Users className="size-3.5 text-foreground" />
                         <span>Anggota Kelas Penggiat {activeSkillNode.skill}:</span>
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -647,7 +647,7 @@ export function KaryaClient({
               {/* Bar Distribusi Top 6 Keahlian Kelas */}
               <div className="mt-5 space-y-2.5">
                 <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <Layers className="size-3.5 text-[var(--color-accent-warm)]" />
+                  <Layers className="size-3.5 text-foreground" />
                   <span>Spektrum Keahlian Terpopuler</span>
                 </p>
                 {topNodes.slice(0, 6).map((node, idx) => {
@@ -670,7 +670,7 @@ export function KaryaClient({
                       }}
                       className={`block w-full rounded-lg border p-2 text-left transition-colors ${
                         isFocused
-                          ? "border-[var(--color-accent-warm)] bg-muted/60"
+                          ? "border-foreground/50 bg-muted/60"
                           : "border-transparent hover:bg-muted/40"
                       }`}
                     >
@@ -688,7 +688,7 @@ export function KaryaClient({
                           whileInView={{ width: `${pct}%` }}
                           viewport={{ once: true }}
                           transition={{ duration: 0.6, delay: idx * 0.06 }}
-                          className="h-full rounded-full bg-[var(--color-accent-warm)]"
+                          className="h-full rounded-full bg-foreground"
                         />
                       </div>
                     </button>
@@ -730,7 +730,7 @@ export function KaryaClient({
                       }}
                       className={`min-h-[36px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
                         active
-                          ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)] text-[#fbf6ec] font-semibold"
+                          ? "border-primary bg-primary text-primary-foreground font-semibold"
                           : "border-border bg-background text-foreground hover:bg-muted"
                       }`}
                     >
@@ -743,11 +743,11 @@ export function KaryaClient({
           </div>
 
           {/* Kolom Kanan: Kanvas Interaktif Hidup (Konstelasi Orbit / Radar Spektrum) */}
-          <div className="relative flex flex-col justify-between bg-[#18120d] p-4 sm:p-6 lg:col-span-7">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#ebd0a0]/85">
+          <div className="relative flex flex-col justify-between bg-[#161614] p-4 sm:p-6 lg:col-span-7">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#C9C4B8]">
               <span className="font-mono">
                 {visualMode === "constellation"
-                  ? "MODE: JARINGAN KONSTELasi ORBIT AKTIF"
+                  ? "MODE: JARINGAN KONSTELASI ORBIT AKTIF"
                   : "MODE: RADAR SPEKTRUM KOMPETENSI KELAS"}
               </span>
               <span>
@@ -757,7 +757,7 @@ export function KaryaClient({
               </span>
             </div>
 
-            <div className="relative my-auto overflow-hidden rounded-xl border border-[#3a2a1d] bg-[#140e0a] p-2 shadow-inner">
+            <div className="relative my-auto overflow-hidden rounded-xl border border-[#353430] bg-[#121211] p-2 shadow-inner">
               {visualMode === "constellation" ? (
                 <svg
                   role="img"
@@ -767,13 +767,13 @@ export function KaryaClient({
                 >
                   <defs>
                     <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#2d6a6e" stopOpacity="0.65" />
-                      <stop offset="60%" stopColor="#c86d3b" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#140e0a" stopOpacity="0" />
+                      <stop offset="0%" stopColor="#6E6B64" stopOpacity="0.45" />
+                      <stop offset="60%" stopColor="#3D3D3A" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#121211" stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="nodeGlowWarm" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#f3ca82" stopOpacity="0.7" />
-                      <stop offset="100%" stopColor="#c86d3b" stopOpacity="0" />
+                      <stop offset="0%" stopColor="#E8E5DC" stopOpacity="0.65" />
+                      <stop offset="100%" stopColor="#5C5A54" stopOpacity="0" />
                     </radialGradient>
                   </defs>
 
@@ -785,7 +785,7 @@ export function KaryaClient({
                     cy={200}
                     r={110}
                     fill="none"
-                    stroke="#3a2a1d"
+                    stroke="#353430"
                     strokeWidth={1}
                     strokeDasharray="6 6"
                     animate={{ rotate: 360 }}
@@ -801,7 +801,7 @@ export function KaryaClient({
                     cy={200}
                     r={155}
                     fill="none"
-                    stroke="#463324"
+                    stroke="#45443F"
                     strokeWidth={1}
                     strokeDasharray="4 8"
                     animate={{ rotate: -360 }}
@@ -818,9 +818,9 @@ export function KaryaClient({
                     cx={340}
                     cy={200}
                     fill="none"
-                    stroke="#e09f4c"
+                    stroke="#A8A49B"
                     strokeWidth={1.5}
-                    initial={{ r: 44, opacity: 0.65 }}
+                    initial={{ r: 44, opacity: 0.6 }}
                     animate={{ r: 175, opacity: 0 }}
                     transition={{
                       duration: 3.4,
@@ -846,8 +846,8 @@ export function KaryaClient({
                         y1={200 + Math.sin(angle1) * ry}
                         x2={340 + Math.cos(angle2) * rx2}
                         y2={200 + Math.sin(angle2) * ry2}
-                        stroke="#2d6a6e"
-                        strokeOpacity={0.28}
+                        stroke="#6E6B64"
+                        strokeOpacity={0.32}
                         strokeWidth={1}
                       />
                     );
@@ -871,7 +871,7 @@ export function KaryaClient({
                           x2={cx}
                           y2={cy}
                           stroke={
-                            isSelected || isFocused ? "#f3ca82" : "#6e5641"
+                            isSelected || isFocused ? "#E8E5DC" : "#5C5A54"
                           }
                           strokeWidth={isSelected || isFocused ? 2.6 : 1.3}
                           strokeDasharray={
@@ -881,7 +881,7 @@ export function KaryaClient({
                         {/* Partikel Energi Berjalan di Sepanjang Jalur */}
                         <motion.circle
                           r={isSelected || isFocused ? 4.5 : 3}
-                          fill={isSelected || isFocused ? "#f3ca82" : "#4da1a7"}
+                          fill={isSelected || isFocused ? "#F3F1EA" : "#A8A49B"}
                           animate={{
                             cx: [340, cx, 340],
                             cy: [200, cy, 200],
@@ -910,8 +910,8 @@ export function KaryaClient({
                       cx={340}
                       cy={200}
                       r={52}
-                      fill="#2d6a6e"
-                      fillOpacity={0.25}
+                      fill="#5C5A54"
+                      fillOpacity={0.28}
                       animate={{ scale: [1, 1.12, 1] }}
                       transition={{
                         duration: 2.6,
@@ -924,15 +924,15 @@ export function KaryaClient({
                       cx={340}
                       cy={200}
                       r={44}
-                      fill="#1f4e52"
-                      stroke="#f3ca82"
+                      fill="#222220"
+                      stroke="#E8E5DC"
                       strokeWidth={2.5}
                     />
                     <text
                       x={340}
                       y={195}
                       textAnchor="middle"
-                      className="fill-[#fbf6ec] font-serif text-[14px] font-bold"
+                      className="fill-[#F3F1EA] font-serif text-[14px] font-bold"
                     >
                       XII PPLG 1
                     </text>
@@ -940,7 +940,7 @@ export function KaryaClient({
                       x={340}
                       y={212}
                       textAnchor="middle"
-                      className="fill-[#f3ca82] font-mono text-[10px] font-semibold"
+                      className="fill-[#C9C4B8] font-mono text-[10px] font-semibold"
                     >
                       {works.length} Karya · {students.length} Siswa
                     </text>
@@ -957,11 +957,11 @@ export function KaryaClient({
                     const isSelected = selectedSkill === node.skill;
                     const isFocused = focusedSkillName === node.skill;
                     const palette = [
-                      "#c86d3b",
-                      "#3b593f",
-                      "#a84232",
-                      "#2d6a6e",
-                      "#8d5b34",
+                      "#3D3D3A",
+                      "#4A4843",
+                      "#2A2A28",
+                      "#5C5A54",
+                      "#333330",
                     ];
                     const baseColor = palette[idx % palette.length]!;
 
@@ -986,7 +986,7 @@ export function KaryaClient({
                               ? "url(#nodeGlowWarm)"
                               : baseColor
                           }
-                          fillOpacity={isSelected || isFocused ? 0.55 : 0.18}
+                          fillOpacity={isSelected || isFocused ? 0.55 : 0.22}
                           animate={{
                             scale: isSelected || isFocused ? [1, 1.24, 1] : [1, 1.08, 1],
                           }}
@@ -1002,8 +1002,8 @@ export function KaryaClient({
                           cx={cx}
                           cy={cy}
                           r={r}
-                          fill={isSelected ? "#d9793b" : baseColor}
-                          stroke={isSelected || isFocused ? "#fbf3dc" : "#d8c3a5"}
+                          fill={isSelected ? "#5C5A54" : baseColor}
+                          stroke={isSelected || isFocused ? "#F3F1EA" : "#A8A49B"}
                           strokeWidth={isSelected || isFocused ? 3 : 1.5}
                         />
 
@@ -1011,7 +1011,7 @@ export function KaryaClient({
                           x={cx}
                           y={cy - 3}
                           textAnchor="middle"
-                          className="fill-[#fbf6ec] font-sans text-[11px] font-extrabold"
+                          className="fill-[#F3F1EA] font-sans text-[11px] font-bold"
                         >
                           {node.skill}
                         </text>
@@ -1019,7 +1019,7 @@ export function KaryaClient({
                           x={cx}
                           y={cy + 11}
                           textAnchor="middle"
-                          className="fill-[#f3ca82] font-mono text-[9px] font-semibold"
+                          className="fill-[#C9C4B8] font-mono text-[9px] font-semibold"
                         >
                           {node.studentCount}S · {node.workCount}K
                         </text>
@@ -1043,7 +1043,7 @@ export function KaryaClient({
                       cy={195}
                       r={radius}
                       fill="none"
-                      stroke="#3a2a1d"
+                      stroke="#353430"
                       strokeWidth={1}
                       strokeDasharray="4 4"
                     />
@@ -1075,7 +1075,7 @@ export function KaryaClient({
                           y1={195}
                           x2={x2}
                           y2={y2}
-                          stroke={isFocused ? "#f3ca82" : "#523c2a"}
+                          stroke={isFocused ? "#E8E5DC" : "#4A4843"}
                           strokeWidth={isFocused ? 2 : 1}
                         />
                         <text
@@ -1083,7 +1083,7 @@ export function KaryaClient({
                           y={ly}
                           textAnchor="middle"
                           className={`font-sans text-[11px] font-bold ${
-                            isFocused ? "fill-[#f3ca82]" : "fill-[#ebd0a0]"
+                            isFocused ? "fill-[#F3F1EA]" : "fill-[#C9C4B8]"
                           }`}
                         >
                           {node.skill} ({node.workCount})
@@ -1095,9 +1095,9 @@ export function KaryaClient({
                   {/* Poligon Spektrum Terisi */}
                   <motion.polygon
                     points={radarPolygonPoints}
-                    fill="#c86d3b"
-                    fillOpacity={0.32}
-                    stroke="#f3ca82"
+                    fill="#7D7A72"
+                    fillOpacity={0.3}
+                    stroke="#E8E5DC"
                     strokeWidth={2.5}
                     initial={{ scale: 0.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -1118,8 +1118,8 @@ export function KaryaClient({
                         cx={x}
                         cy={y}
                         r={6}
-                        fill="#f3ca82"
-                        stroke="#18120d"
+                        fill="#E8E5DC"
+                        stroke="#161614"
                         strokeWidth={2}
                       />
                     );
@@ -1128,11 +1128,11 @@ export function KaryaClient({
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#d5c3ad]">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#C9C4B8]">
               <span>
-                ● Ukuran simpul mengikuti jumlah siswa & karya di bidang tersebut
+                ● Ukuran simpul mengikuti jumlah siswa &amp; karya di bidang tersebut
               </span>
-              <span className="font-mono text-[#f3ca82]">
+              <span className="font-mono text-[#E8E5DC]">
                 S = Siswa Penggiat · K = Karya Terdaftar
               </span>
             </div>
@@ -1160,7 +1160,7 @@ export function KaryaClient({
                 setSelectedSkill(null);
                 setWorkPage(1);
               }}
-              className="text-xs font-semibold text-[var(--color-accent-warm)] hover:underline"
+              className="text-xs font-semibold text-foreground hover:underline"
             >
               Reset Filter Keahlian →
             </button>
@@ -1204,7 +1204,7 @@ export function KaryaClient({
           aria-modal="true"
           aria-label={`Pratinjau Karya ${previewWork.work.title}`}
           onClick={() => setPreviewWork(null)}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-6 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/85 p-0 sm:p-6 backdrop-blur-xs"
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
@@ -1214,7 +1214,7 @@ export function KaryaClient({
           >
             <div className="mb-3 flex items-start justify-between gap-4 border-b border-border pb-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
+                <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Tangkapan Layar Otomatis dari Link Demo · Karya {previewWork.work.student_name}
                 </p>
                 <h3 className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground">
@@ -1239,7 +1239,7 @@ export function KaryaClient({
                 onError={(e) => {
                   e.currentTarget.src = createProjectFallbackDataUri(previewWork.work);
                 }}
-                className="block h-auto max-h-[56vh] w-auto max-w-full object-contain"
+                className="public-film-photo block h-auto max-h-[56vh] w-auto max-w-full object-contain"
               />
             </div>
 
@@ -1248,7 +1248,7 @@ export function KaryaClient({
                 <p className="text-sm leading-relaxed text-foreground">
                   {previewWork.work.description}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--color-accent-warm)]">
+                <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-xs font-semibold text-muted-foreground">
                   {previewWork.work.tags.map((t, i) => (
                     <React.Fragment key={t}>
                       {i > 0 && <span aria-hidden="true">·</span>}
@@ -1264,7 +1264,7 @@ export function KaryaClient({
                     href={previewWork.work.demo_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90"
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
                   >
                     <span>Buka Website Demo</span>
                     <ExternalLink className="size-3.5" />
@@ -1293,7 +1293,7 @@ export function KaryaClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="work-modal-title"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/75 p-0 sm:p-4"
         >
           <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-xl">
             <div className="flex items-start justify-between gap-4">
@@ -1498,10 +1498,10 @@ export function KaryaClient({
                           tags: tagsInput.split(","),
                         });
                       }}
-                      className="max-h-40 w-full object-cover object-top"
+                      className="public-film-photo max-h-40 w-full object-cover object-top"
                     />
                     <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-[11px]">
-                      <span className="font-semibold text-[var(--color-chart-2)]">
+                      <span className="font-semibold text-foreground">
                         {workImageDataUrl
                           ? "✓ Menggunakan foto hasil crop manual"
                           : "✓ Auto-Screenshot aktif dari Tautan Demo"}
@@ -1511,7 +1511,7 @@ export function KaryaClient({
                           <button
                             type="button"
                             onClick={() => setWorkCropOpen(true)}
-                            className="inline-flex items-center gap-1 font-semibold text-[var(--color-accent-warm)] hover:underline"
+                            className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline"
                           >
                             <Crop className="size-3" />
                             <span>Atur Crop</span>
@@ -1538,7 +1538,7 @@ export function KaryaClient({
                   role="status"
                   className="flex items-start gap-2 rounded-lg border border-border bg-muted p-2.5 text-xs text-foreground"
                 >
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                   <span>{feedback}</span>
                 </div>
               )}
@@ -1554,7 +1554,7 @@ export function KaryaClient({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="min-h-[44px] rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                  className="min-h-[44px] rounded-lg bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting ? "Mengirim..." : "Simpan Karya"}
                 </button>

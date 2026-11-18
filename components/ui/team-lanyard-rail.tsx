@@ -85,10 +85,10 @@ const DEFAULT_LABELS: TeamLanyardRailLabels = {
    back: "Click again or press Esc to return",
    show: "Show",
 };
-const METAL = "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 70%, black), color-mix(in oklab, var(--color-muted-foreground) 22%, white) 38%, var(--color-muted-foreground) 70%, color-mix(in oklab, var(--color-muted-foreground) 65%, black))";
+const METAL = "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 70%, #1B1B1A), color-mix(in oklab, var(--color-muted-foreground) 22%, #F3F1EA) 38%, var(--color-muted-foreground) 70%, color-mix(in oklab, var(--color-muted-foreground) 65%, #1B1B1A))";
 const PLASTIC = "linear-gradient(180deg, color-mix(in oklab, var(--color-muted-foreground) 30%, var(--color-background)), color-mix(in oklab, var(--color-muted-foreground) 72%, var(--color-background)))";
-const GOLD_METAL = "linear-gradient(to right, #854d0e 0%, #fef08a 36%, #eab308 68%, #713f12 100%)";
-const GOLD_PLASTIC = "linear-gradient(180deg, #fde047 0%, #ca8a04 58%, #854d0e 100%)";
+const GOLD_METAL = "linear-gradient(to right, #7A5C22 0%, #F7DF9C 36%, #D4A94E 68%, #5E4518 100%)";
+const GOLD_PLASTIC = "linear-gradient(180deg, #EED082 0%, #B88B36 58%, #6D501B 100%)";
 
 function clamp(value: number, min: number, max: number) {
    return Math.max(min, Math.min(max, value));
@@ -347,16 +347,16 @@ function Band({ tone, tall, isSpecial }: { tone: string; tall?: boolean; isSpeci
             className={`absolute inset-x-0 top-0 block ${tall ? "h-[3.9em]" : "h-[1.95em]"}`}
             style={{
                background:
-                  "repeating-linear-gradient(135deg, transparent 0 0.45em, rgba(255, 251, 224, 0.24) 0.45em 0.56em), linear-gradient(180deg, #fde047 0%, #eab308 52%, #a16207 100%)",
+                  "repeating-linear-gradient(135deg, transparent 0 0.45em, rgba(247, 223, 156, 0.28) 0.45em 0.56em), linear-gradient(180deg, #EED082 0%, #C89B42 52%, #7D5D22 100%)",
             }}
          >
-            <span className="absolute inset-x-0 bottom-0 h-px bg-[#fef08a]/55" />
+            <span className="absolute inset-x-0 bottom-0 h-px bg-[#F7DF9C]/65" />
          </span>
       );
    }
    return (
-      <span aria-hidden="true" className={`absolute inset-x-0 top-0 block ${tone} ${tall ? "h-[3.9em]" : "h-[1.95em]"}`} style={{ background: "repeating-linear-gradient(135deg, transparent 0 0.45em, color-mix(in oklab, white 10%, transparent) 0.45em 0.56em), linear-gradient(180deg, color-mix(in oklab, currentColor 80%, white), currentColor 72%, color-mix(in oklab, currentColor 86%, black))" }}>
-         <span className="absolute inset-x-0 bottom-0 h-px bg-black/15" />
+      <span aria-hidden="true" className={`absolute inset-x-0 top-0 block ${tone} ${tall ? "h-[3.9em]" : "h-[1.95em]"}`} style={{ background: "repeating-linear-gradient(135deg, transparent 0 0.45em, color-mix(in oklab, #F3F1EA 10%, transparent) 0.45em 0.56em), linear-gradient(180deg, color-mix(in oklab, currentColor 80%, #F3F1EA), currentColor 72%, color-mix(in oklab, currentColor 86%, #1B1B1A))" }}>
+         <span className="absolute inset-x-0 bottom-0 h-px bg-[#1B1B1A]/15" />
       </span>
    );
 }
@@ -365,11 +365,11 @@ function Hole({ isSpecial }: { isSpecial?: boolean }) {
    return (
       <span
          aria-hidden="true"
-         className={`absolute left-1/2 top-[0.64em] block h-[0.48em] w-[2.4em] -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#221810]" : "bg-background"}`}
+         className={`absolute left-1/2 top-[0.64em] block h-[0.48em] w-[2.4em] -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#1A1A18]" : "bg-background"}`}
          style={{
             boxShadow: isSpecial
-               ? "inset 0 0.08em 0.18em rgba(0,0,0,0.8), 0 0.05em 0 rgba(254, 240, 138, 0.55)"
-               : "inset 0 0.08em 0.18em color-mix(in oklab, black 55%, transparent), 0 0.05em 0 color-mix(in oklab, white 30%, transparent)",
+               ? "inset 0 0.08em 0.18em rgba(18,18,17,0.85), 0 0.05em 0 rgba(232, 229, 220, 0.48)"
+               : "inset 0 0.08em 0.18em color-mix(in oklab, #1B1B1A 55%, transparent), 0 0.05em 0 color-mix(in oklab, #F3F1EA 30%, transparent)",
          }}
       />
    );
@@ -378,15 +378,15 @@ function Hole({ isSpecial }: { isSpecial?: boolean }) {
 function Finish() {
    return (
       <>
-         <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/2 block w-[200%] opacity-65 dark:opacity-30" style={{ background: "linear-gradient(100deg, transparent 40%, color-mix(in oklab, white 26%, transparent) 48%, color-mix(in oklab, white 8%, transparent) 52%, transparent 58%)", transform: "translateX(var(--gx, 0%))" }} />
-         <span aria-hidden="true" className="pointer-events-none absolute inset-0 block bg-black" style={{ opacity: "var(--shade, 0)" }} />
+         <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/2 block w-[200%] opacity-65 dark:opacity-30" style={{ background: "linear-gradient(100deg, transparent 40%, color-mix(in oklab, #F3F1EA 26%, transparent) 48%, color-mix(in oklab, #F3F1EA 8%, transparent) 52%, transparent 58%)", transform: "translateX(var(--gx, 0%))" }} />
+         <span aria-hidden="true" className="pointer-events-none absolute inset-0 block bg-[#1B1B1A]" style={{ opacity: "var(--shade, 0)" }} />
       </>
    );
 }
 
 function Silhouette({ isSpecial }: { isSpecial?: boolean }) {
    return (
-      <svg aria-hidden="true" viewBox="0 0 40 40" className={`size-full ${isSpecial ? "text-[#fde047]" : "text-muted-foreground/60"}`}>
+      <svg aria-hidden="true" viewBox="0 0 40 40" className={`size-full ${isSpecial ? "text-[#D6D2C9]" : "text-muted-foreground/60"}`}>
          <circle cx="20" cy="15" r="7" fill="currentColor" />
          <path d="M6 38c1.5-8 7-12 14-12s12.5 4 14 12z" fill="currentColor" />
       </svg>
@@ -402,15 +402,15 @@ function SpecialCrownAndGarland({ uid }: { uid: string }) {
       >
          <defs>
             <linearGradient id={`crown-gold-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-               <stop offset="0%" stopColor="#fef08a" />
-               <stop offset="50%" stopColor="#facc15" />
-               <stop offset="100%" stopColor="#d97706" />
+               <stop offset="0%" stopColor="#FFF0BD" />
+               <stop offset="50%" stopColor="#DEB45B" />
+               <stop offset="100%" stopColor="#8E6822" />
             </linearGradient>
             <radialGradient id={`fairy-glow-${uid}`} cx="50%" cy="50%" r="50%">
-               <stop offset="0%" stopColor="#fffbeb" stopOpacity="1" />
-               <stop offset="38%" stopColor="#fda4af" stopOpacity="0.95" />
-               <stop offset="72%" stopColor="#f43f5e" stopOpacity="0.55" />
-               <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+               <stop offset="0%" stopColor="#FFF6D6" stopOpacity="1" />
+               <stop offset="40%" stopColor="#F2CE72" stopOpacity="0.88" />
+               <stop offset="75%" stopColor="#C89B42" stopOpacity="0.45" />
+               <stop offset="100%" stopColor="#C89B42" stopOpacity="0" />
             </radialGradient>
          </defs>
 
@@ -418,25 +418,25 @@ function SpecialCrownAndGarland({ uid }: { uid: string }) {
          <path
             d="M 6 16 Q 25 27 44 20"
             fill="none"
-            stroke="#eab308"
+            stroke="#DFB864"
             strokeWidth="1.5"
             strokeLinecap="round"
          />
          <path
             d="M 76 20 Q 95 27 114 16"
             fill="none"
-            stroke="#eab308"
+            stroke="#DFB864"
             strokeWidth="1.5"
             strokeLinecap="round"
          />
 
-         {/* Aksen titik daun emas di sepanjang untaian */}
-         <circle cx="13" cy="19" r="1.4" fill="#fde047" />
-         <circle cx="29" cy="23" r="1.4" fill="#fde047" />
-         <circle cx="91" cy="23" r="1.4" fill="#fde047" />
-         <circle cx="107" cy="19" r="1.4" fill="#fde047" />
+         {/* Aksen titik emas di sepanjang untaian */}
+         <circle cx="13" cy="19" r="1.4" fill="#F7DF9C" />
+         <circle cx="29" cy="23" r="1.4" fill="#F7DF9C" />
+         <circle cx="91" cy="23" r="1.4" fill="#F7DF9C" />
+         <circle cx="107" cy="19" r="1.4" fill="#F7DF9C" />
 
-         {/* 4 Lampu bunga bercahaya pink-emas di kiri & kanan mahkota */}
+         {/* 4 Titik cahaya keemasan lembut */}
          {[
             { cx: 20, cy: 19 },
             { cx: 36, cy: 22 },
@@ -445,7 +445,7 @@ function SpecialCrownAndGarland({ uid }: { uid: string }) {
          ].map((pt, idx) => (
             <g key={idx}>
                <circle cx={pt.cx} cy={pt.cy} r="6.5" fill={`url(#fairy-glow-${uid})`} />
-               <circle cx={pt.cx} cy={pt.cy} r="2.2" fill="#fef9c3" />
+               <circle cx={pt.cx} cy={pt.cy} r="2.2" fill="#FFF6D6" />
             </g>
          ))}
 
@@ -453,7 +453,7 @@ function SpecialCrownAndGarland({ uid }: { uid: string }) {
          <path
             d="M 45 26 L 42 11 L 52 18 L 60 7 L 68 18 L 78 11 L 75 26 Z"
             fill={`url(#crown-gold-${uid})`}
-            stroke="#78350f"
+            stroke="#6E4E16"
             strokeWidth="1.3"
             strokeLinejoin="round"
          />
@@ -463,18 +463,18 @@ function SpecialCrownAndGarland({ uid }: { uid: string }) {
             width="30"
             height="4.2"
             rx="1.5"
-            fill="#d97706"
-            stroke="#78350f"
+            fill="#C89B42"
+            stroke="#6E4E16"
             strokeWidth="1.1"
          />
          {/* Mutiara emas di pucuk mahkota */}
-         <circle cx="42" cy="10" r="1.9" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
-         <circle cx="60" cy="6" r="2.2" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
-         <circle cx="78" cy="10" r="1.9" fill="#fef08a" stroke="#92400e" strokeWidth="0.8" />
-         {/* Permata mahkota (biru kiri-kanan, merah muda di tengah persis seperti gambar) */}
-         <circle cx="51" cy="21.5" r="1.7" fill="#38bdf8" />
-         <circle cx="60" cy="20.5" r="2.1" fill="#fb7185" />
-         <circle cx="69" cy="21.5" r="1.7" fill="#38bdf8" />
+         <circle cx="42" cy="10" r="1.9" fill="#FFF0BD" stroke="#7A581B" strokeWidth="0.8" />
+         <circle cx="60" cy="6" r="2.2" fill="#FFF6D6" stroke="#7A581B" strokeWidth="0.8" />
+         <circle cx="78" cy="10" r="1.9" fill="#FFF0BD" stroke="#7A581B" strokeWidth="0.8" />
+         {/* Permata mahkota */}
+         <circle cx="51" cy="21.5" r="1.7" fill="#F7DF9C" />
+         <circle cx="60" cy="20.5" r="2.1" fill="#FFF6D6" />
+         <circle cx="69" cy="21.5" r="1.7" fill="#F7DF9C" />
       </svg>
    );
 }
@@ -488,16 +488,16 @@ function SpecialBarcodeGarland({ uid }: { uid: string }) {
       >
          <defs>
             <radialGradient id={`bar-glow-${uid}`} cx="50%" cy="50%" r="50%">
-               <stop offset="0%" stopColor="#fffbeb" stopOpacity="1" />
-               <stop offset="38%" stopColor="#fda4af" stopOpacity="0.95" />
-               <stop offset="75%" stopColor="#f43f5e" stopOpacity="0.55" />
-               <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+               <stop offset="0%" stopColor="#F3F1EA" stopOpacity="1" />
+               <stop offset="40%" stopColor="#D6D2C9" stopOpacity="0.85" />
+               <stop offset="75%" stopColor="#A8A49B" stopOpacity="0.45" />
+               <stop offset="100%" stopColor="#A8A49B" stopOpacity="0" />
             </radialGradient>
          </defs>
          <path
             d="M 14 12 Q 60 2 106 12"
             fill="none"
-            stroke="#eab308"
+            stroke="#B5B1A7"
             strokeWidth="1.4"
             strokeLinecap="round"
          />
@@ -508,7 +508,7 @@ function SpecialBarcodeGarland({ uid }: { uid: string }) {
          ].map((pt, idx) => (
             <g key={idx}>
                <circle cx={pt.cx} cy={pt.cy} r="6.2" fill={`url(#bar-glow-${uid})`} />
-               <circle cx={pt.cx} cy={pt.cy} r="2.1" fill="#fef9c3" />
+               <circle cx={pt.cx} cy={pt.cy} r="2.1" fill="#F3F1EA" />
             </g>
          ))}
       </svg>
@@ -537,13 +537,13 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
             data-face="front"
             className={`absolute inset-0 flex flex-col items-center overflow-hidden rounded-[0.8em] px-[0.72em] pb-[0.6em] [backface-visibility:hidden] ${
                isSpecial
-                  ? "border-[1.6px] border-[#facc15] bg-[#221810] text-[#fffbeb]"
+                  ? "border-[1.6px] border-[#D8B467] bg-[#1E3B3A] text-[#F7EFDD]"
                   : "border border-border/80 bg-card text-card-foreground"
             }`}
             style={{
                transform: "translateZ(1px)",
                boxShadow: isSpecial
-                  ? "0 0 18px rgba(250, 204, 21, 0.42), inset 0 0 10px rgba(234, 179, 8, 0.16)"
+                  ? "0 0 18px rgba(216, 180, 103, 0.28), inset 0 0 10px rgba(247, 223, 156, 0.14)"
                   : undefined,
             }}
          >
@@ -551,11 +551,11 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
             <Hole isSpecial={isSpecial} />
             <span
                className={`relative mt-[1.8em] block size-[4.8em] shrink-0 rounded-full p-[0.2em] ${
-                  isSpecial ? "bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#78350f]" : "bg-card"
+                  isSpecial ? "bg-gradient-to-b from-[#FFF0BD] via-[#C89B42] to-[#7A581B]" : "bg-card"
                }`}
                style={{
                   boxShadow: isSpecial
-                     ? "0 0 0 1.5px #451a03, 0 0.16em 0.5em rgba(0, 0, 0, 0.55)"
+                     ? "0 0 0 1.5px #3A2C12, 0 0.16em 0.5em rgba(20, 35, 34, 0.55)"
                      : "0 0.14em 0.45em color-mix(in oklab, var(--color-foreground) 20%, transparent)",
                }}
             >
@@ -563,7 +563,7 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                <span
                   className={`relative block size-full overflow-hidden rounded-full ${
                      isSpecial
-                        ? "bg-gradient-to-b from-[#b47b18] via-[#85540e] to-[#543407]"
+                        ? "bg-gradient-to-b from-[#3A6A68] via-[#274B49] to-[#1A3332]"
                         : "bg-muted"
                   }`}
                >
@@ -576,28 +576,28 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                         decoding="async"
                         referrerPolicy="no-referrer"
                         onError={() => setFailed(true)}
-                        className="pointer-events-none absolute inset-0 block size-full select-none object-cover"
+                        className="public-film-photo pointer-events-none absolute inset-0 block size-full select-none object-cover"
                      />
                   )}
                </span>
             </span>
             <span
                className={`mt-[0.5em] block w-full truncate text-center text-[1.02em] font-semibold leading-tight tracking-tight ${
-                  isSpecial ? "font-bold text-[#fffbeb]" : ""
+                  isSpecial ? "font-bold text-[#FBF2DC]" : ""
                }`}
             >
                {item.name}
             </span>
             <span
                className={`mt-[0.12em] block w-full truncate text-center text-[0.75em] leading-snug ${
-                  isSpecial ? "text-[#fde68a]/85" : "text-muted-foreground"
+                  isSpecial ? "text-[#E6D6B0]/90" : "text-muted-foreground"
                }`}
             >
                {item.role}
             </span>
             {item.team &&
                (isSpecial ? (
-                  <span className="mt-[0.34em] block w-full truncate rounded-full border border-[#eab308]/85 bg-[#eab308]/18 px-[0.55em] py-[0.16em] text-center text-[0.53em] font-bold uppercase tracking-[0.06em] text-[#facc15] shadow-[0_0_8px_rgba(234,179,8,0.22)]">
+                  <span className="mt-[0.34em] block w-full truncate rounded-full border border-[#D8B467]/80 bg-[#D8B467]/15 px-[0.55em] py-[0.16em] text-center text-[0.53em] font-bold uppercase tracking-[0.06em] text-[#F7DF9C] shadow-[0_0_8px_rgba(216,180,103,0.18)]">
                      {item.team}
                   </span>
                ) : (
@@ -607,7 +607,7 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                ))}
             <span
                className={`relative mt-auto block w-full border-t border-dashed pt-[0.42em] ${
-                  isSpecial ? "border-[#eab308]/50" : "border-border/75"
+                  isSpecial ? "border-[#D8B467]/55" : "border-border/75"
                }`}
             >
                {isSpecial && <SpecialBarcodeGarland uid={String(seed)} />}
@@ -616,14 +616,14 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                   viewBox={`0 0 ${bars.width} 20`}
                   preserveAspectRatio="none"
                   className={`block h-[1.4em] w-full ${
-                     isSpecial ? "text-[#fef9c3]/90" : "text-foreground/80"
+                     isSpecial ? "text-[#F7DF9C]/90" : "text-foreground/80"
                   }`}
                >
                   <path d={bars.d} fill="currentColor" />
                </svg>
                <span
                   className={`mt-[0.2em] block text-center font-mono text-[0.48em] tracking-[0.3em] ${
-                     isSpecial ? "text-[#fde68a]/80" : "text-muted-foreground"
+                     isSpecial ? "text-[#E6D6B0]/85" : "text-muted-foreground"
                   }`}
                >
                   {digits}
@@ -636,13 +636,13 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
             data-face="back"
             className={`absolute inset-0 flex flex-col justify-between overflow-hidden rounded-[0.8em] px-[0.78em] pb-[0.7em] pt-[2.3em] [backface-visibility:hidden] ${
                isSpecial
-                  ? "border-[1.6px] border-[#facc15] bg-[#221810] text-[#fffbeb]"
+                  ? "border-[1.6px] border-[#D8B467] bg-[#1E3B3A] text-[#F7EFDD]"
                   : "border border-border/80 bg-card text-card-foreground"
             }`}
             style={{
                transform: "rotateY(180deg) translateZ(1px)",
                boxShadow: isSpecial
-                  ? "0 0 18px rgba(250, 204, 21, 0.42), inset 0 0 10px rgba(234, 179, 8, 0.16)"
+                  ? "0 0 18px rgba(216, 180, 103, 0.28), inset 0 0 10px rgba(247, 223, 156, 0.14)"
                   : undefined,
             }}
          >
@@ -651,10 +651,10 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
             <span className="flex flex-col gap-[0.42em] overflow-hidden">
                <span className="block">
                   <span className="block truncate text-[0.9em] font-semibold leading-tight">{item.name}</span>
-                  <span className={`block truncate text-[0.68em] leading-snug ${isSpecial ? "text-[#fde68a]/85" : "text-muted-foreground"}`}>{item.role}</span>
+                  <span className={`block truncate text-[0.68em] leading-snug ${isSpecial ? "text-[#C9C4B8]/90" : "text-muted-foreground"}`}>{item.role}</span>
                </span>
                {item.bio && (
-                  <span data-bio className={`line-clamp-3 block text-[0.68em] leading-[1.35] ${isSpecial ? "text-[#fef9c3]/90" : "text-card-foreground/90"}`}>
+                  <span data-bio className={`line-clamp-3 block text-[0.68em] leading-[1.35] ${isSpecial ? "text-[#ECE9E1]/90" : "text-card-foreground/90"}`}>
                      {item.bio}
                   </span>
                )}
@@ -665,7 +665,7 @@ const BadgeFaces = React.memo(function BadgeFaces({ item, tone }: { item: Lanyar
                            key={tag}
                            className={`block max-w-full truncate rounded-full border px-[0.52em] py-[0.12em] text-[0.56em] leading-tight ${
                               isSpecial
-                                 ? "border-[#eab308]/75 bg-[#eab308]/16 text-[#fde047]"
+                                 ? "border-[#A8A49B]/75 bg-[#D6D2C9]/15 text-[#E8E5DC]"
                                  : "border-border/80 bg-muted/50 text-muted-foreground"
                            }`}
                         >
@@ -1416,11 +1416,11 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
             onKeyDown={onKeyDown}>
             <div aria-hidden="true" data-rail className="pointer-events-none absolute inset-x-0 z-0" style={{ top: g.railY - g.railR, height: g.railR * 2 }}>
                <div className="absolute inset-x-0 h-2.5 rounded-full bg-foreground/10 blur-[4px]" style={{ top: g.railR * 2 + 1 }} />
-               <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(to bottom, color-mix(in oklab, var(--color-muted-foreground) 35%, white) 0%, white 20%, color-mix(in oklab, var(--color-muted-foreground) 70%, white) 40%, var(--color-muted-foreground) 64%, color-mix(in oklab, var(--color-muted-foreground) 55%, black) 100%)", boxShadow: "0 1px 0 color-mix(in oklab, var(--color-foreground) 18%, transparent)" }} />
-               <div className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay" style={{ background: "repeating-linear-gradient(90deg, transparent 0 2px, color-mix(in oklab, white 40%, transparent) 2px 3px, transparent 3px 7px)" }} />
+               <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(to bottom, color-mix(in oklab, var(--color-muted-foreground) 35%, #F3F1EA) 0%, #ECE9E1 20%, color-mix(in oklab, var(--color-muted-foreground) 70%, #F3F1EA) 40%, var(--color-muted-foreground) 64%, color-mix(in oklab, var(--color-muted-foreground) 55%, #1B1B1A) 100%)", boxShadow: "0 1px 0 color-mix(in oklab, var(--color-foreground) 18%, transparent)" }} />
+               <div className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay" style={{ background: "repeating-linear-gradient(90deg, transparent 0 2px, color-mix(in oklab, #F3F1EA 40%, transparent) 2px 3px, transparent 3px 7px)" }} />
                {!size.carousel &&
                   [0, 1].map(side => (
-                     <div key={side} className="absolute top-1/2 h-5 w-3 -translate-y-1/2 rounded-[2.5px]" style={{ [side ? "right" : "left"]: 6, background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 60%, white), var(--color-muted-foreground) 55%, color-mix(in oklab, var(--color-muted-foreground) 60%, black))", boxShadow: "0 2px 4px color-mix(in oklab, var(--color-foreground) 16%, transparent)" }}>
+                     <div key={side} className="absolute top-1/2 h-5 w-3 -translate-y-1/2 rounded-[2.5px]" style={{ [side ? "right" : "left"]: 6, background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 60%, #F3F1EA), var(--color-muted-foreground) 55%, color-mix(in oklab, var(--color-muted-foreground) 60%, #1B1B1A))", boxShadow: "0 2px 4px color-mix(in oklab, var(--color-foreground) 16%, transparent)" }}>
                         <span className="absolute left-1/2 top-1 size-0.5 -translate-x-1/2 rounded-full bg-foreground/35" />
                         <span className="absolute bottom-1 left-1/2 size-0.5 -translate-x-1/2 rounded-full bg-foreground/35" />
                      </div>
@@ -1448,7 +1448,7 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                      data-lanyard={i}
                      className={`pointer-events-none absolute left-0 top-0 ${tone}`}
                      style={{ width: W, height: g.height, zIndex: isFlipped ? 40 : isActive ? 30 : 10 + i, transform: `translate3d(${((sim.current.x[i] ?? 0) - W / 2).toFixed(2)}px,0,0)` }}>
-                     <span aria-hidden="true" className="absolute block rounded-full" style={{ left: W / 2 - 4 * g.u, top: g.railY - g.ring, width: 8 * g.u, height: g.ring * 2, border: `${Math.max(1.4, 2 * g.u).toFixed(2)}px solid ${isSpecial ? "#fde047" : "color-mix(in oklab, var(--color-muted-foreground) 45%, white)"}`, boxShadow: "inset 1px 0 0 color-mix(in oklab, black 25%, transparent), 1px 1px 2px color-mix(in oklab, black 20%, transparent)" }} />
+                     <span aria-hidden="true" className="absolute block rounded-full" style={{ left: W / 2 - 4 * g.u, top: g.railY - g.ring, width: 8 * g.u, height: g.ring * 2, border: `${Math.max(1.4, 2 * g.u).toFixed(2)}px solid ${isSpecial ? "#D6D2C9" : "color-mix(in oklab, var(--color-muted-foreground) 45%, #F3F1EA)"}`, boxShadow: "inset 1px 0 0 color-mix(in oklab, #1B1B1A 25%, transparent), 1px 1px 2px color-mix(in oklab, #1B1B1A 20%, transparent)" }} />
                      <span
                         ref={node => {
                            swings.current[i] = node;
@@ -1464,7 +1464,7 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                            aria-hidden="true"
                            className="absolute inset-0 block"
                            style={{ ["--stretch" as string]: "0px" }}>
-                           <span className="absolute block bg-black/15 blur-[2px] dark:bg-black/45" style={{ left: W / 2 - g.strapW / 2 + 2.5 * g.u, top: g.pivotY + 2, width: g.strapW, height: strap }} />
+                           <span className="absolute block bg-[#1B1B1A]/15 blur-[2px] dark:bg-[#121211]/45" style={{ left: W / 2 - g.strapW / 2 + 2.5 * g.u, top: g.pivotY + 2, width: g.strapW, height: strap }} />
                            <span
                               className="absolute block"
                               style={{
@@ -1474,25 +1474,25 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                  height: strap + 2,
                                  background: isSpecial
                                     ? [
-                                         "repeating-linear-gradient(135deg, rgba(255,255,255,0.22) 0 1px, transparent 1px 3px)",
-                                         "repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 3px)",
-                                         "linear-gradient(90deg, #92400e 0%, #eab308 18%, #fef08a 50%, #eab308 82%, #92400e 100%)",
+                                         "repeating-linear-gradient(135deg, rgba(243,241,234,0.22) 0 1px, transparent 1px 3px)",
+                                         "repeating-linear-gradient(45deg, rgba(27,27,26,0.16) 0 1px, transparent 1px 3px)",
+                                         "linear-gradient(90deg, #3D3D3A 0%, #9E9B92 18%, #E8E5DC 50%, #9E9B92 82%, #3D3D3A 100%)",
                                       ].join(",")
                                     : [
-                                         "repeating-linear-gradient(135deg, color-mix(in oklab, white 16%, transparent) 0 1px, transparent 1px 3px)",
-                                         "repeating-linear-gradient(45deg, color-mix(in oklab, black 13%, transparent) 0 1px, transparent 1px 3px)",
-                                         "linear-gradient(90deg, color-mix(in oklab, currentColor 68%, black) 0%, currentColor 16%, color-mix(in oklab, currentColor 86%, white) 48%, currentColor 80%, color-mix(in oklab, currentColor 66%, black) 100%)",
+                                         "repeating-linear-gradient(135deg, color-mix(in oklab, #F3F1EA 16%, transparent) 0 1px, transparent 1px 3px)",
+                                         "repeating-linear-gradient(45deg, color-mix(in oklab, #1B1B1A 13%, transparent) 0 1px, transparent 1px 3px)",
+                                         "linear-gradient(90deg, color-mix(in oklab, currentColor 68%, #1B1B1A) 0%, currentColor 16%, color-mix(in oklab, currentColor 86%, #F3F1EA) 48%, currentColor 80%, color-mix(in oklab, currentColor 66%, #1B1B1A) 100%)",
                                       ].join(","),
                               }}>
-                              <span className="absolute inset-y-0 left-[1.5px] right-[1.5px] block border-x border-dashed border-white/35" />
-                              <span className="absolute inset-x-0 top-0 block bg-black/25" style={{ height: 6 * g.u }} />
-                              <span className="absolute inset-x-[2px] block border-t border-dashed border-white/45" style={{ top: 8 * g.u }} />
+                              <span className="absolute inset-y-0 left-[1.5px] right-[1.5px] block border-x border-dashed border-[#E8E5DC]/35" />
+                              <span className="absolute inset-x-0 top-0 block bg-[#1B1B1A]/25" style={{ height: 6 * g.u }} />
+                              <span className="absolute inset-x-[2px] block border-t border-dashed border-[#E8E5DC]/45" style={{ top: 8 * g.u }} />
                            </span>
                            <svg aria-hidden="true" className="absolute overflow-visible" style={{ left: W / 2 - g.strapW * 0.75, top: g.pivotY - 3.5 * g.u, width: g.strapW * 1.5, height: 7 * g.u }} viewBox="0 0 30 16" preserveAspectRatio="none">
-                              <rect x="2" y="3" width="26" height="10" rx="5" fill="none" stroke={isSpecial ? "#fde047" : "color-mix(in oklab, var(--color-muted-foreground) 40%, white)"} strokeWidth="3" />
-                              <path d="M7 4.5 H23" stroke="white" strokeOpacity="0.6" strokeWidth="1" />
+                              <rect x="2" y="3" width="26" height="10" rx="5" fill="none" stroke={isSpecial ? "#D6D2C9" : "color-mix(in oklab, var(--color-muted-foreground) 40%, #F3F1EA)"} strokeWidth="3" />
+                              <path d="M7 4.5 H23" stroke="#F3F1EA" strokeOpacity="0.6" strokeWidth="1" />
                            </svg>
-                           <span className="absolute block rounded-[2px]" style={{ left: W / 2 - g.strapW / 2 - 1.2, top: g.pivotY + strap - g.crimp * 0.4, width: g.strapW + 2.4, height: g.crimp, background: isSpecial ? GOLD_METAL : METAL, boxShadow: "0 1px 1.5px color-mix(in oklab, black 30%, transparent)" }} />
+                           <span className="absolute block rounded-[2px]" style={{ left: W / 2 - g.strapW / 2 - 1.2, top: g.pivotY + strap - g.crimp * 0.4, width: g.strapW + 2.4, height: g.crimp, background: isSpecial ? GOLD_METAL : METAL, boxShadow: "0 1px 1.5px color-mix(in oklab, #1B1B1A 30%, transparent)" }} />
                            <span
                               className="absolute block rounded-full"
                               style={{
@@ -1501,18 +1501,18 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                  width: g.reel,
                                  height: g.reel,
                                  background: isSpecial
-                                    ? "radial-gradient(circle at 34% 30%, #fef08a 0%, #eab308 58%, #854d0e 100%)"
+                                    ? "radial-gradient(circle at 34% 30%, #ECE9E1 0%, #9E9B92 58%, #3D3D3A 100%)"
                                     : "radial-gradient(circle at 34% 30%, color-mix(in oklab, var(--color-foreground) 48%, var(--color-background)) 0%, var(--color-foreground) 58%, color-mix(in oklab, var(--color-foreground) 82%, var(--color-background)) 100%)",
-                                 boxShadow: "inset 0 -1px 2px color-mix(in oklab, black 40%, transparent), 0 2px 3px color-mix(in oklab, black 28%, transparent)",
+                                 boxShadow: "inset 0 -1px 2px color-mix(in oklab, #1B1B1A 40%, transparent), 0 2px 3px color-mix(in oklab, #1B1B1A 28%, transparent)",
                               }}>
-                              <span className="absolute inset-[14%] block rounded-full border border-white/20" />
+                              <span className="absolute inset-[14%] block rounded-full border border-[#E8E5DC]/20" />
                               <span className="absolute left-1/2 top-1/2 block size-[32%] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: isSpecial ? GOLD_METAL : METAL }} />
                            </span>
                            <span
                               ref={node => {
                                  cords.current[i] = node;
                               }}
-                              className={`absolute block w-[1.5px] ${isSpecial ? "bg-[#facc15]" : "bg-foreground/60"}`}
+                              className={`absolute block w-[1.5px] ${isSpecial ? "bg-[#C9C4B8]" : "bg-foreground/60"}`}
                               style={{ left: W / 2 - 0.75, top: reelTop + g.reel * 0.82, height: g.cordRest, transformOrigin: "50% 0" }}
                            />
                         </span>
@@ -1529,7 +1529,7 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                     shadows.current[i] = node;
                                  }}
                                  data-shadow
-                                 className="absolute inset-0 block rounded-[9px] bg-black/25 dark:bg-black/65"
+                                 className="absolute inset-0 block rounded-[9px] bg-[#1B1B1A]/25 dark:bg-[#121211]/65"
                               />
                            </span>
                            <button
@@ -1571,8 +1571,8 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                            <span aria-hidden="true" className="pointer-events-none absolute block" style={{ left: W / 2 - g.clipW / 2, top: 0, width: g.clipW, height: g.clipH + 9 * g.u }}>
                               <span className="absolute left-1/2 block -translate-x-1/2 rounded-b-[2px]" style={{ top: g.clipH * 0.7, width: g.clipW * 0.42, height: cardOffset - g.clipH * 0.7 + 0.64 * base + 0.26 * base, background: isSpecial ? GOLD_PLASTIC : PLASTIC }} />
                               <span className="absolute inset-x-0 top-0 block" style={{ height: g.clipH, clipPath: "polygon(24% 0, 76% 0, 100% 72%, 94% 100%, 6% 100%, 0 72%)", background: isSpecial ? GOLD_PLASTIC : PLASTIC }} />
-                              <span className="absolute block bg-white/50" style={{ left: "30%", right: "30%", top: 1, height: 1 }} />
-                              <span className={`absolute left-1/2 block -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#451a03]" : "bg-background"}`} style={{ top: g.clipH * 0.14, width: g.clipH * 0.34, height: g.clipH * 0.34, boxShadow: "inset 0 1px 1px color-mix(in oklab, black 45%, transparent)" }} />
+                              <span className="absolute block bg-[#E8E5DC]/40" style={{ left: "30%", right: "30%", top: 1, height: 1 }} />
+                              <span className={`absolute left-1/2 block -translate-x-1/2 rounded-full ${isSpecial ? "bg-[#2A2A28]" : "bg-background"}`} style={{ top: g.clipH * 0.14, width: g.clipH * 0.34, height: g.clipH * 0.34, boxShadow: "inset 0 1px 1px color-mix(in oklab, #1B1B1A 45%, transparent)" }} />
                            </span>
                            {isFlipped && links.length > 0 && (
                               <div

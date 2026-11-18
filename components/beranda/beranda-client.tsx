@@ -1,183 +1,36 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
-import { ArrowRight, BookOpen, Calendar, Sparkles, Users } from "lucide-react";
-import { Adaptive } from "@/components/three/adaptive";
-import { HeroDeskSceneHD } from "@/components/beranda/hero-desk-scene-hd";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { ArrowRight, BookOpen, Calendar, Camera, Users } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
-import { notifyRouteTransitionStart, useLivePublicData } from "@/lib/use-public-data";
+import { usePageFlipSound } from "@/lib/page-flip-audio";
+import { useLivePublicData } from "@/lib/use-public-data";
+import { useGsap, gsap } from "@/lib/gsap-utils";
+import { navigateWithVanishingPoint } from "@/components/layout/vanishing-page-transition";
 import type { MomentRow } from "@/lib/types";
 
-/**
- * Ilustrasi SVG Berlapis "Meja Belajar Saat Senja" untuk Mobile & Mode Ringan (SimpleView)
- */
-function HeroDeskSimpleSVG({ heroMoment }: { heroMoment?: MomentRow | null }) {
-  const hasRealPhoto =
-    Boolean(heroMoment?.image_url) &&
-    !heroMoment!.image_url.startsWith("/api/moment-illustration");
-
-  return (
-    <div
-      role="img"
-      aria-label="Ilustrasi Meja Belajar Saat Senja Kelas XII PPLG 1 MAKN Ende"
-      className="relative w-full overflow-hidden rounded-2xl border border-border bg-[#211711] p-4 sm:p-6 shadow-md"
-    >
-      <svg
-        viewBox="0 0 800 440"
-        className="h-auto w-full select-none rounded-xl"
-      >
-        <defs>
-          <linearGradient id="duskSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a84232" />
-            <stop offset="55%" stopColor="#c86d3b" />
-            <stop offset="100%" stopColor="#f3ca82" />
-          </linearGradient>
-          <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffe49e" stopOpacity="0.65" />
-            <stop offset="100%" stopColor="#ffe49e" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-
-        {/* Dinding Kamar / Lab Sore */}
-        <rect width="800" height="440" fill="#231912" />
-
-        {/* Jendela Senja Ende */}
-        <rect
-          x="140"
-          y="28"
-          width="520"
-          height="230"
-          rx="8"
-          fill="url(#duskSky)"
-          stroke="#462916"
-          strokeWidth="12"
-        />
-        {/* Siluet Bukit Flores di Jendela */}
-        <path
-          d="M146 210 Q 280 140 430 190 T 654 165 L 654 252 L 146 252 Z"
-          fill="#2d6a6e"
-          fillOpacity="0.7"
-        />
-        <line x1="400" y1="28" x2="400" y2="258" stroke="#462916" strokeWidth="8" />
-        <line x1="140" y1="145" x2="660" y2="145" stroke="#462916" strokeWidth="8" />
-
-        {/* Cahaya Lampu Meja */}
-        <circle cx="575" cy="220" r="145" fill="url(#lampGlow)" />
-
-        {/* Permukaan Meja Kayu Jati */}
-        <rect x="0" y="310" width="800" height="130" fill="#653b1e" />
-        <rect x="0" y="310" width="800" height="14" fill="#8d5834" />
-
-        {/* Tumpukan Buku di Kiri */}
-        <rect x="85" y="284" width="135" height="26" rx="4" fill="#a84232" />
-        <rect x="92" y="288" width="122" height="18" fill="#fbf6ec" />
-        <rect x="95" y="260" width="120" height="24" rx="4" fill="#2d6a6e" />
-        <rect x="102" y="264" width="108" height="16" fill="#fbf6ec" />
-        <rect x="105" y="238" width="105" height="22" rx="4" fill="#3b593f" />
-
-        {/* Polaroid Melayang (Menampilkan Foto Unggahan Admin) */}
-        <g transform="translate(175, 74) rotate(-8)">
-          <rect width="88" height="104" rx="4" fill="#fbf6ec" />
-          {hasRealPhoto ? (
-            <image
-              href={heroMoment!.image_url}
-              x="7"
-              y="7"
-              width="74"
-              height="68"
-              preserveAspectRatio="xMidYMid slice"
-            />
-          ) : (
-            <>
-              <rect x="7" y="7" width="74" height="68" fill="#c86d3b" />
-              <circle cx="44" cy="40" r="14" fill="#fbf3dc" />
-            </>
-          )}
-        </g>
-
-        {/* Bingkai Foto Meja Kanan (Menampilkan Foto Unggahan Admin) */}
-        <g transform="translate(532, 206) rotate(4)">
-          <rect width="92" height="108" rx="5" fill="#3b2314" stroke="#c88d48" strokeWidth="3" />
-          <rect x="7" y="7" width="78" height="72" fill="#2c1d15" />
-          {hasRealPhoto ? (
-            <image
-              href={heroMoment!.image_url}
-              x="7"
-              y="7"
-              width="78"
-              height="72"
-              preserveAspectRatio="xMidYMid slice"
-            />
-          ) : (
-            <>
-              <rect x="7" y="7" width="78" height="72" fill="#2d6a6e" />
-              <circle cx="46" cy="42" r="14" fill="#fbf3dc" />
-            </>
-          )}
-          <rect x="7" y="81" width="78" height="19" fill="#fffdf7" />
-          <text x="46" y="94" textAnchor="middle" fill="#2b190d" fontSize="9" fontWeight="bold">
-            {(heroMoment?.caption || "XII PPLG 1").slice(0, 14)}
-          </text>
-        </g>
-
-        {/* Laptop Menyala di Tengah Meja (Anti-Silau & Jelas) */}
-        <rect x="275" y="170" width="250" height="145" rx="8" fill="#2c2723" />
-        <rect x="285" y="180" width="230" height="125" rx="4" fill="#0d1117" />
-        {/* Baris Kode Jelas di Layar Laptop */}
-        <text x="296" y="202" fill="#ff9e64" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"const kelas = 'XII PPLG 1';"}
-        </text>
-        <text x="296" y="220" fill="#7dcfff" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"const database = 'Supabase PostgreSQL';"}
-        </text>
-        <text x="296" y="238" fill="#9ece6a" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"const sekolah = 'MAKN Ende';"}
-        </text>
-        <text x="296" y="256" fill="#e0af68" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"await kenangan.simpanSelamanya();"}
-        </text>
-        <text x="296" y="278" fill="#bb9af7" fontSize="11" fontFamily="monospace" fontWeight="bold">
-          {"// Sampai jumpa di puncak sukses!"}
-        </text>
-        <rect x="255" y="312" width="290" height="14" rx="5" fill="#4f4740" />
-
-        {/* Cangkir Teh Hangat & Uap */}
-        <rect x="215" y="274" width="38" height="42" rx="6" fill="#f4ead8" />
-        <path
-          d="M253 282 C266 282 266 306 253 306"
-          fill="none"
-          stroke="#f4ead8"
-          strokeWidth="5"
-        />
-        <path
-          d="M228 265 Q 222 250 232 238 M240 265 Q 246 250 236 236"
-          fill="none"
-          stroke="#fbf3dc"
-          strokeOpacity="0.6"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-
-        {/* Lampu Meja & Gantungan Kunci di Kanan */}
-        <ellipse cx="640" cy="316" rx="46" ry="12" fill="#c88d48" />
-        <path
-          d="M640 310 Q 675 210 595 155"
-          fill="none"
-          stroke="#c88d48"
-          strokeWidth="10"
-          strokeLinecap="round"
-        />
-        {/* Gantungan Kunci */}
-        <line x1="632" y1="190" x2="632" y2="222" stroke="#ebd0a0" strokeWidth="2" />
-        <circle cx="632" cy="230" r="10" fill="#a84232" stroke="#f3ca82" strokeWidth="2" />
-        {/* Kap Lampu */}
-        <path d="M555 175 L 605 140 L 625 182 Z" fill="#3b593f" />
-        <circle cx="582" cy="172" r="10" fill="#ffe4a0" />
-      </svg>
-    </div>
-  );
-}
+const DynamicPolaroidCamera3D = dynamic(
+  () =>
+    import("@/components/beranda/polaroid-camera-3d").then(
+      (mod) => mod.PolaroidCamera3D
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[430px] sm:h-[500px] w-full flex-col items-center justify-center rounded-2xl border border-[#C9B794] bg-gradient-to-br from-[#F4EAD2] via-[#E8D9BA] to-[#D8C5A0] p-6 text-center text-[#261F18] dark:border-border dark:from-[#29231D] dark:via-[#231D18] dark:to-[#2E261F] dark:text-[#EFE5CE]">
+        <Camera className="size-8 animate-pulse text-[#6B5B4B] dark:text-[#B0A595]" />
+        <p className="mt-3 font-serif text-lg font-bold">
+          Menyiapkan Kamera Polaroid 3D...
+        </p>
+        <p className="mt-1 font-mono text-xs text-[#6B5B4B] dark:text-[#B0A595]">
+          MERAKIT LENSA &amp; ROL FILM KENANGAN XII PPLG 1
+        </p>
+      </div>
+    ),
+  }
+);
 
 export function BerandaClient({
   graduationDate: initialGraduationDate,
@@ -200,9 +53,11 @@ export function BerandaClient({
     totalThanks?: number;
   };
 }) {
+  const router = useRouter();
   const { data: liveData } = useLivePublicData({ moments: initialMoments });
+  const { playPageFlip } = usePageFlipSound();
   const moments = liveData?.moments ?? initialMoments;
-  const heroSectionRef = React.useRef<HTMLElement | null>(null);
+  const pageRootRef = React.useRef<HTMLDivElement | null>(null);
   const [daysLeft, setDaysLeft] = React.useState<number | null>(null);
 
   const graduationDate =
@@ -249,7 +104,7 @@ export function BerandaClient({
         return {
           ...card,
           subtitle: `${stats.activeStudents} Siswa Aktif & ${stats.movedStudents} Sahabat`,
-          description: `Kartu ID gantung 3D ${stats.activeStudents} siswa aktif & ${stats.movedStudents} sahabat istimewa.`,
+          description: `Gantungan ID Card 3D ${stats.activeStudents} siswa aktif & ${stats.movedStudents} sahabat istimewa.`,
         };
       }
       if (card.href === "/guru") {
@@ -259,30 +114,30 @@ export function BerandaClient({
             ? `${homeroomTeacherName} & ${stats.totalTeachers} Pendidik`
             : `${stats.totalTeachers} Pendidik`,
           description: homeroomTeacherName
-            ? `Kartu apresiasi Wali Kelas ${homeroomTeacherName} & seluruh guru pembimbing.`
-            : `Kartu apresiasi untuk seluruh guru pembimbing MAKN Ende.`,
+            ? `Penghormatan untuk Wali Kelas ${homeroomTeacherName} & ${stats.totalTeachers} pendidik MAKN Ende.`
+            : `Penghormatan untuk ${stats.totalTeachers} pendidik MAKN Ende.`,
         };
       }
       if (card.href === "/galeri") {
         return {
           ...card,
-          subtitle: `Kelas X · XI · XII (${stats.totalMoments} Foto)`,
+          subtitle: `Edisi Koran X · XI · XII (${stats.totalMoments} Foto)`,
           description:
-            "Gantungan kertas foto polaroid 3D dari masa orientasi hingga kelulusan.",
+            "Koran jadul interaktif berisi arsip foto & liputan kenangan kelas.",
         };
       }
       if (card.href === "/dream-board") {
         return {
           ...card,
-          subtitle: `${stats.totalDreams} Lembar Cita-Cita`,
-          description: `Papan tulis 3D berisi ${stats.totalDreams} impian siswa & kirim doa semangat.`,
+          subtitle: `${stats.totalDreams} Kertas Cita-Cita`,
+          description: `Papan tulis & catatan doa berisi ${stats.totalDreams} impian siswa.`,
         };
       }
       if (card.href === "/karya") {
         return {
           ...card,
-          subtitle: `${stats.totalWorks} Proyek & Peta Skill`,
-          description: `Etalase karya aplikasi unggulan siswa beserta jaringan talenta kelas.`,
+          subtitle: `${stats.totalWorks} Proyek & Skill Map`,
+          description: `Etalase ${stats.totalWorks} aplikasi siswa & jaringan keahlian kelas.`,
         };
       }
       return card;
@@ -301,6 +156,40 @@ export function BerandaClient({
     computeDays();
   }, [graduationDate]);
 
+  useGsap(
+    () => {
+      const prefersReduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      if (prefersReduced) return;
+
+      gsap.from(".hero-reveal", {
+        y: 22,
+        opacity: 0,
+        duration: 0.72,
+        stagger: 0.08,
+        ease: "power3.out",
+        clearProps: "transform,opacity",
+      });
+
+      gsap.from(".map-card-reveal", {
+        y: 20,
+        opacity: 0,
+        duration: 0.65,
+        stagger: 0.07,
+        ease: "power3.out",
+        clearProps: "transform,opacity",
+        scrollTrigger: {
+          trigger: ".map-grid-section",
+          start: "top 86%",
+          once: true,
+        },
+      });
+    },
+    [],
+    pageRootRef
+  );
+
   const handleNavigate = (
     e: React.MouseEvent<HTMLAnchorElement>,
     targetHref: string
@@ -316,72 +205,60 @@ export function BerandaClient({
       return;
     }
     e.preventDefault();
-    notifyRouteTransitionStart();
-    if (window.location.pathname === targetHref) {
-      window.location.reload();
-    } else {
-      window.location.assign(targetHref);
-    }
+    playPageFlip();
+    navigateWithVanishingPoint(targetHref, router);
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
-      {/* HERO SECTION: Split / Full Viewport Presence dengan Meja Belajar Senja 3D & Hitung Mundur */}
+    <div
+      ref={pageRootRef}
+      className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
+    >
+      {/* HERO: Editorial Tipografi + Model 3D Kamera Polaroid Jadul Cetak Foto */}
       <section
-        ref={heroSectionRef}
         aria-labelledby="hero-title"
-        className="grid grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12"
+        className="grid grid-cols-1 items-center gap-6 sm:gap-10 lg:grid-cols-12"
       >
-        {/* Kolom Kiri: Tipografi Hangat, Hitung Mundur, & CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="flex flex-col items-start lg:col-span-5"
-        >
-          <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-            <Sparkles className="size-3.5" />
-            <span>{SITE_CONTENT.hero.eyebrow}</span>
-          </div>
+        {/* Kolom Kiri: Editorial Tipografi & Countdown */}
+        <div className="flex flex-col items-start lg:col-span-5">
+          <p className="hero-reveal font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            NO. 01 / {SITE_CONTENT.hero.eyebrow}
+          </p>
 
           <h1
             id="hero-title"
-            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:mt-2 sm:text-5xl [text-wrap:balance]"
+            className="hero-reveal mt-2.5 font-serif text-4xl font-bold leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl [text-wrap:balance]"
           >
             {SITE_CONTENT.hero.title}
           </h1>
 
-          <p className="mt-1 font-serif text-base sm:text-lg italic text-muted-foreground">
+          <p className="hero-reveal mt-2 font-serif text-base italic text-muted-foreground sm:text-lg">
             {SITE_CONTENT.hero.subtitle} — {SITE_CONTENT.school.schoolName}
           </p>
 
           {homeroomTeacherName ? (
-            <p className="mt-1.5 text-xs font-semibold text-[var(--color-chart-2)]">
-              Wali Kelas Pembimbing: {homeroomTeacherName}
+            <p className="hero-reveal mt-2 font-mono text-xs text-muted-foreground">
+              Wali Kelas Pembimbing · {homeroomTeacherName}
             </p>
           ) : null}
 
-          <p className="mt-2 text-xs sm:text-base leading-relaxed text-foreground/90">
+          <p className="hero-reveal mt-3.5 font-sans text-sm leading-[1.65] text-foreground/90 sm:text-base">
             {SITE_CONTENT.school.tagline}
           </p>
 
-          {/* Kotak Hitung Mundur "Tinggal X hari bersama" (Tanpa duplikasi tombol musik) */}
-          <motion.div
-            whileHover={{ y: -2 }}
-            transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="mt-4 sm:mt-5 w-full rounded-xl border border-border bg-card p-3.5 sm:p-4 shadow-sm"
-          >
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <Calendar className="size-4 text-[var(--color-accent-warm)]" />
+          {/* Kartu Countdown Kelulusan */}
+          <div className="hero-reveal mt-5 w-full rounded-xl border border-border bg-card p-4 shadow-xs">
+            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              <Calendar className="size-4 text-foreground" />
               <span>{SITE_CONTENT.hero.countdownLabel}</span>
             </div>
-            <p className="mt-1 font-serif text-lg font-bold text-foreground sm:text-2xl">
+            <p className="mt-1.5 font-serif text-xl font-bold text-foreground sm:text-2xl">
               {daysLeft === null ? (
                 "Menghitung hari kebersamaan..."
               ) : daysLeft > 0 ? (
                 <>
                   {SITE_CONTENT.hero.countdownPrefix}{" "}
-                  <span className="font-mono text-2xl sm:text-3xl text-[var(--color-accent-warm)] tabular-nums">
+                  <span className="font-mono text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
                     {daysLeft}
                   </span>{" "}
                   {SITE_CONTENT.hero.countdownSuffix}
@@ -390,77 +267,50 @@ export function BerandaClient({
                 SITE_CONTENT.hero.countdownPassed
               )}
             </p>
-          </motion.div>
-
-          {/* Tombol Aksi Utama: Side-by-side proporsional di Mobile */}
-          <div className="mt-4 sm:mt-6 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
-              <a
-                href="/kenangan"
-                onClick={(e) => handleNavigate(e, "/kenangan")}
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[var(--color-accent-warm)] px-3 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
-              >
-                <BookOpen className="size-4 shrink-0" />
-                <span className="truncate">{SITE_CONTENT.hero.ctaPrimary}</span>
-              </a>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
-              <a
-                href="/anggota"
-                onClick={(e) => handleNavigate(e, "/anggota")}
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-card px-3 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
-              >
-                <Users className="size-4 shrink-0 text-[var(--color-chart-1)]" />
-                <span className="truncate">{SITE_CONTENT.hero.ctaSecondary}</span>
-              </a>
-            </motion.div>
           </div>
-        </motion.div>
 
-        {/* Kolom Kanan: Scene 3D "Meja Belajar Saat Senja" (HD) / Ilustrasi SVG Berlapis (Simple) */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.08, ease: "easeOut" }}
-          className="lg:col-span-7"
-        >
-          <Adaptive
-            simple={
-              <HeroDeskSimpleSVG
-                heroMoment={
-                  moments.find(
-                    (m) =>
-                      m.category === "Foto Hero 3D" &&
-                      m.image_url &&
-                      !m.image_url.startsWith("/api/moment-illustration")
-                  ) ?? null
-                }
-              />
-            }
-            hd={<HeroDeskSceneHD moments={moments} />}
-          />
-        </motion.div>
+          {/* Tombol Aksi Utama */}
+          <div className="hero-reveal mt-5 sm:mt-6 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+            <a
+              href="/galeri"
+              onClick={(e) => handleNavigate(e, "/galeri")}
+              className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-primary px-4 sm:px-5 py-2.5 font-sans text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
+            >
+              <BookOpen className="size-4 shrink-0" />
+              <span className="truncate">Baca Koran Galeri</span>
+            </a>
+
+            <a
+              href="/anggota"
+              onClick={(e) => handleNavigate(e, "/anggota")}
+              className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 sm:px-5 py-2.5 font-sans text-xs sm:text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
+            >
+              <Users className="size-4 shrink-0 text-foreground" />
+              <span className="truncate">{SITE_CONTENT.hero.ctaSecondary}</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Kolom Kanan: Kamera Polaroid 3D Jadul + Cetak Foto Looping */}
+        <div className="hero-reveal lg:col-span-7">
+          <DynamicPolaroidCamera3D moments={moments} />
+        </div>
       </section>
 
-      {/* Baris Statistik Ringkas di Bawah Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 0.4 }}
-        aria-label="Ringkasan Angka Kelas XII PPLG 1"
-        className="mt-8 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-4 sm:p-5"
+      {/* Baris Angka Statistik Arsip */}
+      <section
+        aria-label="Ringkasan Kelas XII PPLG 1"
+        className="mt-10 grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-4 sm:p-6"
       >
         <div>
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.activeStudents}{" "}
-            <span className="text-xs font-normal text-muted-foreground">
+            <span className="font-sans text-xs font-normal text-muted-foreground">
               (+{stats.movedStudents} sahabat)
             </span>
           </p>
-          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-            Anggota Keluarga
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            Anggota Keluarga Kelas
           </p>
         </div>
 
@@ -468,8 +318,8 @@ export function BerandaClient({
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.totalTeachers}
           </p>
-          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-            Guru & Wali Kelas
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            Pendidik &amp; Wali Kelas
           </p>
         </div>
 
@@ -477,8 +327,8 @@ export function BerandaClient({
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.totalMoments}
           </p>
-          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-            Foto Kelas X–XII
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            Foto Momen Kelas X–XII
           </p>
         </div>
 
@@ -486,71 +336,64 @@ export function BerandaClient({
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
             {stats.totalWorks}
           </p>
-          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-            Karya & {stats.totalDreams} Cita-Cita
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            Karya Siswa &amp; {stats.totalDreams} Cita-Cita
           </p>
         </div>
-      </motion.section>
+      </section>
 
-      <div className="ikat-divider my-10" aria-hidden="true" />
+      <div className="ikat-divider my-12" aria-hidden="true" />
 
-      {/* PETA HALAMAN RINGKAS */}
-      <section aria-labelledby="map-heading">
+      {/* PETA HALAMAN KENANGAN */}
+      <section aria-labelledby="map-heading" className="map-grid-section">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-            Peta Ruang Album
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Indeks Ruang · XII PPLG 1
           </p>
           <h2
             id="map-heading"
-            className="mt-1 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+            className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
           >
-            Jelajahi Sudut Kenangan
+            Enam Sudut Cerita Kita
           </h2>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+          <p className="mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
             {SITE_CONTENT.school.subTagline}
           </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {dynamicMapCards.map((card, idx) => (
-            <motion.div
-              key={card.href}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.3, delay: idx * 0.04 }}
-              whileHover={{ y: -3 }}
-            >
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {dynamicMapCards.map((card) => (
+            <div key={card.href} className="map-card-reveal">
               <a
                 href={card.href}
                 onClick={(e) => handleNavigate(e, card.href)}
-                className="group flex h-full flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-2xs transition-colors hover:border-[var(--color-accent-warm)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono font-bold text-[var(--color-accent-warm)]">
-                      {card.index}
+                  <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+                    <span className="font-bold text-foreground">
+                      NO. {card.index}
                     </span>
-                    <span className="font-mono text-[11px]">{card.meta}</span>
+                    <span>{card.meta}</span>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <h3 className="font-serif text-lg font-bold text-foreground transition-colors group-hover:text-[var(--color-accent-warm)]">
+                  <div className="mt-2.5 flex items-center justify-between gap-2">
+                    <h3 className="font-serif text-lg font-bold text-foreground transition-opacity group-hover:opacity-80">
                       {card.title}
                     </h3>
-                    <ArrowRight className="size-4 shrink-0 text-[var(--color-accent-warm)] transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="size-4 shrink-0 text-foreground transition-transform group-hover:translate-x-1" />
                   </div>
 
-                  <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                  <p className="mt-1 font-sans text-xs font-semibold text-muted-foreground">
                     {card.subtitle}
                   </p>
 
-                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-card-foreground/85">
+                  <p className="mt-2 line-clamp-2 font-sans text-xs leading-relaxed text-card-foreground/85">
                     {card.description}
                   </p>
                 </div>
               </a>
-            </motion.div>
+            </div>
           ))}
         </div>
       </section>

@@ -6,9 +6,9 @@ import { getPublicAppData } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Galeri Momen — XII PPLG 1 MAKN Ende",
+  title: "Galeri Kenangan Bersama — XII PPLG 1 MAKN Ende",
   description:
-    "Arsip foto polaroid perjalanan tiga tahun Kelas X, XI, dan XII PPLG 1 MAKN Ende.",
+    "Koran edisi kenangan dan arsip foto monokrom tiga tahun Kelas X, XI, dan XII PPLG 1 MAKN Ende.",
 };
 
 export default async function GaleriPage() {

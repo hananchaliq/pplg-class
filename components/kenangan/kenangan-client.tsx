@@ -23,6 +23,7 @@ import { Adaptive } from "@/components/three/adaptive";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { FAREWELL_MEME_STICKERS } from "@/lib/procedural-textures";
 import { studentToLanyardMember } from "@/lib/domain-logic";
+import { usePageFlipSound } from "@/lib/page-flip-audio";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
@@ -65,24 +66,24 @@ function FarewellMemeStickerCard({
         borderColor: meme.accent,
         color: meme.ink,
       }}
-      className={`inline-flex max-w-[275px] items-center gap-2.5 rounded-2xl border-2 p-2.5 shadow-[0_6px_16px_rgba(28,18,10,0.16),0_0_0_5px_#fffdf9] select-none ${className}`}
+      className={`inline-flex max-w-[275px] items-center gap-2.5 rounded-2xl border-2 p-2.5 shadow-[0_6px_16px_rgba(20,20,19,0.16),0_0_0_5px_#F3F1EA] select-none ${className}`}
     >
       <div
         style={{ borderColor: meme.accent }}
-        className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 bg-[#fffdf9] text-[#23140b] shadow-2xs"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 bg-[#F3F1EA] text-[#1B1B1A] shadow-2xs"
       >
         {meme.icon === "coffee" || meme.icon === "reuni" ? (
-          <Coffee className="size-5 text-[#c86d3b]" />
+          <Coffee className="size-5 text-[#2A2A28]" />
         ) : meme.icon === "git-bye" || meme.icon === "ctrl-s" || meme.icon === "bug" ? (
-          <Terminal className="size-5 text-[#2d6a6e]" />
+          <Terminal className="size-5 text-[#2A2A28]" />
         ) : (
-          <Smile className="size-5 text-[#d9534f]" />
+          <Smile className="size-5 text-[#2A2A28]" />
         )}
       </div>
       <div className="min-w-0 text-left leading-tight">
         <span
           style={{ backgroundColor: meme.accent }}
-          className="inline-block rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-[#fffdf9]"
+          className="inline-block rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-[#F3F1EA]"
         >
           ★ {meme.badge} ★
         </span>
@@ -126,6 +127,7 @@ export function KenanganClient({
   const thanksList = liveData?.thanksList ?? initialThanksList;
   const moments = liveData?.moments ?? initialMoments;
 
+  const { playPageFlip } = usePageFlipSound();
   const [activeTab, setActiveTab] = React.useState<KenanganTab>("buku");
   // Buku Kenangan dimulai dalam keadaan TERTUTUP (sampul depan XII PPLG 1 + 1 Foto Bersama) baik 3D maupun 2D
   const [isBookOpen, setIsBookOpen] = React.useState(false);
@@ -527,11 +529,11 @@ export function KenanganClient({
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       {/* Header Halaman Kenangan Ringkas */}
       <header className="mx-auto max-w-2xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-          Ruang Memori & Surat Masa Depan · UNO XII PPLG 1
+        <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Ruang Memori &amp; Surat Masa Depan · UNO XII PPLG 1
         </p>
         <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          Buku Kenangan, Kapsul Waktu & Apresiasi
+          Buku Kenangan, Kapsul Waktu &amp; Apresiasi
         </h1>
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
           Album foto bersama, catatan tulisan tangan tiap siswa, dan surat masa depan.
@@ -553,7 +555,7 @@ export function KenanganClient({
           onClick={() => setActiveTab("buku")}
           className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "buku"
-              ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
+              ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -570,7 +572,7 @@ export function KenanganClient({
           onClick={() => setActiveTab("kapsul")}
           className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "kapsul"
-              ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
+              ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -587,7 +589,7 @@ export function KenanganClient({
           onClick={() => setActiveTab("thanks")}
           className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "thanks"
-              ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-sm"
+              ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -630,7 +632,7 @@ export function KenanganClient({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setIsBookOpen((prev) => !prev)}
-                className="inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-lg bg-[var(--color-accent-warm)] px-3.5 sm:px-4 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 whitespace-nowrap"
+                className="inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-lg bg-primary px-3.5 sm:px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 whitespace-nowrap"
               >
                 <BookOpen className="size-4" />
                 <span>
@@ -648,11 +650,11 @@ export function KenanganClient({
                 }}
                 className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
                   isBookOpen && (spreadIndex === 0 || spreadIndex === 1)
-                    ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
+                    ? "border-foreground/50 bg-muted text-foreground"
                     : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
-                <Camera className="size-4 text-[var(--color-accent-warm)]" />
+                <Camera className="size-4 text-foreground" />
                 <span>Foto Bersama (Hal. 1–4)</span>
               </motion.button>
 
@@ -666,11 +668,11 @@ export function KenanganClient({
                 }}
                 className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
                   isBookOpen && spreadIndex === TOC_SPREAD_INDEX
-                    ? "border-[var(--color-accent-warm)] bg-muted text-foreground"
+                    ? "border-foreground/50 bg-muted text-foreground"
                     : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
-                <List className="size-4 text-[var(--color-chart-1)]" />
+                <List className="size-4 text-foreground" />
                 <span>Daftar Isi (Hal. 5–6)</span>
               </motion.button>
             </div>
@@ -704,6 +706,7 @@ export function KenanganClient({
                 aria-label="Halaman sebelumnya"
                 disabled={isBookOpen && spreadIndex <= 0}
                 onClick={() => {
+                  playPageFlip();
                   if (!isBookOpen) {
                     setIsBookOpen(true);
                   } else {
@@ -715,8 +718,8 @@ export function KenanganClient({
                 <ChevronLeft className="size-5" />
               </motion.button>
 
-              <span className="shrink-0 font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground px-1">
-                {!isBookOpen ? "Sampul" : `${spreadIndex + 1} / ${spreads.length}`}
+              <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-muted-foreground px-1">
+                {!isBookOpen ? "Sampul" : `Hal. ${currentSpread.leftPage.pageNumber}–${currentSpread.rightPage.pageNumber}`}
               </span>
 
               <motion.button
@@ -725,6 +728,7 @@ export function KenanganClient({
                 aria-label="Halaman berikutnya"
                 disabled={isBookOpen && spreadIndex >= spreads.length - 1}
                 onClick={() => {
+                  playPageFlip();
                   if (!isBookOpen) {
                     setIsBookOpen(true);
                   } else {
@@ -741,18 +745,18 @@ export function KenanganClient({
           {/* Adaptive Buku Kenangan: 3D Melengkung di Desktop HD, Buku 2D Scrapbook dengan Kotak Teks Acak & Stiker Meme di Mode Ringan */}
           <Adaptive
             simple={
-              <div className="overflow-hidden rounded-2xl border-2 border-[#782f24]/60 bg-[#fbf5e8] text-[#2b2118] shadow-lg">
+              <div className="overflow-hidden rounded-2xl border-2 border-[#C9C4B8] bg-[#ECE9E1] text-[#1B1B1A] shadow-lg">
                 {!isBookOpen ? (
                   /* Sampul Buku 2D Tertutup dengan 1 Foto Bersama XII PPLG 1 */
-                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#63261d] via-[#782f24] to-[#521e16] px-4 py-8 sm:px-6 sm:py-12 text-center text-[#f3ca82]">
-                    <div className="w-full max-w-lg rounded-2xl border-2 border-[#e0a958] bg-[#592017]/60 p-4 sm:p-8 shadow-inner">
-                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#ebd0a0]">
+                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#3D3124] via-[#2D241C] to-[#241C15] px-4 py-8 sm:px-6 sm:py-12 text-center text-[#EFE5CE]">
+                    <div className="w-full max-w-lg rounded-2xl border-2 border-[#C9B794] bg-[#2D241C]/85 p-4 sm:p-8 shadow-inner">
+                      <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-[#D8C7A6]">
                         Album Memori Madrasah · UNO
                       </p>
-                      <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold text-[#f7d794]">
+                      <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold text-[#F7EEDB]">
                         Kenangan XII PPLG 1
                       </h2>
-                      <p className="mt-1 font-mono text-xs sm:text-sm font-semibold tracking-wider text-[#ebd0a0]">
+                      <p className="mt-1 font-mono text-xs sm:text-sm font-semibold tracking-wider text-[#D8C7A6]">
                         MAKN Ende · Angkatan 2024 — 2027
                       </p>
 
@@ -761,22 +765,22 @@ export function KenanganClient({
                         whileHover={{ rotate: 0, scale: 1.02 }}
                         onClick={() => setIsBookOpen(true)}
                         style={{ transform: "rotate(-1.2deg)" }}
-                        className="relative mx-auto mt-6 max-w-sm cursor-pointer rounded-xl border border-[#d6c5ad] bg-[#fffdf9] p-3 pb-4 text-[#2b2118] shadow-xl"
+                        className="relative mx-auto mt-6 max-w-sm cursor-pointer rounded-xl border border-[#C9C4B8] bg-[#F3F1EA] p-3 pb-4 text-[#1B1B1A] shadow-xl"
                       >
                         <span
                           aria-hidden="true"
-                          className="absolute -top-3 left-1/2 h-5 w-24 -translate-x-1/2 -rotate-2 bg-[#e8c67a]/85 shadow-2xs"
+                          className="absolute -top-3 left-1/2 h-5 w-24 -translate-x-1/2 -rotate-2 bg-[#C9C4B8]/85 shadow-2xs"
                         />
-                        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#222220]">
                           {coverPhotoMoment?.image_url ? (
                             <img
                               src={coverPhotoMoment.image_url}
                               alt={coverPhotoMoment.caption || "Foto Bersama XII PPLG 1"}
                               referrerPolicy="no-referrer"
-                              className="size-full object-cover"
+                              className="public-film-photo size-full object-cover"
                             />
                           ) : (
-                            <div className="flex size-full flex-col items-center justify-center bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] p-4 text-[#fbf6ec]">
+                            <div className="flex size-full flex-col items-center justify-center bg-gradient-to-br from-[#2A2A28] to-[#161614] p-4 text-[#F3F1EA]">
                               <Camera className="size-8 opacity-80" />
                               <span className="mt-1 font-serif text-base font-bold">
                                 Keluarga Besar XII PPLG 1
@@ -784,7 +788,7 @@ export function KenanganClient({
                             </div>
                           )}
                         </div>
-                        <p className="mt-2.5 font-serif text-sm sm:text-base font-bold leading-snug text-[#2b190e]">
+                        <p className="mt-2.5 font-serif text-sm sm:text-base font-bold leading-snug text-[#1B1B1A]">
                           ★ {coverPhotoMoment?.caption || "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"} ★
                         </p>
                       </motion.div>
@@ -794,7 +798,7 @@ export function KenanganClient({
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsBookOpen(true)}
-                        className="mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#e0a958] px-6 py-2.5 text-xs font-bold text-[#2b2118] shadow-md"
+                        className="mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#E8E5DC] px-6 py-2.5 text-xs font-bold text-[#1B1B1A] shadow-md"
                       >
                         <BookOpen className="size-4" />
                         <span>Buka Sampul Buku Kenangan</span>
@@ -803,21 +807,21 @@ export function KenanganClient({
                   </div>
                 ) : (
                   /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Halaman Foto Bersama, Daftar Isi, dan Halaman Siswa */
-                  <div className="relative grid grid-cols-1 divide-y divide-[#d8c7ae] md:grid-cols-2 md:divide-x md:divide-y-0">
+                  <div className="relative grid grid-cols-1 divide-y divide-[#C9C4B8] md:grid-cols-2 md:divide-x md:divide-y-0">
                     {/* Halaman Kiri */}
                     <div className="relative flex flex-col justify-between p-4 sm:p-8">
                       <div>
                         {/* Hiasan Washi Tape */}
                         <div
                           aria-hidden="true"
-                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#c86d3b]/35"
+                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 -rotate-2 bg-[#A8A49B]/45"
                         />
                         {currentSpread.leftPage.type === "group-photo" ? (
                           <div>
-                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1B1B1A]">
                               {currentSpread.leftPage.groupTitle}
                             </h2>
-                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#5C5A54]">
                               {currentSpread.leftPage.groupSubtitle}
                             </p>
                             <div className="mt-5 space-y-5">
@@ -828,29 +832,29 @@ export function KenanganClient({
                                   style={{
                                     transform: `rotate(${idx % 2 === 0 ? -1.4 : 1.4}deg)`,
                                   }}
-                                  className="relative rounded-xl border border-[#d4c4ae] bg-[#fffdf9] p-3 pb-4 shadow-md"
+                                  className="relative rounded-xl border border-[#C9C4B8] bg-[#F3F1EA] p-3 pb-4 shadow-md"
                                 >
                                   <span
                                     aria-hidden="true"
-                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#d9822b]/50"
+                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#A8A49B]/55"
                                   />
-                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#222220]">
                                     {gp.imageUrl ? (
                                       <img
                                         src={gp.imageUrl}
                                         alt={gp.category}
                                         referrerPolicy="no-referrer"
-                                        className="size-full object-cover"
+                                        className="public-film-photo size-full object-cover"
                                       />
                                     ) : null}
-                                    <span className="absolute top-2 right-2 rounded bg-[#23140b]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#f7d794]">
+                                    <span className="absolute top-2 right-2 rounded bg-[#161614]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#E8E5DC]">
                                       {gp.dateStr}
                                     </span>
                                   </div>
-                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#23140b]">
+                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#1B1B1A]">
                                     ★ {gp.category}
                                   </h3>
-                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#4e3824]">
+                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#2A2A28]">
                                     {gp.caption}
                                   </p>
                                 </motion.div>
@@ -859,10 +863,10 @@ export function KenanganClient({
                           </div>
                         ) : currentSpread.leftPage.type === "toc" ? (
                           <div>
-                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1B1B1A]">
                               Daftar Isi — Bagian I
                             </h2>
-                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#5C5A54]">
                               Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
                             </p>
                             <ul className="mt-4 space-y-2.5">
@@ -881,13 +885,13 @@ export function KenanganClient({
                                         onClick={() =>
                                           setSpreadIndex(entry.spreadIndex)
                                         }
-                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#C9C4B8] bg-[#F3F1EA] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#1B1B1A] shadow-2xs hover:bg-[#E2DED4] ${tilt}`}
                                       >
                                         <span>
                                           {String(stuNumber).padStart(2, "0")}.{" "}
                                           {entry.name}
                                         </span>
-                                        <span className="font-mono text-xs font-bold text-[#a84232]">
+                                        <span className="font-mono text-xs font-bold text-[#5C5A54]">
                                           Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
@@ -908,14 +912,14 @@ export function KenanganClient({
                               }}
                               className="real-photo-paper photo-gloss-sheen w-48 rounded-lg p-3 pb-4 shadow-md"
                             >
-                              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] text-[#fbf6ec]">
+                              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded bg-gradient-to-br from-[#2A2A28] to-[#161614] text-[#F3F1EA]">
                                 {currentSpread.leftPage.studentPhotoUrl &&
                                 currentSpread.leftPage.showPhoto !== false ? (
                                   <img
                                     src={currentSpread.leftPage.studentPhotoUrl}
                                     alt={currentSpread.leftPage.studentName || ""}
                                     referrerPolicy="no-referrer"
-                                    className="size-full object-cover"
+                                    className="public-film-photo size-full object-cover"
                                   />
                                 ) : (
                                   <span className="font-serif text-3xl font-bold">
@@ -926,7 +930,7 @@ export function KenanganClient({
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-2 font-serif text-base font-bold text-[#2b2118]">
+                              <p className="mt-2 font-serif text-base font-bold text-[#1B1B1A]">
                                 ★ {currentSpread.leftPage.studentNickname} ★
                               </p>
                             </motion.div>
@@ -938,17 +942,17 @@ export function KenanganClient({
                                   ((spreadIndex % 3) - 1) * -1.4
                                 }deg)`,
                               }}
-                              className="mt-5 w-full max-w-md rounded-xl border-2 border-[#d99b4e] bg-[#fffdf7] px-4 py-2.5 shadow-xs"
+                              className="mt-5 w-full max-w-md rounded-xl border-2 border-[#A8A49B] bg-[#F3F1EA] px-4 py-2.5 shadow-xs"
                             >
-                              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
+                              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1B1B1A]">
                                 {currentSpread.leftPage.studentName}
                               </h2>
-                              <p className="mt-0.5 font-sans text-xs sm:text-sm font-semibold text-[#a84232]">
+                              <p className="mt-0.5 font-sans text-xs sm:text-sm font-semibold text-[#5C5A54]">
                                 {currentSpread.leftPage.studentRole}
                               </p>
                             </div>
 
-                            {/* Kotak Bio dengan Variasi Kertas & Posisi Acak per Siswa */}
+                            {/* Kotak Bio Siswa */}
                             <div
                               style={{
                                 transform: `rotate(${
@@ -957,17 +961,13 @@ export function KenanganClient({
                                   ((spreadIndex * 11) % 8) - 4
                                 }px)`,
                               }}
-                              className="relative mt-5 w-full max-w-md rounded-2xl border-2 border-[#6e4e32] bg-[#fffaf0] p-4 sm:p-5 shadow-sm"
+                              className="relative mt-5 w-full max-w-md rounded-2xl border-2 border-[#5C5A54] bg-[#F3F1EA] p-4 sm:p-5 shadow-sm"
                             >
-                              <span
-                                aria-hidden="true"
-                                className="absolute -top-3 left-6 h-5 w-16 -rotate-6 bg-[#c86d3b]/45"
-                              />
-                              <p className="font-sans text-sm sm:text-base leading-relaxed text-[#182542]">
+                              <p className="font-sans text-sm sm:text-base font-medium leading-[1.65] text-[#1B1B1A]">
                                 &ldquo;{currentSpread.leftPage.studentBio}&rdquo;
                               </p>
                               {currentSpread.leftPage.studentTags && (
-                                <p className="mt-3 font-mono text-xs font-bold text-[#a84232]">
+                                <p className="mt-3 font-mono text-xs font-bold text-[#5C5A54]">
                                   #{currentSpread.leftPage.studentTags.join("  #")}
                                 </p>
                               )}
@@ -982,7 +982,7 @@ export function KenanganClient({
                           memeIdx={spreadIndex * 2 + 1}
                           rotateDeg={spreadIndex % 2 === 0 ? -3 : 3}
                         />
-                        <p className="text-center font-mono text-xs font-bold text-[#6e5a47]">
+                        <p className="text-center font-mono text-xs font-bold text-[#5C5A54]">
                           LEMBAR {currentSpread.leftPage.pageNumber} · UNO SCRAPBOOK
                         </p>
                       </div>
@@ -993,14 +993,14 @@ export function KenanganClient({
                       <div>
                         <div
                           aria-hidden="true"
-                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 rotate-2 bg-[#2d6a6e]/30"
+                          className="mx-auto -mt-2 sm:-mt-3 mb-4 h-6 w-32 rotate-2 bg-[#A8A49B]/40"
                         />
                         {currentSpread.rightPage.type === "group-photo" ? (
                           <div>
-                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1B1B1A]">
                               {currentSpread.rightPage.groupTitle}
                             </h2>
-                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#5C5A54]">
                               {currentSpread.rightPage.groupSubtitle}
                             </p>
                             <div className="mt-5 space-y-5">
@@ -1011,29 +1011,29 @@ export function KenanganClient({
                                   style={{
                                     transform: `rotate(${idx % 2 === 0 ? 1.4 : -1.4}deg)`,
                                   }}
-                                  className="relative rounded-xl border border-[#d4c4ae] bg-[#fffdf9] p-3 pb-4 shadow-md"
+                                  className="relative rounded-xl border border-[#C9C4B8] bg-[#F3F1EA] p-3 pb-4 shadow-md"
                                 >
                                   <span
                                     aria-hidden="true"
-                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#2d6a6e]/45"
+                                    className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#A8A49B]/55"
                                   />
-                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#24383b]">
+                                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#222220]">
                                     {gp.imageUrl ? (
                                       <img
                                         src={gp.imageUrl}
                                         alt={gp.category}
                                         referrerPolicy="no-referrer"
-                                        className="size-full object-cover"
+                                        className="public-film-photo size-full object-cover"
                                       />
                                     ) : null}
-                                    <span className="absolute top-2 right-2 rounded bg-[#23140b]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#f7d794]">
+                                    <span className="absolute top-2 right-2 rounded bg-[#161614]/80 px-2 py-0.5 font-mono text-[10px] font-bold text-[#E8E5DC]">
                                       {gp.dateStr}
                                     </span>
                                   </div>
-                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#23140b]">
+                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#1B1B1A]">
                                     ★ {gp.category}
                                   </h3>
-                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#4e3824]">
+                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#2A2A28]">
                                     {gp.caption}
                                   </p>
                                 </motion.div>
@@ -1042,10 +1042,10 @@ export function KenanganClient({
                           </div>
                         ) : currentSpread.rightPage.type === "toc" ? (
                           <div>
-                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1B1B1A]">
                               Daftar Isi — Bagian II
                             </h2>
-                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#5C5A54]">
                               Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
                             </p>
                             <ul className="mt-4 space-y-2.5">
@@ -1064,13 +1064,13 @@ export function KenanganClient({
                                         onClick={() =>
                                           setSpreadIndex(entry.spreadIndex)
                                         }
-                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#C9C4B8] bg-[#F3F1EA] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#1B1B1A] shadow-2xs hover:bg-[#E2DED4] ${tilt}`}
                                       >
                                         <span>
                                           {String(stuNumber).padStart(2, "0")}.{" "}
                                           {entry.name}
                                         </span>
-                                        <span className="font-mono text-xs font-bold text-[#a84232]">
+                                        <span className="font-mono text-xs font-bold text-[#5C5A54]">
                                           Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
@@ -1082,8 +1082,8 @@ export function KenanganClient({
                           </div>
                         ) : (
                           <div className="space-y-5">
-                            <div className="inline-block -rotate-1 rounded-xl border-2 border-[#2b190d] bg-[#fffdf7] px-4 py-1.5 shadow-2xs">
-                              <h3 className="font-serif text-base sm:text-lg font-bold text-[#2b2118]">
+                            <div className="inline-block -rotate-1 rounded-xl border-2 border-[#2A2A28] bg-[#F3F1EA] px-4 py-1.5 shadow-2xs">
+                              <h3 className="font-serif text-base sm:text-lg font-bold text-[#1B1B1A]">
                                 Surat Sahabat untuk{" "}
                                 {currentSpread.rightPage.studentNickname} ♥
                               </h3>
@@ -1092,10 +1092,10 @@ export function KenanganClient({
                             currentSpread.rightPage.messages.length > 0 ? (
                               currentSpread.rightPage.messages.map((m, idx) => {
                                 const cardBgs = [
-                                  "bg-[#fffdf5] border-[#5c4026]",
-                                  "bg-[#f3faf7] border-[#2d6a6e]",
-                                  "bg-[#fef9e7] border-[#b8732a]",
-                                  "bg-[#fdf2e9] border-[#a84232]",
+                                  "bg-[#F3F1EA] border-[#5C5A54]",
+                                  "bg-[#ECE9E1] border-[#3D3D3A]",
+                                  "bg-[#F3F1EA] border-[#7D7A72]",
+                                  "bg-[#E2DED4] border-[#2A2A28]",
                                 ];
                                 const rotDeg =
                                   (((m.seed || 10) + idx * 7 + spreadIndex * 3) %
@@ -1115,22 +1115,18 @@ export function KenanganClient({
                                       cardBgs[(idx + spreadIndex) % cardBgs.length]
                                     }`}
                                   >
-                                    <span
-                                      aria-hidden="true"
-                                      className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#c86d3b]/45"
-                                    />
-                                    <p className="font-sans text-sm sm:text-base leading-relaxed text-[#182542]">
+                                    <p className="font-sans text-[15px] leading-[1.6] font-medium text-[#1B1B1A]">
                                       &ldquo;{m.text}&rdquo;
                                     </p>
-                                    <footer className="mt-2.5 text-right font-serif text-xs sm:text-sm font-bold text-[#a84232]">
+                                    <footer className="mt-2 text-right font-serif text-xs font-bold text-[#5C5A54]">
                                       — Dari: {m.author} ♥
                                     </footer>
                                   </motion.blockquote>
                                 );
                               })
                             ) : (
-                              <div className="rounded-2xl border-2 border-dashed border-[#c4a782] bg-[#fffdf7]/80 p-5 text-center">
-                                <p className="font-sans text-sm text-[#6e5a47]">
+                              <div className="rounded-2xl border-2 border-dashed border-[#A8A49B] bg-[#F3F1EA]/80 p-5 text-center">
+                                <p className="font-sans text-sm text-[#5C5A54]">
                                   Belum ada pesan kenangan di database untuk halaman ini.
                                 </p>
                               </div>
@@ -1145,7 +1141,7 @@ export function KenanganClient({
                           memeIdx={spreadIndex * 2 + 2}
                           rotateDeg={spreadIndex % 2 === 0 ? 3 : -3}
                         />
-                        <p className="text-center font-mono text-xs font-bold text-[#6e5a47]">
+                        <p className="text-center font-mono text-xs font-bold text-[#5C5A54]">
                           LEMBAR {currentSpread.rightPage.pageNumber} · UNO SCRAPBOOK
                         </p>
                       </div>
@@ -1164,8 +1160,14 @@ export function KenanganClient({
                   coverPhotoMoment?.caption ||
                   "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"
                 }
-                onOpenBook={() => setIsBookOpen(true)}
-                onChangeSpread={(next) => setSpreadIndex(next)}
+                onOpenBook={() => {
+                  playPageFlip();
+                  setIsBookOpen(true);
+                }}
+                onChangeSpread={(next) => {
+                  playPageFlip();
+                  setSpreadIndex(next);
+                }}
               />
             }
           />
@@ -1174,7 +1176,7 @@ export function KenanganClient({
           <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-2xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-[var(--color-accent-warm)]" />
+                <Sparkles className="size-4 text-foreground" />
                 <span className="font-serif text-sm sm:text-base font-bold text-foreground">
                   Stiker Meme Perpisahan Lembar Ini (Hal. {currentSpread.leftPage.pageNumber} &ndash; {currentSpread.rightPage.pageNumber})
                 </span>
@@ -1224,14 +1226,14 @@ export function KenanganClient({
                         }}
                         className={`flex min-h-[42px] items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors ${
                           isCurrent
-                            ? "border-[var(--color-accent-warm)] bg-muted text-foreground font-semibold"
+                            ? "border-foreground/50 bg-muted text-foreground font-semibold"
                             : "border-border/60 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         }`}
                       >
                         <span className="truncate">
                           {String(idx + 1).padStart(2, "0")}. {s.full_name}
                         </span>
-                        <span className="ml-2 shrink-0 font-mono text-[11px] text-[var(--color-accent-warm)]">
+                        <span className="ml-2 shrink-0 font-mono text-[11px] text-foreground">
                           Hal. {targetSpread * 2 + 1}
                         </span>
                       </motion.button>
@@ -1349,7 +1351,7 @@ export function KenanganClient({
                 <button
                   type="submit"
                   disabled={memSubmitting}
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2.5 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <Send className="size-3.5" />
                   <span>
@@ -1408,12 +1410,12 @@ export function KenanganClient({
                           <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
                             {cap.is_unlocked ? (
                               <>
-                                <Unlock className="size-3.5 text-[var(--color-chart-2)]" />
+                                <Unlock className="size-3.5 text-foreground" />
                                 <span>Sudah Terbuka</span>
                               </>
                             ) : (
                               <>
-                                <Lock className="size-3.5 text-[var(--color-accent-warm)]" />
+                                <Lock className="size-3.5 text-muted-foreground" />
                                 <span>Terkunci Rapat</span>
                               </>
                             )}
@@ -1573,7 +1575,7 @@ export function KenanganClient({
               <button
                 type="submit"
                 disabled={capSubmitting}
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2.5 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
                 <Lock className="size-3.5" />
                 <span>
@@ -1615,7 +1617,7 @@ export function KenanganClient({
                         &ldquo;{th.message}&rdquo;
                       </p>
                     </div>
-                    <p className="mt-4 border-t border-dashed border-border pt-2.5 text-right text-xs font-semibold text-[var(--color-accent-warm)]">
+                    <p className="mt-4 border-t border-dashed border-border pt-2.5 text-right font-mono text-xs font-semibold text-muted-foreground">
                       — Dari {th.from_name}
                     </p>
                   </motion.article>
@@ -1724,7 +1726,7 @@ export function KenanganClient({
                   role="status"
                   className="flex items-start gap-2 rounded-lg border border-border bg-muted p-2.5 text-xs text-foreground"
                 >
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                   <span>{thFeedback}</span>
                 </div>
               )}
@@ -1732,7 +1734,7 @@ export function KenanganClient({
               <button
                 type="submit"
                 disabled={thSubmitting}
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2.5 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
                 <Heart className="size-3.5" />
                 <span>

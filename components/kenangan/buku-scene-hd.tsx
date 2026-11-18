@@ -178,7 +178,7 @@ export function BukuKenanganSceneHD({
       const bookShadow = new THREE.Mesh(
         new THREE.PlaneGeometry(5.05, 3.35),
         new THREE.MeshBasicMaterial({
-          color: 0x090502,
+          color: 0x121211,
           transparent: true,
           opacity: 0.42,
           depthWrite: false,
@@ -188,20 +188,20 @@ export function BukuKenanganSceneHD({
       bookShadow.position.set(0, -0.01, 0.04);
       scene.add(bookShadow);
 
-      // Properti Meja Pendukung: Cangkir Kopi Hangat di Kiri Atas, Pulpen Klasik di Kanan, Klip Besi Binder, dan Untaian Lampu Tumblr Hangat
+      // Properti Meja Ruang Gelap Fotografi: Cangkir Keramik Monokrom, Pulpen Perak, & Lampu Pijar Lembut
       const mugGroup = new THREE.Group();
       mugGroup.position.set(-2.92, 0.02, -1.05);
       const coasterMesh = new THREE.Mesh(
         new THREE.CylinderGeometry(0.42, 0.44, 0.03, 24),
         new THREE.MeshStandardMaterial({
-          color: 0x8d5834,
+          color: 0x3d3d3a,
           roughness: 0.75,
         })
       );
       const mugCup = new THREE.Mesh(
         new THREE.CylinderGeometry(0.32, 0.27, 0.36, 24),
         new THREE.MeshStandardMaterial({
-          color: 0xf7efe2,
+          color: 0xece9e1,
           roughness: 0.28,
           metalness: 0.05,
         })
@@ -209,14 +209,14 @@ export function BukuKenanganSceneHD({
       mugCup.position.y = 0.18;
       const coffeeLiquid = new THREE.Mesh(
         new THREE.CircleGeometry(0.28, 24),
-        new THREE.MeshBasicMaterial({ color: 0x3b2110 })
+        new THREE.MeshBasicMaterial({ color: 0x222220 })
       );
       coffeeLiquid.rotation.x = -Math.PI / 2;
       coffeeLiquid.position.y = 0.365;
       const mugHandle = new THREE.Mesh(
         new THREE.TorusGeometry(0.11, 0.028, 10, 18, Math.PI),
         new THREE.MeshStandardMaterial({
-          color: 0xf7efe2,
+          color: 0xece9e1,
           roughness: 0.28,
         })
       );
@@ -231,7 +231,7 @@ export function BukuKenanganSceneHD({
       const penBody = new THREE.Mesh(
         new THREE.CylinderGeometry(0.032, 0.028, 1.65, 16),
         new THREE.MeshStandardMaterial({
-          color: 0x2c1d14,
+          color: 0x222220,
           roughness: 0.35,
           metalness: 0.25,
         })
@@ -240,7 +240,7 @@ export function BukuKenanganSceneHD({
       const penTip = new THREE.Mesh(
         new THREE.ConeGeometry(0.028, 0.16, 16),
         new THREE.MeshStandardMaterial({
-          color: 0xd99b4e,
+          color: 0xc9c4b8,
           roughness: 0.25,
           metalness: 0.85,
         })
@@ -250,7 +250,7 @@ export function BukuKenanganSceneHD({
       const penClip = new THREE.Mesh(
         new THREE.BoxGeometry(0.016, 0.025, 0.42),
         new THREE.MeshStandardMaterial({
-          color: 0xd99b4e,
+          color: 0xc9c4b8,
           roughness: 0.25,
           metalness: 0.85,
         })
@@ -259,7 +259,7 @@ export function BukuKenanganSceneHD({
       penGroup.add(penBody, penTip, penClip);
       scene.add(penGroup);
 
-      // Untaian Fairy String Lights hangat mengelilingi tepi meja di sekitar buku
+      // Untaian Lampu Studio Monokrom Lembut di tepi meja
       const fairyGroup = new THREE.Group();
       const fairyBulbs: THREE.Mesh[] = [];
       const bulbPositions: [number, number, number][] = [
@@ -282,7 +282,7 @@ export function BukuKenanganSceneHD({
 
       bulbPositions.forEach(([bx, by, bz]) => {
         const bulbMat = new THREE.MeshBasicMaterial({
-          color: 0xffe49e,
+          color: 0xe8e5dc,
           fog: false,
         });
         const bulb = new THREE.Mesh(bulbGeo, bulbMat);
@@ -291,9 +291,9 @@ export function BukuKenanganSceneHD({
         fairyBulbs.push(bulb);
 
         const haloMat = new THREE.MeshBasicMaterial({
-          color: 0xffb84d,
+          color: 0x8c8980,
           transparent: true,
-          opacity: 0.28,
+          opacity: 0.22,
           depthWrite: false,
         });
         const halo = new THREE.Mesh(haloGeo, haloMat);
@@ -302,43 +302,43 @@ export function BukuKenanganSceneHD({
       });
       scene.add(fairyGroup);
 
-      // 2. Grup Utama Scrapbook Ring-Binder 3D Realistis di Atas Meja
+      // 2. Grup Utama Album Arsip Ring-Binder 3D Monokrom di Atas Meja
       const bookRoot = new THREE.Group();
       bookRoot.position.set(0, 0, 0);
       scene.add(bookRoot);
 
       const clothMat = new THREE.MeshStandardMaterial({
-        color: 0x68271e,
+        color: 0x252523,
         roughness: 0.68,
         metalness: 0.12,
       });
 
       const leatherTrimMat = new THREE.MeshStandardMaterial({
-        color: 0x3d1810,
+        color: 0x191917,
         roughness: 0.52,
         metalness: 0.18,
       });
 
       const goldMat = new THREE.MeshStandardMaterial({
-        color: 0xd99b4e,
-        roughness: 0.26,
-        metalness: 0.78,
+        color: 0xc9c4b8,
+        roughness: 0.28,
+        metalness: 0.72,
       });
 
       const chromeRingMat = new THREE.MeshStandardMaterial({
-        color: 0xd8d2c9,
+        color: 0xd6d2c9,
         roughness: 0.2,
         metalness: 0.9,
       });
 
       const paperBlockMat = new THREE.MeshStandardMaterial({
-        color: 0xefe0c6,
+        color: 0xece9e1,
         roughness: 0.84,
         metalness: 0.02,
       });
 
       const paperBlockAltMat = new THREE.MeshStandardMaterial({
-        color: 0xe3cfb0,
+        color: 0xdcd8ce,
         roughness: 0.86,
         metalness: 0.02,
       });
@@ -403,9 +403,9 @@ export function BukuKenanganSceneHD({
       });
       bookRoot.add(binderRingsGroup);
 
-      // Tab Indeks Warna-warni di Tepi Kiri & Kanan Buku Scrapbook
+      // Tab Indeks Monokrom di Tepi Kiri & Kanan Buku Arsip
       const indexTabsGroup = new THREE.Group();
-      const tabColors = [0xd9822b, 0x2d6a6e, 0xa84232, 0x3b593f, 0xe0a958];
+      const tabColors = [0xd6d2c9, 0x9e9b92, 0x6e6b64, 0x4a4843, 0xb5b1a7];
       const tabGeo = new THREE.BoxGeometry(0.18, 0.014, 0.34);
       for (let t = 0; t < 5; t++) {
         const tz = -1.02 + t * 0.51;
@@ -482,12 +482,12 @@ export function BukuKenanganSceneHD({
       const rightPageGeo = createTopDownPageGeometry("right");
 
       const leftPageMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        color: 0xf3f1ea,
         fog: false,
         toneMapped: false,
       });
       const rightPageMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        color: 0xf3f1ea,
         fog: false,
         toneMapped: false,
       });
@@ -500,11 +500,11 @@ export function BukuKenanganSceneHD({
       rightPageMesh.position.set(PAGE_W / 2 + 0.02, 0.118, 0);
       bookRoot.add(rightPageMesh);
 
-      // Bayangan Lipatan Tengah Buku (Spine Crease Valley Shadow) agar lipatan buku nampak berdimensi nyata
+      // Bayangan Lipatan Tengah Buku (Spine Crease Valley Shadow)
       const spineShadowStrip = new THREE.Mesh(
         new THREE.PlaneGeometry(0.22, PAGE_H - 0.04),
         new THREE.MeshBasicMaterial({
-          color: 0x1a0e06,
+          color: 0x161614,
           transparent: true,
           opacity: 0.24,
           depthWrite: false,
@@ -521,7 +521,7 @@ export function BukuKenanganSceneHD({
       flipGeo.rotateX(-Math.PI / 2);
       flipGeo.translate(PAGE_W / 2, 0, 0);
       const flipMat = new THREE.MeshBasicMaterial({
-        color: 0xfbf5e8,
+        color: 0xf3f1ea,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.92,

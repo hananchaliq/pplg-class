@@ -1,90 +1,123 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 /*
-  SISTEM DESAIN NOSTALGIA HANGAT: "SURAT DARI ENDE"
-  Mode Sore (Light): Kertas Buku Tahunan Hangat (#F6EFE2), Tinta Sepia Tua (#2B2118), Terakota Ende (#C86D3B)
-  Mode Malam (Dark): Kamar Malam Lampu Kuning Hangat (#1C1510), Kertas Malam (#261D16), Amber Emas (#E09F4C)
+  =============================================================================
+  SISTEM DESAIN "MONOKROM FILM JADUL" — XII PPLG 1 · MAKN Ende (pplg.uno)
+  3-Font System (Koran & Kamera Analog):
+  1. Display / Masthead & Judul: Old Standard TT (--font-serif / font-serif)
+  2. Body / Teks Bacaan & UI: Source Serif 4 (--font-sans / font-sans)
+  3. Metadata / Stamp / Mesin Tik: Special Elite (--font-mono / font-mono)
+  Catatan: Tanpa #000000 dan #ffffff murni.
+  =============================================================================
 */
 :root {
-  --background: #f6efe2;
-  --foreground: #2b2118;
-  --card: #fbf6ec;
-  --card-foreground: #2b2118;
-  --popover: #fbf6ec;
-  --popover-foreground: #2b2118;
-  --primary: #2b2118;
-  --primary-foreground: #f6efe2;
-  --secondary: #ebe0cd;
-  --secondary-foreground: #2b2118;
-  --muted: #ebe0cd;
-  --muted-foreground: #6e5a47;
-  --accent: #c86d3b;
-  --accent-foreground: #fbf6ec;
-  --destructive: #a84232;
-  --destructive-foreground: #fbf6ec;
-  --border: #d8c7ae;
-  --input: #d8c7ae;
-  --ring: #c86d3b;
-  --chart-1: #2d6a6e;
-  --chart-2: #3b7a57;
-  --chart-3: #c86d3b;
-  --chart-4: #a84232;
-  --chart-5: #8c6239;
-  --radius: 0.75rem;
+  --background: #ECE9E1;
+  --foreground: #1B1B1A;
+  --card: #F3F1EA;
+  --card-foreground: #1B1B1A;
+  --popover: #F3F1EA;
+  --popover-foreground: #1B1B1A;
+  --primary: #2A2A28;
+  --primary-foreground: #F3F1EA;
+  --secondary: #E2DED4;
+  --secondary-foreground: #1B1B1A;
+  --muted: #E2DED4;
+  --muted-foreground: #5C5A54;
+  --accent: #3D3D3A;
+  --accent-foreground: #F3F1EA;
+  --destructive: #4A4843;
+  --destructive-foreground: #F3F1EA;
+  --border: #C9C4B8;
+  --input: #C9C4B8;
+  --ring: #4A4843;
+  --chart-1: #2D6366;
+  --chart-2: #4E6E52;
+  --chart-3: #A95A42;
+  --chart-4: #B5843F;
+  --chart-5: #475B78;
 
-  /* Custom Semantic Warm Tokens */
-  --color-accent-warm: #c86d3b;
-  --color-accent-terracotta: #a84232;
-  --color-accent-kelimutu: #2d6a6e;
-  --color-paper-elevated: #fffaf0;
+  --radius: 0.625rem;
 
-  /* Theme-Matched Scrollbar Tokens (Light Mode — Kertas Hangat & Terakota) */
-  --scrollbar-track: #ebe0cd;
-  --scrollbar-thumb: #c49a71;
-  --scrollbar-thumb-hover: #c86d3b;
-  --scrollbar-border: #f6efe2;
+  /* Token Monokrom Kertas & Tinta */
+  --surface: #F3F1EA;
+  --ink-primary: #1B1B1A;
+  --ink-secondary: #5C5A54;
+  --ink-pen: #2A2A28;
+  --stamp-red: #3D3D3A;
+  --washi-sage: #D6D2C9;
+  --washi-rose: #CBC7BE;
+  --washi-gold: #DCD8CE;
+
+  --color-accent-warm: #2A2A28;
+  --color-accent-terracotta: #4A4843;
+  --color-accent-kelimutu: #5C5A54;
+  --color-paper-elevated: #F3F1EA;
+
+  /* Skala Ukuran Proporsional & Nyaman Dibaca */
+  --text-h1: clamp(2rem, 4vw + 0.5rem, 3.35rem);
+  --text-h2: clamp(1.625rem, 2.8vw + 0.5rem, 2.25rem);
+  --text-h3: clamp(1.25rem, 1.8vw + 0.5rem, 1.5rem);
+  --text-h4: clamp(1.0625rem, 0.8vw + 0.85rem, 1.25rem);
+  --text-story: clamp(0.975rem, 0.25vw + 0.9rem, 1.075rem);
+  --text-ui: 1rem;
+  --text-arsip: 0.75rem;
+  --text-tulis: 1rem;
+
+  /* Scrollbar Monokrom */
+  --scrollbar-track: #E2DED4;
+  --scrollbar-thumb: #A8A49B;
+  --scrollbar-thumb-hover: #5C5A54;
+  --scrollbar-border: #ECE9E1;
 }
 
 .dark {
-  --background: #1c1510;
-  --foreground: #f2e6d5;
-  --card: #261d16;
-  --card-foreground: #f2e6d5;
-  --popover: #261d16;
-  --popover-foreground: #f2e6d5;
-  --primary: #f2e6d5;
-  --primary-foreground: #1c1510;
-  --secondary: #33271e;
-  --secondary-foreground: #f2e6d5;
-  --muted: #33271e;
-  --muted-foreground: #b8a38c;
-  --accent: #e09f4c;
-  --accent-foreground: #1c1510;
-  --destructive: #d46552;
-  --destructive-foreground: #1c1510;
-  --border: #463629;
-  --input: #463629;
-  --ring: #e09f4c;
-  --chart-1: #4ea3a8;
-  --chart-2: #5ca87c;
-  --chart-3: #e09f4c;
-  --chart-4: #d46552;
-  --chart-5: #b88655;
+  /* Ruang Gelap Sepia Hangat (tidak hitam pekat) */
+  --background: #1C1916;
+  --foreground: #EBE3D3;
+  --card: #25211D;
+  --card-foreground: #EBE3D3;
+  --popover: #25211D;
+  --popover-foreground: #EBE3D3;
+  --primary: #EAE1CF;
+  --primary-foreground: #1C1916;
+  --secondary: #2E2924;
+  --secondary-foreground: #EBE3D3;
+  --muted: #332E28;
+  --muted-foreground: #B0A595;
+  --accent: #DCD2BF;
+  --accent-foreground: #1C1916;
+  --destructive: #B86B52;
+  --destructive-foreground: #F3F1EA;
+  --border: #3E3830;
+  --input: #3E3830;
+  --ring: #C2B49E;
+  --chart-1: #4B8D91;
+  --chart-2: #6F9674;
+  --chart-3: #C9765B;
+  --chart-4: #D4A157;
+  --chart-5: #6A83A6;
 
-  /* Custom Semantic Warm Tokens (Malam) */
-  --color-accent-warm: #e09f4c;
-  --color-accent-terracotta: #d46552;
-  --color-accent-kelimutu: #4ea3a8;
-  --color-paper-elevated: #2e231b;
+  --surface: #25211D;
+  --ink-primary: #EBE3D3;
+  --ink-secondary: #B0A595;
+  --ink-pen: #E2D9C7;
+  --stamp-red: #B5A894;
+  --washi-sage: #312B24;
+  --washi-rose: #3A322A;
+  --washi-gold: #463B2E;
 
-  /* Theme-Matched Scrollbar Tokens (Dark Mode — Kayu Malam & Amber Emas) */
-  --scrollbar-track: #241b14;
-  --scrollbar-thumb: #694e36;
-  --scrollbar-thumb-hover: #e09f4c;
-  --scrollbar-border: #1c1510;
+  --color-accent-warm: #EBE3D3;
+  --color-accent-terracotta: #B5A894;
+  --color-accent-kelimutu: #8C8272;
+  --color-paper-elevated: #2A2520;
+
+  --scrollbar-track: #25211D;
+  --scrollbar-thumb: #5A4E40;
+  --scrollbar-thumb-hover: #8C8272;
+  --scrollbar-border: #1C1916;
 }
 
 @theme inline {
@@ -112,15 +145,25 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
 
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
-  --font-hand: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
-  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+  /* Sistem 3 Font: Old Standard TT + Source Serif 4 + Special Elite */
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Alias semantik */
+  --font-display: var(--font-serif);
+  --font-body: var(--font-sans);
+  --font-arsip: var(--font-mono);
+  --font-tulis: var(--font-serif);
+  --font-hand: var(--font-serif);
 }
 
 @layer base {
@@ -129,18 +172,198 @@
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
+
   html {
     scroll-behavior: smooth;
     overflow-x: clip;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased selection:bg-[#c86d3b]/25 selection:text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 1rem;
     line-height: 1.6;
     overflow-x: clip;
     background-image:
-      radial-gradient(circle at 18% 12%, rgba(200, 109, 59, 0.07), transparent 42%),
-      radial-gradient(circle at 84% 82%, rgba(45, 106, 110, 0.06), transparent 45%);
+      radial-gradient(circle at 18% 12%, rgba(42, 42, 40, 0.045), transparent 46%),
+      radial-gradient(circle at 82% 86%, rgba(92, 90, 84, 0.04), transparent 46%);
   }
+
+  h1,
+  h2,
+  h3,
+  .font-display,
+  .font-serif {
+    font-family: var(--font-serif);
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  nav a {
+    font-family: var(--font-sans);
+  }
+
+  .font-arsip,
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .font-tulis,
+  .font-hand {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Skala Tipografi Editorial & Mudah Dibaca */
+.album-h1 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h1);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h2 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h2);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h3 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h3);
+  line-height: 1.25;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h4);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.album-story {
+  font-family: var(--font-sans);
+  font-size: var(--text-story);
+  line-height: 1.65;
+  max-width: 65ch;
+  text-wrap: pretty;
+}
+
+/* Filter Foto Jadul Pucat & Pudar Hangat (bukan hitam-putih pekat; Admin tetap berwarna asli) */
+.public-film-photo {
+  filter: saturate(0.46) contrast(0.92) brightness(1.04) sepia(0.2);
+}
+
+/* Panel Kertas Monokrom untuk Overlay & Kartu */
+.album-paper-panel {
+  background-color: rgba(243, 241, 234, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  color: var(--foreground);
+  box-shadow:
+    0 10px 24px -8px rgba(27, 27, 26, 0.14),
+    0 2px 6px -1px rgba(27, 27, 26, 0.08);
+}
+
+.dark .album-paper-panel {
+  background-color: rgba(26, 26, 24, 0.96);
+  border-color: var(--border);
+  color: var(--foreground);
+  box-shadow:
+    0 12px 28px -8px rgba(18, 18, 17, 0.55),
+    0 3px 8px -2px rgba(18, 18, 17, 0.35);
+}
+
+/* Label Arsip Mesin Tik */
+.album-stamp {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  background-color: var(--secondary);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.washi-tape {
+  display: none;
+}
+
+.album-lined-paper {
+  background-color: var(--card);
+}
+
+.album-photo-print {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Bingkai Foto Cetak Kertas Perak */
+.vintage-photo-frame,
+.real-photo-paper {
+  position: relative;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 10px 24px -10px rgba(27, 27, 26, 0.14),
+    0 2px 6px -2px rgba(27, 27, 26, 0.08);
+  transition:
+    transform 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vintage-photo-frame:hover,
+.real-photo-paper:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 30px -10px rgba(27, 27, 26, 0.2),
+    0 4px 12px -3px rgba(27, 27, 26, 0.12);
+}
+
+.dark .vintage-photo-frame,
+.dark .real-photo-paper {
+  background-color: var(--card);
+  border-color: var(--border);
+  box-shadow:
+    0 12px 28px -10px rgba(18, 18, 17, 0.52),
+    0 4px 10px -2px rgba(18, 18, 17, 0.32);
+}
+
+/* Garis Pemisah Cetak Koran Ganda Monokrom */
+.ikat-divider {
+  height: 5px;
+  width: 100%;
+  border-top: 2px solid var(--foreground);
+  border-bottom: 1px solid var(--border);
+  opacity: 0.8;
 }
 
 .no-scrollbar {
@@ -151,81 +374,25 @@
   display: none;
 }
 
-/* Custom Theme-Aware Scrollbars for All Scrollable Elements (Light & Dark) */
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
 }
 
 *::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
-  border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--scrollbar-thumb), var(--color-accent-warm));
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
   border: 2px solid var(--scrollbar-border);
-  transition: background-color 0.2s ease;
 }
 
 *::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
 
-*::-webkit-scrollbar-corner {
-  background: var(--scrollbar-track);
-}
-
-/* Ornamen Garis Geometris Tenun Ikat Ende */
-.ikat-divider {
-  height: 6px;
-  width: 100%;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--color-accent-warm) 0px,
-    var(--color-accent-warm) 14px,
-    transparent 14px,
-    transparent 18px,
-    var(--color-accent-terracotta) 18px,
-    var(--color-accent-terracotta) 28px,
-    transparent 28px,
-    transparent 32px,
-    var(--color-accent-kelimutu) 32px,
-    var(--color-accent-kelimutu) 42px,
-    transparent 42px,
-    transparent 48px
-  );
-  opacity: 0.72;
-}
-
-/* Bingkai Polaroid & Kertas Foto Fisik Asli (Real Silver-Halide Photo Paper) */
-.vintage-photo-frame,
-.real-photo-paper {
-  position: relative;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(252, 246, 234, 0.98) 52%, rgba(242, 231, 211, 0.96) 100%);
-  border: 1px solid #dccbb2;
-  box-shadow:
-    0 12px 26px -10px rgba(43, 33, 24, 0.22),
-    0 3px 8px -2px rgba(43, 33, 24, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.78),
-    inset 0 -14px 28px rgba(196, 164, 124, 0.12);
-}
-
-.dark .vintage-photo-frame,
-.dark .real-photo-paper {
-  background:
-    linear-gradient(145deg, rgba(52, 39, 29, 0.98) 0%, rgba(42, 31, 23, 0.98) 58%, rgba(34, 25, 18, 0.98) 100%);
-  border-color: #544030;
-  box-shadow:
-    0 14px 30px -10px rgba(0, 0, 0, 0.55),
-    0 4px 10px -2px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px rgba(255, 242, 222, 0.08),
-    inset 0 -14px 28px rgba(0, 0, 0, 0.22);
-}
-
-/* Efek Kilau Satin Kertas Foto Cetak Asli */
 .photo-gloss-sheen {
   position: relative;
   overflow: hidden;
@@ -238,10 +405,9 @@
   inset: 0;
   background: linear-gradient(
     125deg,
-    rgba(255, 255, 255, 0) 20%,
-    rgba(255, 252, 242, 0.24) 46%,
-    rgba(255, 255, 255, 0.04) 56%,
-    rgba(255, 255, 255, 0) 80%
+    rgba(243, 241, 234, 0) 24%,
+    rgba(243, 241, 234, 0.12) 48%,
+    rgba(243, 241, 234, 0) 76%
   );
   mix-blend-mode: screen;
 }

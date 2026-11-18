@@ -85,16 +85,16 @@ export function GuruClient({
       transition={{ duration: 0.35 }}
       className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
     >
-      {/* Header Halaman Guru Ringkas */}
+      {/* Header Halaman Guru */}
       <header className="mx-auto max-w-2xl text-center">
-        <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-          Penghormatan & Terima Kasih · {teachers.length} Pendidik MAKN Ende
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          Penghormatan &amp; Terima Kasih · {teachers.length} Pendidik MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          Guru & Wali Kelas XII PPLG 1
+        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          Guru Pembimbing &amp; Wali Kelas XII PPLG 1
         </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-          Apresiasi tulus untuk Bapak dan Ibu Guru yang membimbing langkah kami.
+        <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          Apresiasi tulus untuk Bapak dan Ibu Guru yang membimbing langkah kami selama tiga tahun di madrasah.
         </p>
       </header>
 
@@ -105,7 +105,7 @@ export function GuruClient({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.08 }}
           aria-labelledby="homeroom-heading"
-          className="mt-6 sm:mt-8 overflow-hidden rounded-2xl border-2 border-[var(--color-accent-warm)]/60 bg-card shadow-md"
+          className="mt-6 sm:mt-8 overflow-hidden rounded-xl border border-foreground/40 bg-card shadow-md"
         >
           <div className="ikat-divider" aria-hidden="true" />
           <div className="grid grid-cols-1 items-center gap-5 p-4 sm:gap-6 sm:p-8 lg:grid-cols-12">
@@ -114,52 +114,52 @@ export function GuruClient({
               <motion.div
                 whileHover={{ y: -3, rotate: -1 }}
                 transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                className="relative flex w-full max-w-[230px] sm:max-w-[240px] flex-col items-center overflow-hidden rounded-2xl border-2 border-[#d4af37]/70 bg-gradient-to-b from-[#2f2319] via-[#241a12] to-[#1b130d] p-4 text-[#fbf6ec] shadow-xl"
+                className="relative flex w-full max-w-[230px] sm:max-w-[240px] flex-col items-center overflow-hidden rounded-xl border border-[#8E6D2F]/70 bg-gradient-to-b from-[#295458] via-[#214245] to-[#1A3336] p-4 text-[#F3ECDD] shadow-xl"
               >
                 <div
                   aria-hidden="true"
-                  className="mb-2.5 h-2 w-11 rounded-full bg-[#120c08] ring-1 ring-[#d4af37]/50"
+                  className="mb-2.5 h-2 w-11 rounded-full bg-[#142729] ring-1 ring-[#D8B467]/60"
                 />
-                <div className="relative size-22 sm:size-24 overflow-hidden rounded-full border-4 border-[#d4af37] bg-[#3a2a1d] shadow-md">
+                <div className="relative size-22 sm:size-24 overflow-hidden rounded-full border-4 border-[#D8B467] bg-[#2D585C] shadow-md">
                   {homeroomCard.image ? (
                     <img
                       src={homeroomCard.image}
                       alt={homeroomTeacher.full_name}
                       referrerPolicy="no-referrer"
-                      className="size-full object-cover"
+                      className="public-film-photo size-full object-cover"
                     />
                   ) : null}
                 </div>
-                <span className="mt-2.5 inline-block rounded-full border border-[#d4af37]/60 bg-[#d4af37]/15 px-3 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-[#f5d67b]">
-                  ✦ WALI KELAS XII PPLG 1 ✦
+                <span className="mt-2.5 inline-block border border-[#D8B467]/65 bg-[#36686C] px-3 py-0.5 font-mono text-[10px] uppercase tracking-widest text-[#F7EFDD]">
+                  WALI KELAS XII PPLG 1
                 </span>
                 <h2
                   id="homeroom-heading"
-                  className="mt-1.5 font-serif text-lg font-bold text-[#fbf6ec]"
+                  className="mt-1.5 font-serif text-lg font-bold text-[#F7EFDD]"
                 >
                   {homeroomTeacher.full_name}
                 </h2>
-                <p className="mt-0.5 text-xs text-[#ebd0a0]/85">
+                <p className="mt-0.5 text-xs text-[#D6CEBC]">
                   {homeroomTeacher.title}
                 </p>
               </motion.div>
             </div>
 
-            <div className="flex flex-col justify-between space-y-3.5 lg:col-span-8">
-              <div className="rounded-xl border border-border bg-background/80 p-3.5 sm:p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="flex flex-col justify-between space-y-4 lg:col-span-8">
+              <div className="rounded-xl border border-border bg-background/80 p-4 sm:p-5">
+                <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                   Pesan Wali Kelas
                 </p>
-                <blockquote className="mt-1.5 font-serif text-sm sm:text-base italic leading-relaxed text-foreground">
+                <blockquote className="mt-2 font-serif text-base sm:text-lg font-medium italic leading-relaxed text-foreground">
                   &ldquo;{homeroomTeacher.message}&rdquo;
                 </blockquote>
               </div>
 
-              <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3.5">
-                <HeartHandshake className="mt-0.5 size-4 shrink-0 text-[var(--color-chart-3)]" />
+              <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-4">
+                <HeartHandshake className="mt-0.5 size-4 shrink-0 text-foreground" />
                 <div>
-                  <p className="text-xs font-semibold text-foreground">
-                    Terima Kasih Keluarga XII PPLG 1:
+                  <p className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">
+                    Catatan Keluarga XII PPLG 1:
                   </p>
                   <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-foreground/90">
                     &ldquo;Terima kasih {homeroomTeacher.full_name} telah menjadi orang tua kedua kami di madrasah dan membimbing kami dengan tulus.&rdquo;
@@ -192,7 +192,7 @@ export function GuruClient({
                 onClick={() => setActiveGroup(tab.id)}
                 className={`inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
                   active
-                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >

@@ -7,7 +7,6 @@ import {
   type LanyardMember,
   type TeamLanyardRailLabels,
 } from "@/components/ui/team-lanyard-rail";
-import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 interface SingleIronRailLanyardProps {
   items: LanyardMember[];
@@ -42,22 +41,6 @@ export function SingleIronRailLanyard({
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [isTransitioningOut, setIsTransitioningOut] = React.useState(false);
-  const [railReady, setRailReady] = React.useState(false);
-  const [railProgress, setRailProgress] = React.useState(26);
-
-  React.useEffect(() => {
-    setRailReady(false);
-    setRailProgress(35);
-    const t1 = window.setTimeout(() => setRailProgress(82), 140);
-    const t2 = window.setTimeout(() => {
-      setRailProgress(100);
-      setRailReady(true);
-    }, 380);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [railKey]);
 
   React.useEffect(() => {
     const onRouteStart = () => {
@@ -211,16 +194,7 @@ export function SingleIronRailLanyard({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/75 py-4 shadow-sm">
-      {/* Tirai Merah Bioskop / Panggung 3D saat Model Kartu ID Lanyard 3D Di-Generate */}
-      <StageCurtainLoader
-        ready={railReady}
-        progress={railProgress}
-        label="Merangkai gantungan ID Card 3D..."
-        sceneTitle={
-          heading ? heading.toUpperCase() : "PANGGUNG 3D · KARTU ID XII PPLG 1"
-        }
-      />
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card/85 py-4 shadow-sm">
 
       {(eyebrow || heading) && (
         <header className="relative z-10 flex flex-col items-center gap-1 px-4 pt-2 text-center sm:px-6">
@@ -284,9 +258,9 @@ export function SingleIronRailLanyard({
             <button
               type="button"
               onClick={() => setFlipped(flipped === active ? null : active)}
-              className="inline-flex min-h-[36px] flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl border border-[var(--color-accent-warm)]/50 bg-[var(--color-accent-warm)]/10 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-[var(--color-accent-warm)]/20"
+              className="inline-flex min-h-[36px] flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
             >
-              <RotateCw className="size-3.5 text-[var(--color-accent-warm)]" />
+              <RotateCw className="size-3.5 text-foreground" />
               <span>
                 {flipped === active ? "Tutup" : "Balik Kartu"}
               </span>

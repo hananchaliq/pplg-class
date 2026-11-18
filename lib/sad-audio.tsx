@@ -500,13 +500,13 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
             data-testid="music-play-toggle-btn"
             className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition-colors ${
               playing
-                ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                ? "bg-primary text-primary-foreground"
                 : "border border-border bg-background text-foreground hover:bg-muted"
             }`}
           >
             {playing ? (
               <>
-                <Volume2 className="size-3.5 animate-pulse" />
+                <Volume2 className="size-3.5" />
                 <span>Jeda Musik</span>
               </>
             ) : (
@@ -539,7 +539,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
                 onClick={() => selectTrack(idx)}
                 className={`rounded-md px-1.5 py-1 font-mono text-[9px] font-bold transition-colors ${
                   active
-                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                    ? "bg-primary text-primary-foreground"
                     : "border border-border bg-background text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -550,7 +550,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Compact YouTube IFrame Container */}
-        <div className="relative mx-auto h-[108px] w-[228px] overflow-hidden rounded-lg border border-border bg-black">
+        <div className="relative mx-auto h-[108px] w-[228px] overflow-hidden rounded-lg border border-border bg-[#161614]">
           <div id="xii-pplg1-yt-player" className="size-full" />
         </div>
       </aside>

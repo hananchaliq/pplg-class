@@ -110,7 +110,7 @@ export function AnggotaClient({
           setModalStudent(targetMember);
           setFeedback(null);
         }}
-        className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <MessageSquareHeart className="size-4 shrink-0" />
         <span className="truncate">Tulis pesan untuk {targetMember.name.split(" ")[0]}</span>
@@ -181,16 +181,16 @@ export function AnggotaClient({
       transition={{ duration: 0.35 }}
       className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
     >
-      {/* Header Halaman Anggota Ringkas */}
+      {/* Header Halaman Anggota */}
       <header className="mx-auto max-w-2xl text-center">
-        <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Keluarga Besar XII PPLG 1 · MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          {activeStudents.length} Siswa Aktif & {movedStudents.length} Sahabat Istimewa
+        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          {activeStudents.length} Siswa Aktif &amp; {movedStudents.length} Sahabat Istimewa
         </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-          Klik kartu untuk membalik profil, tarik untuk efek pegas, atau kirim pesan langsung.
+        <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          Klik kartu untuk membalik profil, tarik untuk efek pegas, atau tulis pesan ke buku kenangannya.
         </p>
       </header>
 
@@ -242,12 +242,12 @@ export function AnggotaClient({
               onClick={() => setFilter(tab.id)}
               className={`inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
                 active
-                  ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-2xs"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               {tab.isCrown ? (
-                <Crown className="size-3.5 text-amber-400" />
+                <Crown className="size-3.5" />
               ) : (
                 <Users className="size-3.5" />
               )}
@@ -261,13 +261,13 @@ export function AnggotaClient({
       {filter === "moved" && (
         <div
           data-testid="special-friends-section"
-          className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-[#eab308]/40 bg-[#eab308]/10 px-4 py-2 text-center text-xs font-medium text-foreground"
+          className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-foreground/35 bg-secondary px-4 py-2 text-center text-xs font-medium text-foreground"
         >
-          <Crown className="size-4 shrink-0 text-[#ca8a04]" />
+          <Crown className="size-4 shrink-0 text-foreground" />
           <span>
-            Edisi Emas Kehormatan untuk {movedStudents.length} sahabat yang pernah berjuang bersama di Kelas X.
+            Edisi Platinum Kehormatan untuk {movedStudents.length} sahabat yang pernah berjuang bersama di Kelas X.
           </span>
-          <Sparkles className="size-3.5 shrink-0 text-[#ca8a04]" />
+          <Sparkles className="size-3.5 shrink-0 text-foreground" />
         </div>
       )}
 
@@ -315,7 +315,7 @@ export function AnggotaClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-memory-title"
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/55 p-0 backdrop-blur-xs sm:items-center sm:p-4"
           >
             <motion.div
               initial={{ scale: 0.96, y: 20 }}
@@ -417,7 +417,7 @@ export function AnggotaClient({
                         : "border-[var(--color-chart-3)] bg-[var(--color-chart-3)]/10 text-foreground"
                     }`}
                   >
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                     <span>{feedback.text}</span>
                   </div>
                 )}
@@ -437,7 +437,7 @@ export function AnggotaClient({
                     whileTap={{ scale: 0.96 }}
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     <Send className="size-3.5" />
                     <span>

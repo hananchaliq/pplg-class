@@ -697,7 +697,7 @@ export function AdminClient() {
           className="rounded-2xl border border-border bg-card p-6 shadow-md sm:p-8"
         >
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--color-accent-warm)]/15 text-[var(--color-accent-warm)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-foreground">
               <Lock className="h-5 w-5" />
             </div>
             <div>
@@ -749,7 +749,7 @@ export function AdminClient() {
             {authError && (
               <div
                 role="alert"
-                className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+                className="rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground"
               >
                 {authError}
               </div>
@@ -757,7 +757,7 @@ export function AdminClient() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-[var(--color-accent-warm)] px-4 py-2.5 text-sm font-semibold text-[#fbf6ec] transition hover:opacity-90"
+              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
             >
               Masuk ke Dasbor Moderasi
             </button>
@@ -845,7 +845,7 @@ export function AdminClient() {
         >
           <Inbox className="h-4 w-4" />
           <span>Antrean Moderasi</span>
-          <span className="rounded-full bg-[var(--color-chart-2)] px-2 py-0.5 text-xs font-bold text-white">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-foreground">
             {pendingCount}
           </span>
         </button>
@@ -979,10 +979,10 @@ export function AdminClient() {
                                     editingText
                                   )
                                 }
-                                className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-chart-1)] px-3 py-1.5 text-xs font-semibold text-white"
+                                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
                               >
                                 <Save className="h-3.5 w-3.5" />
-                                Simpan & Setujui
+                                Simpan &amp; Setujui
                               </button>
                               <button
                                 type="button"
@@ -1017,7 +1017,7 @@ export function AdminClient() {
                           onClick={() =>
                             handleModerate(item.table, item.id, "approved")
                           }
-                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-chart-1)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                          className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Setujui
@@ -1027,7 +1027,7 @@ export function AdminClient() {
                           onClick={() =>
                             handleModerate(item.table, item.id, "rejected")
                           }
-                          className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/80"
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           Tolak
@@ -1038,7 +1038,7 @@ export function AdminClient() {
                             handleDeleteModeratedItem(item.table, item.id)
                           }
                           title="Hapus permanen dari database"
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1206,7 +1206,7 @@ export function AdminClient() {
                           });
                         }
                       }}
-                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs ${
+                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground/60 bg-muted shadow-xs ${
                         editingStudent.photo_url ? "cursor-pointer" : ""
                       }`}
                     >
@@ -1223,7 +1223,7 @@ export function AdminClient() {
                     </div>
                     <div className="flex-1 space-y-2.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-2xs hover:opacity-90">
                           <Upload className="size-3.5" />
                           <span>Pilih & Crop Foto (HP / Desktop)</span>
                           <input
@@ -1369,7 +1369,7 @@ export function AdminClient() {
                         editingStudent.full_name || "Siswa"
                       )
                     }
-                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+                    className="inline-flex items-center gap-1 rounded-lg bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground hover:opacity-90"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Hapus Siswa
@@ -1403,7 +1403,7 @@ export function AdminClient() {
                             });
                           }
                         }}
-                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted"
+                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border bg-muted"
                       >
                         {previewCard.image ? (
                           <img
@@ -1577,7 +1577,7 @@ export function AdminClient() {
                           });
                         }
                       }}
-                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-accent-warm)] bg-muted shadow-xs ${
+                      className={`relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground/60 bg-muted shadow-xs ${
                         editingTeacher.photo_url ? "cursor-pointer" : ""
                       }`}
                     >
@@ -1594,7 +1594,7 @@ export function AdminClient() {
                     </div>
                     <div className="flex-1 space-y-2.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-2xs hover:opacity-90">
                           <Upload className="size-3.5" />
                           <span>Pilih & Crop Foto Guru (HP / Desktop)</span>
                           <input
@@ -1734,7 +1734,7 @@ export function AdminClient() {
                         editingTeacher.full_name || "Guru"
                       )
                     }
-                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+                    className="inline-flex items-center gap-1 rounded-lg bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground hover:opacity-90"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Hapus Guru
@@ -1768,7 +1768,7 @@ export function AdminClient() {
                             });
                           }
                         }}
-                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-[var(--color-accent-warm)]/50 bg-muted"
+                        className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border bg-muted"
                       >
                         {previewTeacher.image ? (
                           <img
@@ -1822,9 +1822,9 @@ export function AdminClient() {
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <ImageIcon className="h-5 w-5 text-[var(--color-accent-warm)]" />
+                <ImageIcon className="h-5 w-5 text-foreground" />
                 <h2 className="font-serif text-xl font-bold text-foreground">
-                  Kelola Foto Terpisah: Model 3D Hero, Buku Kenangan & Galeri Momen
+                  Kelola Foto Terpisah: Frame Hero, Buku Kenangan & Galeri Momen
                 </h2>
               </div>
               <span className="rounded-md bg-muted px-2.5 py-1 font-mono text-[11px] font-semibold text-foreground">
@@ -1832,7 +1832,7 @@ export function AdminClient() {
               </span>
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Setiap tempat kini dipisahkan: <strong>Foto Hero 3D</strong> di-upload tersendiri untuk meja belajar 3D kanan Beranda, <strong>Foto Buku Kenangan</strong> bisa memilih dari foto yang sudah ada di database atau upload ulang, dan <strong>Foto Galeri</strong> khusus untuk gantungan Polaroid Galeri.
+              Setiap tempat kini dipisahkan: <strong>Foto Frame Hero</strong> di-upload tersendiri untuk frame kamera 35mm Beranda, <strong>Foto Buku Kenangan</strong> bisa memilih dari foto yang sudah ada di database atau upload ulang, dan <strong>Foto Galeri</strong> khusus untuk edisi Koran Galeri.
             </p>
 
             {/* 3 Tab Kanal Media Terpisah */}
@@ -1845,12 +1845,12 @@ export function AdminClient() {
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
                   mediaSectionTab === "hero"
-                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    ? "bg-primary text-primary-foreground shadow-xs"
                     : "border border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
                 <Sparkles className="size-3.5" />
-                <span>1. Foto Model 3D Hero Kanan (Upload Sendiri)</span>
+                <span>1. Foto Frame Hero Beranda (Upload Sendiri)</span>
               </button>
               <button
                 type="button"
@@ -1860,7 +1860,7 @@ export function AdminClient() {
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
                   mediaSectionTab === "kenangan"
-                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    ? "bg-primary text-primary-foreground shadow-xs"
                     : "border border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
@@ -1875,12 +1875,12 @@ export function AdminClient() {
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
                   mediaSectionTab === "galeri"
-                    ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                    ? "bg-primary text-primary-foreground shadow-xs"
                     : "border border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
                 <ImageIcon className="size-3.5" />
-                <span>3. Foto Galeri Momen (Khusus Galeri 3D & 2D)</span>
+                <span>3. Foto Galeri Momen (Koran & Arsip 2D)</span>
               </button>
             </div>
 
@@ -1928,7 +1928,7 @@ export function AdminClient() {
                         onClick={() => setYearbookMode("existing")}
                         className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                           yearbookMode === "existing"
-                            ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                            ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
@@ -1939,7 +1939,7 @@ export function AdminClient() {
                         onClick={() => setYearbookMode("upload")}
                         className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                           yearbookMode === "upload"
-                            ? "bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                            ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
@@ -2003,7 +2003,7 @@ export function AdminClient() {
                                   referrerPolicy="no-referrer"
                                   className="size-full object-cover transition-transform duration-300 hover:scale-105"
                                 />
-                                <span className="absolute top-2 left-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#f3ca82]">
+                                <span className="absolute top-2 left-2 rounded bg-[#161614]/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#E8E5DC]">
                                   {m.category}
                                 </span>
                               </div>
@@ -2021,7 +2021,7 @@ export function AdminClient() {
                                         yearbookSlot
                                       )
                                     }
-                                    className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-[var(--color-accent-warm)] px-2 py-1.5 text-[11px] font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                                    className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                                   >
                                     <Check className="size-3" />
                                     <span>Pakai Foto Ini</span>
@@ -2060,7 +2060,7 @@ export function AdminClient() {
               </div>
             )}
 
-            {/* FORM UPLOAD BARU / ULANG (Untuk Hero 3D, Galeri Momen, atau Buku Kenangan Mode Upload) */}
+            {/* FORM UPLOAD BARU / ULANG (Untuk Frame Hero, Galeri Momen, atau Buku Kenangan Mode Upload) */}
             {(mediaSectionTab !== "kenangan" || yearbookMode === "upload") && (
               <form
                 onSubmit={handleUploadVisualMedia}
@@ -2073,11 +2073,11 @@ export function AdminClient() {
                         Target Kanal Foto Aktif
                       </label>
                       {mediaSectionTab === "hero" ? (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-[var(--color-accent-warm)]">
-                          Khusus Model 3D Kanan Halaman Hero (Terpisah dari Galeri)
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-foreground">
+                          Khusus Frame Hero Beranda (Terpisah dari Galeri)
                         </div>
                       ) : mediaSectionTab === "kenangan" ? (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-[var(--color-accent-warm)]">
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-foreground">
                           {yearbookSlot === "Foto Sampul Buku"
                             ? "Sampul Depan Buku Kenangan (1 Foto Bersama)"
                             : "Halaman Pembuka Foto Bersama Buku Kenangan (Hal. 1–4)"}
@@ -2137,7 +2137,7 @@ export function AdminClient() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-2xs hover:opacity-90">
                       <Upload className="size-4" />
                       <span>Pilih & Crop Gambar (HP / Desktop)</span>
                       <input
@@ -2228,7 +2228,7 @@ export function AdminClient() {
                             caption: mediaCaption || "Pratinjau Foto",
                           })
                         }
-                        className="relative mx-auto flex max-h-48 w-fit cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-[#efe4d0]"
+                        className="relative mx-auto flex max-h-48 w-fit cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
                       >
                         <img
                           src={mediaImageUrl}
@@ -2240,7 +2240,7 @@ export function AdminClient() {
                       <button
                         type="button"
                         onClick={() => setMediaImageUrl("")}
-                        className="text-[11px] font-semibold text-red-600 hover:underline"
+                        className="text-[11px] font-semibold text-destructive hover:underline"
                       >
                         Ganti / Hapus Pratinjau
                       </button>
@@ -2312,7 +2312,7 @@ export function AdminClient() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <span className="inline-block rounded bg-[var(--color-accent-warm)]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--color-accent-warm)]">
+                          <span className="inline-block rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-foreground">
                             {m.category} · {m.phase}
                           </span>
                           <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
@@ -2323,7 +2323,7 @@ export function AdminClient() {
                       <button
                         type="button"
                         onClick={() => handleDeleteModeratedItem("moments", m.id)}
-                        className="shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-600 hover:bg-red-600 hover:text-white"
+                        className="shrink-0 rounded-lg border border-border bg-muted p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
                         title="Hapus Foto"
                       >
                         <Trash2 className="size-3.5" />
@@ -2337,7 +2337,7 @@ export function AdminClient() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-5 h-fit">
               <div className="mb-4 flex items-center gap-2.5">
-                <Clock className="h-5 w-5 text-[var(--color-chart-2)]" />
+                <Clock className="h-5 w-5 text-foreground" />
                 <h2 className="font-serif text-xl font-bold text-foreground">
                   Pengaturan Hitung Mundur Kelulusan
                 </h2>
@@ -2409,7 +2409,7 @@ export function AdminClient() {
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
                 <span>Tambah Polling ke Database</span>
@@ -2438,7 +2438,7 @@ export function AdminClient() {
                     <button
                       type="button"
                       onClick={() => handleDeletePoll(p.id)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                      className="inline-flex items-center gap-1 rounded-lg bg-destructive px-2.5 py-1.5 text-xs font-semibold text-destructive-foreground hover:opacity-90"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       <span>Hapus</span>
@@ -2452,19 +2452,19 @@ export function AdminClient() {
         </div>
       )}
 
-      {/* Modal Pop-up Pratinjau Foto Sesuai Ukuran Asli (Tanpa Pinggiran Hitam) */}
+      {/* Modal Pop-up Pratinjau Foto Sesuai Ukuran Asli (Full Color untuk Admin) */}
       {lightboxPhoto && (
         <div
           role="dialog"
           aria-modal="true"
           onClick={() => setLightboxPhoto(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-6 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#141413]/80 p-3 sm:p-6 backdrop-blur-xs"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative flex max-h-[92vh] w-fit max-w-[94vw] flex-col overflow-hidden rounded-2xl border border-[#d6c3a5] bg-[#fbf6ec] text-[#231914] shadow-2xl"
+            className="relative flex max-h-[92vh] w-fit max-w-[94vw] flex-col overflow-hidden rounded-2xl border border-[#C9C4B8] bg-[#F3F1EA] text-[#1B1B1A] shadow-2xl"
           >
-            <div className="relative flex items-center justify-center bg-[#efe4d0]">
+            <div className="relative flex items-center justify-center bg-[#E2DED4]">
               <img
                 src={lightboxPhoto.url}
                 alt={lightboxPhoto.caption}
@@ -2475,18 +2475,18 @@ export function AdminClient() {
                 type="button"
                 onClick={() => setLightboxPhoto(null)}
                 aria-label="Tutup pratinjau foto"
-                className="absolute top-3 right-3 inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-[#231914]/75 text-[#fbf6ec] shadow-md backdrop-blur-xs transition hover:bg-[#231914]"
+                className="absolute top-3 right-3 inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-[#1B1B1A]/80 text-[#F3F1EA] shadow-md backdrop-blur-xs transition hover:bg-[#1B1B1A]"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="max-w-xl p-4">
               {lightboxPhoto.badge && (
-                <span className="inline-block rounded bg-[var(--color-accent-warm)]/15 px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--color-accent-warm)]">
+                <span className="inline-block rounded bg-[#E2DED4] px-2 py-0.5 font-mono text-[10px] font-bold text-[#2A2A28]">
                   {lightboxPhoto.badge}
                 </span>
               )}
-              <p className="mt-1 font-serif text-base font-bold text-[#231914]">
+              <p className="mt-1 font-serif text-base font-bold text-[#1B1B1A]">
                 {lightboxPhoto.caption}
               </p>
             </div>

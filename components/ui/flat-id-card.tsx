@@ -9,22 +9,22 @@ import type {
 import { SITE_CONTENT } from "@/lib/content";
 
 const FLAT_CARD_PALETTE_16 = [
-  "bg-[#c85a32]",
-  "bg-[#2d6a6e]",
-  "bg-[#b84357]",
-  "bg-[#3b6e52]",
-  "bg-[#7b4b94]",
-  "bg-[#c47d2b]",
-  "bg-[#2b5b84]",
-  "bg-[#9e473b]",
-  "bg-[#4f6d3a]",
-  "bg-[#8c4a70]",
-  "bg-[#c76542]",
-  "bg-[#2f6f7a]",
-  "bg-[#635294]",
-  "bg-[#a6632c]",
-  "bg-[#3d6b5e]",
-  "bg-[#9c3d4c]",
+  "bg-[#2D6366]",
+  "bg-[#A95A42]",
+  "bg-[#B5843F]",
+  "bg-[#475B78]",
+  "bg-[#4E6E52]",
+  "bg-[#7D4B5A]",
+  "bg-[#8C583A]",
+  "bg-[#38687A]",
+  "bg-[#6C7046]",
+  "bg-[#9E6B43]",
+  "bg-[#585175]",
+  "bg-[#3D6E62]",
+  "bg-[#964C4C]",
+  "bg-[#5E6B7A]",
+  "bg-[#857444]",
+  "bg-[#664E6B]",
 ];
 
 function SilhouetteAvatar() {
@@ -138,15 +138,15 @@ export function FlatIdCardRail({
       <div className="relative mx-4 mt-5 flex items-center">
         <span
           aria-hidden="true"
-          className="size-3.5 shrink-0 rounded-sm bg-gradient-to-b from-[#7a6450] to-[#3d2e22] shadow"
+          className="size-3.5 shrink-0 rounded-sm bg-gradient-to-b from-[#6E6B64] to-[#2A2A28] shadow"
         />
         <span
           aria-hidden="true"
-          className="h-1.5 flex-1 bg-gradient-to-b from-[#9c846c] via-[#594636] to-[#2e2218] shadow-xs"
+          className="h-1.5 flex-1 bg-gradient-to-b from-[#A8A49B] via-[#5C5A54] to-[#2A2A28] shadow-xs"
         />
         <span
           aria-hidden="true"
-          className="size-3.5 shrink-0 rounded-sm bg-gradient-to-b from-[#7a6450] to-[#3d2e22] shadow"
+          className="size-3.5 shrink-0 rounded-sm bg-gradient-to-b from-[#6E6B64] to-[#2A2A28] shadow"
         />
       </div>
 
@@ -160,7 +160,7 @@ export function FlatIdCardRail({
           const isSpecialFriend =
             item.team === "Pernah Bersama Kita" || item.tone === 5;
           const colorClass = isSpecialFriend
-            ? "bg-gradient-to-r from-[#b8860b] via-[#e6b84c] to-[#b8860b]"
+            ? "bg-gradient-to-r from-[#8E6D2F] via-[#D8B467] to-[#8E6D2F]"
             : FLAT_CARD_PALETTE_16[idx % FLAT_CARD_PALETTE_16.length]!;
           const showImg = Boolean(item.image) && !failedImages[item.id];
 
@@ -184,11 +184,11 @@ export function FlatIdCardRail({
                 onClick={() => handleToggleFlip(item, idx)}
                 className={`group relative flex h-[338px] w-full flex-col justify-between overflow-hidden rounded-xl border p-4 text-left text-card-foreground shadow-sm transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                   isSpecialFriend
-                    ? "border-2 border-[#d49b35] bg-gradient-to-b from-[#fffdf6] via-card to-[#fbf2de] shadow-md"
+                    ? "border-2 border-foreground/70 bg-secondary shadow-md"
                     : "border-border bg-card"
                 }`}
               >
-                {/* Pita warna beragam di bagian atas kartu */}
+                {/* Pita warna monokrom di bagian atas kartu */}
                 <span
                   aria-hidden="true"
                   className={`absolute inset-x-0 top-0 h-12 ${colorClass}`}
@@ -203,15 +203,15 @@ export function FlatIdCardRail({
                   /* Sisi Depan Kartu */
                   <div className="relative z-10 mt-3 flex flex-1 flex-col items-center text-center">
                     {isSpecialFriend && (
-                      <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#f8e6b5] px-2.5 py-0.5 text-[10px] font-bold text-[#6e4608] shadow-2xs">
-                        <Crown className="size-3 text-[#b87b14]" />
-                        <span>✿ Sahabat Istimewa ✿</span>
+                      <span className="mb-1 inline-flex items-center gap-1 border border-border bg-card px-2.5 py-0.5 font-mono text-[10px] font-bold text-foreground shadow-2xs">
+                        <Crown className="size-3 text-foreground" />
+                        <span>Sahabat Istimewa</span>
                       </span>
                     )}
                     <div
                       className={`relative size-22 overflow-hidden rounded-full bg-muted shadow-sm ${
                         isSpecialFriend
-                          ? "border-2 border-[#d49b35] ring-2 ring-[#f3d285]/60"
+                          ? "border-2 border-foreground ring-2 ring-border"
                           : "border-2 border-card"
                       }`}
                     >
@@ -224,7 +224,7 @@ export function FlatIdCardRail({
                           onError={() =>
                             setFailedImages((prev) => ({ ...prev, [item.id]: true }))
                           }
-                          className="absolute inset-0 size-full object-cover"
+                          className="public-film-photo absolute inset-0 size-full object-cover"
                         />
                       )}
                     </div>
@@ -241,7 +241,7 @@ export function FlatIdCardRail({
                     )}
                     <div className="mt-auto w-full border-t border-dashed border-border pt-2.5 text-center">
                       <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-widest text-muted-foreground">
-                        {isSpecialFriend && <Sparkles className="size-3 text-[#c88a22]" />}
+                        {isSpecialFriend && <Sparkles className="size-3 text-foreground" />}
                         <span>TAP UNTUK MEMBALIK</span>
                       </span>
                     </div>
@@ -270,7 +270,7 @@ export function FlatIdCardRail({
                     )}
 
                     <div className="mt-2 border-t border-dashed border-border pt-2 text-right">
-                      <span className="text-[11px] font-medium text-[var(--color-accent-warm)]">
+                      <span className="text-[11px] font-medium text-foreground">
                         Tap lagi untuk kembali ↩
                       </span>
                     </div>

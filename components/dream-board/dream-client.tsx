@@ -163,20 +163,20 @@ export function DreamBoardClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="dream-cheer-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
         >
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 340, damping: 26 }}
             style={{
-              borderTopColor: cheerTargetDream.paper_color || "#e09f4c",
+              borderTopColor: cheerTargetDream.paper_color || "#5C5A54",
             }}
-            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--color-accent-warm)]">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Lembar Doa &amp; Semangat Sahabat UNO
                 </p>
                 <h2
@@ -185,8 +185,8 @@ export function DreamBoardClient({
                 >
                   Untuk {cheerTargetDream.student_name}
                 </h2>
-                <p className="mt-1 font-serif text-sm sm:text-base italic text-muted-foreground">
-                  Cita-cita: &ldquo;{cheerTargetDream.dream}&rdquo;
+                <p className="mt-1 font-serif text-sm sm:text-base font-semibold italic text-muted-foreground">
+                  &ldquo;{cheerTargetDream.dream}&rdquo;
                 </p>
               </div>
               <motion.button
@@ -208,16 +208,16 @@ export function DreamBoardClient({
                     key={c.id}
                     className="border-b border-dashed border-border pb-2.5 last:border-b-0"
                   >
-                    <p className="font-sans text-sm sm:text-base leading-relaxed text-foreground">
+                    <p className="font-sans text-sm leading-relaxed text-foreground">
                       &ldquo;{c.message}&rdquo;
                     </p>
-                    <p className="mt-0.5 text-right font-serif text-xs sm:text-sm font-bold text-[var(--color-accent-warm)]">
+                    <p className="mt-0.5 text-right font-serif text-xs font-bold text-foreground">
                       ~ {c.author_name}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="py-2 font-sans text-sm leading-relaxed text-muted-foreground">
+                <p className="py-2 font-sans text-xs sm:text-sm italic leading-relaxed text-muted-foreground">
                   Belum ada catatan doa di lembar ini. Tuliskan doa pertamamu di bawah!
                 </p>
               )}
@@ -288,7 +288,7 @@ export function DreamBoardClient({
                   role="status"
                   className="flex items-start gap-2 rounded-lg border border-border bg-muted p-2.5 text-xs text-foreground"
                 >
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
                   <span>{cheerFeedback}</span>
                 </div>
               )}
@@ -306,7 +306,7 @@ export function DreamBoardClient({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.96 }}
                   disabled={cheerSubmitting}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-4 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Send className="size-3.5" />
                   <span>
@@ -325,7 +325,7 @@ export function DreamBoardClient({
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-dream-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-xs sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
         >
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -336,7 +336,7 @@ export function DreamBoardClient({
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--color-accent-warm)]">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Lembar Catatan Papan Cita-Cita UNO
                 </p>
                 <h2
@@ -483,7 +483,7 @@ export function DreamBoardClient({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.96 }}
                   disabled={dreamSubmitting}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Pin className="size-4" />
                   <span>

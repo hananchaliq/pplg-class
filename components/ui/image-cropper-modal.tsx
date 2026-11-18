@@ -219,7 +219,7 @@ export function ImageCropperModal({
     canvas.height = vpH;
 
     ctx.clearRect(0, 0, vpW, vpH);
-    ctx.fillStyle = "#1d140e";
+    ctx.fillStyle = "#161614";
     ctx.fillRect(0, 0, vpW, vpH);
 
     const img = imgRef.current;
@@ -238,7 +238,7 @@ export function ImageCropperModal({
 
     // Gambar garis bantu Rule of Thirds tipis
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 248, 231, 0.38)";
+    ctx.strokeStyle = "rgba(232, 229, 220, 0.36)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(vpW / 3, 0);
@@ -254,7 +254,7 @@ export function ImageCropperModal({
     // Jika mode ID Card (1:1 & showCircleGuide), tampilkan panduan lingkaran wajah
     if (showCircleGuide && Math.abs(effectiveAspect - 1) < 0.05) {
       const radius = Math.min(vpW, vpH) * 0.44;
-      ctx.strokeStyle = "rgba(245, 197, 66, 0.85)";
+      ctx.strokeStyle = "rgba(232, 229, 220, 0.85)";
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
@@ -264,7 +264,7 @@ export function ImageCropperModal({
     }
 
     // Bingkai tepi dalam
-    ctx.strokeStyle = "rgba(245, 197, 66, 0.9)";
+    ctx.strokeStyle = "rgba(232, 229, 220, 0.88)";
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, vpW - 2, vpH - 2);
     ctx.restore();
@@ -409,13 +409,13 @@ export function ImageCropperModal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#141413]/80 p-3 sm:p-4 backdrop-blur-xs"
     >
       <div className="max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-5 text-card-foreground shadow-2xl">
         {/* Header Modal Crop */}
         <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent-warm)]">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               Editor Gambar Interaktif · HP & Desktop
             </p>
             <h3 className="mt-0.5 font-serif text-lg font-bold text-foreground">
@@ -454,7 +454,7 @@ export function ImageCropperModal({
                 onClick={() => setRatioMode(opt.id)}
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   ratioMode === opt.id
-                    ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)] text-[#fbf6ec]"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
@@ -465,9 +465,9 @@ export function ImageCropperModal({
         </div>
 
         {/* Area Kanvas Interaktif Geser Posisi & Cubit/Scroll */}
-        <div className="mt-3 flex flex-col items-center justify-center rounded-xl border border-border bg-[#150e0a] p-3">
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] text-[#ebd0a0]">
-            <Move className="size-3.5 text-[var(--color-accent-warm)]" />
+        <div className="mt-3 flex flex-col items-center justify-center rounded-xl border border-border bg-[#161614] p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] text-[#D6D2C9]">
+            <Move className="size-3.5 text-[#E8E5DC]" />
             <span>
               Geser gambar dengan jari (HP) atau mouse (Desktop) untuk mengatur posisi
             </span>
@@ -513,7 +513,7 @@ export function ImageCropperModal({
                 step={0.02}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                className="mt-1 w-full accent-[var(--color-accent-warm)]"
+                className="mt-1 w-full accent-primary"
               />
             </div>
             <button
@@ -557,7 +557,7 @@ export function ImageCropperModal({
                 onClick={() => setFlipH((f) => !f)}
                 className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 ${
                   flipH
-                    ? "border-[var(--color-accent-warm)] bg-[var(--color-accent-warm)]/15 text-[var(--color-accent-warm)]"
+                    ? "border-primary bg-primary/15 text-primary"
                     : "border-border bg-background text-foreground hover:bg-muted"
                 }`}
               >
@@ -596,7 +596,7 @@ export function ImageCropperModal({
             type="button"
             disabled={!imgLoaded || processing}
             onClick={handleConfirmCrop}
-            className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0"
           >
             <Check className="size-4" />
             <span>

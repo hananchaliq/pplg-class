@@ -43,7 +43,7 @@ export function setupWarmLightRig(
   scene: THREE.Scene,
   renderer: THREE.WebGLRenderer,
   isSoftwareGl: boolean,
-  fogColor = "#241912"
+  fogColor = "#161614"
 ) {
   // Mandatory Studio Environment Reflection (RoomEnvironment + PMREMGenerator)
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -51,11 +51,11 @@ export function setupWarmLightRig(
   scene.environment = envTexture;
   pmremGenerator.dispose();
 
-  // Fog matching warm horizon
-  scene.fog = new THREE.FogExp2(fogColor, 0.026);
+  // Fog ruang gelap fotografi
+  scene.fog = new THREE.FogExp2(fogColor, 0.024);
 
-  // 1. Warm Sunset Key Light
-  const keyLight = new THREE.DirectionalLight(0xffcf8b, 2.5);
+  // 1. Neutral Studio Key Light
+  const keyLight = new THREE.DirectionalLight(0xf0ede6, 2.35);
   keyLight.position.set(5, 7, 5);
   if (!isSoftwareGl) {
     keyLight.castShadow = true;
@@ -73,18 +73,18 @@ export function setupWarmLightRig(
   }
   scene.add(keyLight);
 
-  // 2. Cool/Warm Hemisphere Fill Light
-  const hemiLight = new THREE.HemisphereLight(0xfbe3b5, 0x4a3728, 1.2);
+  // 2. Neutral Silver-Gelatin Hemisphere Fill Light
+  const hemiLight = new THREE.HemisphereLight(0xdad6cc, 0x2b2b29, 1.15);
   hemiLight.position.set(0, 10, 0);
   scene.add(hemiLight);
 
-  // 3. Rim / Backlight for cozy separation
-  const rimLight = new THREE.DirectionalLight(0xe08b4f, 1.25);
+  // 3. Rim / Backlight abu netral untuk kedalaman objek
+  const rimLight = new THREE.DirectionalLight(0xc2beb4, 1.15);
   rimLight.position.set(-5, 4, -4);
   scene.add(rimLight);
 
-  // 4. Soft Front Fill Light so front surfaces are always well-lit and never dark
-  const frontFill = new THREE.DirectionalLight(0xfff1d6, 0.85);
+  // 4. Soft Front Fill Light
+  const frontFill = new THREE.DirectionalLight(0xf3f1ea, 0.85);
   frontFill.position.set(0, 3, 6);
   scene.add(frontFill);
 
@@ -131,7 +131,7 @@ export function SceneShell({
   continuous = true,
   className = "relative w-full h-[540px] sm:h-[620px]",
   ariaLabel,
-  clearColor = "#1f1610",
+  clearColor = "#161614",
   children,
 }: SceneShellProps) {
   const mountRef = React.useRef<HTMLDivElement | null>(null);
@@ -420,18 +420,18 @@ export function SceneShell({
       role="region"
       aria-label={ariaLabel}
       data-testid="scene-shell"
-      className={`overflow-hidden rounded-2xl border border-border bg-[#1f1610] ${className}`}
+      className={`overflow-hidden rounded-xl border border-border bg-[#161614] ${className}`}
     >
       {/* Dedicated empty ref container for the WebGL canvas outside sibling React HUD overlays */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full" />
 
-      {/* FilmEffects: subtle warm vignette & SVG film grain overlay (zero backdrop-filter over WebGL) */}
+      {/* Monochrome vignette overlay (zero backdrop-filter over WebGL) */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, transparent 58%, rgba(18, 11, 7, 0.52) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 58%, rgba(16, 16, 15, 0.52) 100%)",
         }}
       />
 

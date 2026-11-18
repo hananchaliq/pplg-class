@@ -89,7 +89,7 @@ export function PaginationBar({
                     aria-current={active ? "page" : undefined}
                     className={`inline-flex size-9 items-center justify-center rounded-lg font-mono text-xs font-bold tabular-nums transition-colors ${
                       active
-                        ? "bg-[var(--color-accent-warm)] text-[#fbf6ec] shadow-xs"
+                        ? "bg-primary text-primary-foreground shadow-xs"
                         : "border border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >

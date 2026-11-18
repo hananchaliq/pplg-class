@@ -11,15 +11,19 @@ import {
   X,
   CheckCircle2,
   Crop,
+  Newspaper,
 } from "lucide-react";
-import { Adaptive } from "@/components/three/adaptive";
-import { GaleriSceneHD } from "@/components/galeri/galeri-scene-hd";
+import {
+  KoranGaleri,
+  type KoranGaleriHandle,
+} from "@/components/galeri/koran-galeri";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import {
   ImageCropperModal,
   readFileAsDataUrl,
 } from "@/components/ui/image-cropper-modal";
 import { SITE_CONTENT } from "@/lib/content";
+import { decodeHtmlEntities } from "@/lib/domain-logic";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
@@ -50,33 +54,41 @@ const PHASES: Array<{ id: MomentPhase; label: string; subtitle: string }> = [
   },
 ];
 
-export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }) {
+export function GaleriClient({
+  initialMoments,
+}: {
+  initialMoments: MomentRow[];
+}) {
   const { data: liveData, refresh } = useLivePublicData({
     moments: initialMoments,
   });
   const rawMoments = liveData?.moments ?? initialMoments;
 
-  // Pisahkan secara ketat: Galeri hanya menampilkan foto momen Galeri (bukan Foto Hero 3D atau Sampul/Foto Bersama Buku Kenangan)
   const moments = React.useMemo(
     () =>
-      rawMoments.filter(
-        (m) => !SPECIAL_NON_GALLERY_CATEGORIES.has(m.category)
-      ),
+      rawMoments
+        .filter((m) => !SPECIAL_NON_GALLERY_CATEGORIES.has(m.category))
+        .map((m) => ({
+          ...m,
+          caption: decodeHtmlEntities(m.caption),
+          uploader_name: decodeHtmlEntities(m.uploader_name),
+          category: decodeHtmlEntities(m.category),
+          taken_at: decodeHtmlEntities(m.taken_at),
+        })),
     [rawMoments]
   );
+
+  const koranRef = React.useRef<KoranGaleriHandle | null>(null);
+  const gridSectionRef = React.useRef<HTMLElement | null>(null);
 
   const [activePhase, setActivePhase] = React.useState<MomentPhase>("XII");
   const [activeCategory, setActiveCategory] = React.useState<string>("Semua");
   const [showAllGrid, setShowAllGrid] = React.useState(false);
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
-  const [selected3DMoment, setSelected3DMoment] =
-    React.useState<MomentRow | null>(null);
 
-  // State Paginasi List Momen (Prev / Next Icon) agar tidak capek scroll
   const [momentPage, setMomentPage] = React.useState(1);
   const MOMENTS_PER_PAGE = 8;
 
-  // State Form Unggah Foto + Crop Mandiri (HP & Desktop)
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploaderName, setUploaderName] = React.useState("");
   const [caption, setCaption] = React.useState("");
@@ -97,7 +109,6 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     return clean.length > 0 && !clean.startsWith("/api/moment-illustration");
   }, []);
 
-  // Jika fase aktif belum punya foto asli tetapi fase lain punya foto asli yang diupload, arahkan ke fase yang punya foto asli saat pertama kali dibuka
   const didAutoSelectPhase = React.useRef(false);
   React.useEffect(() => {
     if (didAutoSelectPhase.current || moments.length === 0) return;
@@ -122,14 +133,12 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
       }
       return true;
     });
-    // Prioritaskan foto yang benar-benar diupload di urutan paling depan
     return [...list].sort(
       (a, b) =>
         (isRealPhoto(b.image_url) ? 1 : 0) - (isRealPhoto(a.image_url) ? 1 : 0)
     );
   }, [moments, activeCategory, isRealPhoto]);
 
-  // Daftar momen yang sedang ditampilkan di bawah (seluruh koleksi atau difilter per fase)
   const listSourceMoments = React.useMemo(() => {
     if (showAllGrid) return filteredMoments;
     return filteredMoments.filter((m) => m.phase === activePhase);
@@ -148,24 +157,12 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
     );
   }, [listSourceMoments, momentPage, totalMomentPages]);
 
-  // Pisahkan tiap fase (X, XI, XII) sendiri-sendiri & tampung foto sebanyak apapun tanpa batas slice
-  const phaseRackMoments = React.useMemo(() => {
-    const inPhase = filteredMoments.filter(
-      (m) => String(m.phase || "XII").trim().toUpperCase() === activePhase
-    );
-    return [
-      ...inPhase.filter((m) => isRealPhoto(m.image_url)),
-      ...inPhase.filter((m) => !isRealPhoto(m.image_url)),
-    ];
-  }, [filteredMoments, activePhase, isRealPhoto]);
-
-  const simpleRackRef = React.useRef<HTMLDivElement | null>(null);
-  const scrollSimpleRack = (dir: -1 | 1) => {
-    if (!simpleRackRef.current) return;
-    simpleRackRef.current.scrollBy({
-      left: dir * 480,
-      behavior: "smooth",
-    });
+  const handleOpenAllGrid = () => {
+    setShowAllGrid(true);
+    setMomentPage(1);
+    window.setTimeout(() => {
+      gridSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 60);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,7 +211,8 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
       } else {
         setUploadFeedback({
           ok: true,
-          text: json.message || "Foto berhasil dikirim ke antrean moderasi admin!",
+          text:
+            json.message || "Foto berhasil dikirim ke antrean moderasi admin!",
         });
         setCaption("");
         setCompressedPreview("");
@@ -232,21 +230,21 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
   };
 
   const currentLightboxMoment =
-    lightboxIndex !== null ? filteredMoments[lightboxIndex] ?? null : null;
+    lightboxIndex !== null ? (filteredMoments[lightboxIndex] ?? null) : null;
 
   return (
     <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
-      {/* Header Galeri Momen Ringkas */}
+      {/* Header Halaman Galeri Koran */}
       <div className="flex flex-col items-start justify-between gap-3.5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
-            Arsip Foto Tiga Tahun · {moments.length} Momen
+          <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Edisi Cetak Tiga Tahun · {moments.length} Arsip Foto
           </p>
-          <h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-            Tali Polaroid & Dinding Kenangan
+          <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+            Galeri Kenangan Bersama
           </h1>
-          <p className="mt-1 max-w-xl text-xs sm:text-sm text-muted-foreground">
-            Jepretan kenangan Kelas X, XI, hingga XII. Klik foto untuk tampilan penuh.
+          <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
+            Lembaran koran cetak jadul kecreaman dan arsip foto vintage Kelas X, XI, hingga XII PPLG 1 MAKN Ende.
           </p>
         </div>
 
@@ -259,13 +257,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-card px-3 sm:px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[42px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 font-sans text-xs font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap shrink-0"
           >
-            <Grid className="size-3.5 sm:size-4 shrink-0 text-[var(--color-chart-1)]" />
+            {showAllGrid ? (
+              <Newspaper className="size-4 shrink-0 text-foreground" />
+            ) : (
+              <Grid className="size-4 shrink-0 text-foreground" />
+            )}
             <span className="truncate">
               {showAllGrid
-                ? "Mode Gantungan"
-                : `Semua Grid (${filteredMoments.length})`}
+                ? "Mode Koran Kelas"
+                : `Semua Foto (${filteredMoments.length})`}
             </span>
           </motion.button>
 
@@ -277,16 +279,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setUploadOpen(true);
               setUploadFeedback(null);
             }}
-            className="inline-flex min-h-[40px] w-full sm:w-auto items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[var(--color-accent-warm)] px-3 sm:px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[42px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 font-sans text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap shrink-0"
           >
-            <Upload className="size-3.5 sm:size-4 shrink-0" />
+            <Upload className="size-4 shrink-0" />
             <span>Unggah Foto</span>
           </motion.button>
         </div>
       </div>
 
-      {/* Pilihan Timeline Fase (Kelas X, XI, XII): 3 Kolom Kompak di Mobile */}
-      <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-2.5">
+      {/* Pilihan Timeline Rubrik (Kelas X, XI, XII) */}
+      <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
         {PHASES.map((p) => {
           const active = activePhase === p.id;
           const countInPhase = filteredMoments.filter(
@@ -300,24 +302,24 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               whileTap={{ scale: 0.99 }}
               onClick={() => {
                 setActivePhase(p.id);
-                setSelected3DMoment(null);
                 setMomentPage(1);
+                koranRef.current?.goToPhase(p.id);
               }}
-              className={`flex flex-col items-start rounded-xl border p-2.5 sm:p-3.5 text-left transition-colors ${
+              className={`flex flex-col items-start rounded-xl border p-2.5 sm:p-4 text-left transition-colors ${
                 active
-                  ? "border-[var(--color-accent-warm)] bg-card shadow-2xs"
-                  : "border-border bg-card/40 hover:bg-card/80"
+                  ? "border-foreground bg-card shadow-xs"
+                  : "border-border bg-card/50 hover:bg-card"
               }`}
             >
               <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                <span className="font-serif text-sm sm:text-base font-bold text-foreground">
+                <span className="font-serif text-sm sm:text-lg font-bold text-foreground">
                   {p.label}
                 </span>
-                <span className="w-fit rounded-md border border-border bg-muted px-1.5 sm:px-2 py-0.5 font-mono text-[10px] sm:text-[11px] font-semibold text-foreground">
-                  {countInPhase} Foto
+                <span className="w-fit rounded-md bg-muted px-2 py-0.5 font-mono text-[10px] sm:text-xs font-semibold text-muted-foreground">
+                  {countInPhase} foto
                 </span>
               </div>
-              <span className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+              <span className="mt-1 hidden font-sans text-xs text-muted-foreground sm:block">
                 {p.subtitle}
               </span>
             </motion.button>
@@ -325,11 +327,11 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Filter Kategori: Horizontal Swipe di Mobile, Wrap di Desktop */}
+      {/* Filter Kategori */}
       <div
         role="group"
         aria-label="Filter Kategori Momen"
-        className="no-scrollbar mt-3.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/60 p-1.5 sm:mt-4 sm:flex-wrap"
+        className="no-scrollbar mt-4 flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 sm:flex-wrap"
       >
         {SITE_CONTENT.momentCategories.map((cat) => {
           const active = activeCategory === cat;
@@ -343,9 +345,9 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 setActiveCategory(cat);
                 setMomentPage(1);
               }}
-              className={`min-h-[34px] sm:min-h-[36px] rounded-lg px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`min-h-[34px] rounded-lg px-3 py-1 font-sans text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 active
-                  ? "bg-foreground text-background font-semibold shadow-2xs"
+                  ? "bg-foreground text-background font-semibold"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -355,163 +357,26 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         })}
       </div>
 
-      {/* Rak Polaroid (Adaptive: 3D di Desktop HD, Deret Gantungan di Mobile Simple) */}
+      {/* Koran Kelas Interaktif (LeafThrough) */}
       {!showAllGrid && (
-        <div className="mt-4 sm:mt-5">
-          <Adaptive
-            simple={
-              <section
-                aria-label={`Deretan Polaroid Fase Kelas ${activePhase}`}
-                className="rounded-2xl border border-border bg-card/70 p-3.5 sm:p-4"
-              >
-                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h2 className="font-serif text-sm sm:text-base font-bold text-foreground">
-                      Fase Kelas {activePhase} ({phaseRackMoments.length} Foto)
-                    </h2>
-                    <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">
-                      Geser: Kiri/Kanan · Ketuk: Perbesar
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => scrollSimpleRack(-1)}
-                      className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                    >
-                      <ChevronLeft className="size-3.5" />
-                      <span>Kiri</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => scrollSimpleRack(1)}
-                      className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                    >
-                      <span>Kanan</span>
-                      <ChevronRight className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tali Jemuran Kayu di Atas Polaroid Mobile (Jarak Foto Agak Rapat & Bisa Digeser Sepanjang Foto) */}
-                <div className="relative pt-3">
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-2 right-0 left-0 h-1.5 rounded-full bg-gradient-to-r from-[#8d6b48] via-[#c8a97e] to-[#8d6b48] shadow-sm"
-                  />
-                  <div
-                    ref={simpleRackRef}
-                    className="flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-5 pt-4 scroll-smooth"
-                  >
-                    {phaseRackMoments.map((m, idx) => {
-                      const tiltClass =
-                        idx % 2 === 0 ? "-rotate-1" : "rotate-1";
-                      const globalIdx = filteredMoments.findIndex(
-                        (fm) => fm.id === m.id
-                      );
-                      return (
-                        <motion.button
-                          key={m.id}
-                          type="button"
-                          whileHover={{ scale: 1.03, rotate: 0, y: -4 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() =>
-                            setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)
-                          }
-                          className={`real-photo-paper relative w-[200px] sm:w-[212px] shrink-0 snap-start rounded-md p-2.5 pb-4 pt-3.5 text-left shadow-md transition-shadow [transform:perspective(680px)_rotateX(2deg)] ${tiltClass}`}
-                        >
-                          {/* Jepitan Kayu di Tepi Atas */}
-                          <span
-                            aria-hidden="true"
-                            className="absolute -top-3.5 left-1/2 h-5 w-2.5 -translate-x-1/2 rounded-xs border border-[#5c3d24] bg-[#c89662] shadow"
-                          />
-                          <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-xs border border-[#cbb799] bg-muted shadow-inner">
-                            <img
-                              src={m.image_url}
-                              alt={m.caption}
-                              referrerPolicy="no-referrer"
-                              loading="lazy"
-                              className="size-full object-cover"
-                            />
-                          </div>
-                          <p className="mt-2.5 line-clamp-2 font-serif text-sm sm:text-[15px] font-bold leading-snug text-foreground">
-                            {m.caption}
-                          </p>
-                          <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] sm:text-[11px] font-semibold text-muted-foreground">
-                            <span className="truncate">{m.category}</span>
-                            <span className="shrink-0 tabular-nums">{m.taken_at}</span>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </section>
-            }
-            hd={
-              <div className="space-y-4">
-                <GaleriSceneHD
-                  moments={filteredMoments}
-                  activePhase={activePhase}
-                  selectedMoment={selected3DMoment}
-                  onSelectMoment={setSelected3DMoment}
-                  onOpenLightbox={(m) => {
-                    const idx = filteredMoments.findIndex((x) => x.id === m.id);
-                    if (idx >= 0) setLightboxIndex(idx);
-                  }}
-                />
-                {selected3DMoment && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="real-photo-paper flex flex-col items-start justify-between gap-4 rounded-xl p-4 sm:flex-row sm:items-center"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <img
-                        src={selected3DMoment.image_url}
-                        alt={selected3DMoment.caption}
-                        referrerPolicy="no-referrer"
-                        className="h-16 w-20 shrink-0 rounded-md border border-[#cbb799] object-cover shadow-xs"
-                      />
-                      <div>
-                        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] sm:text-xs font-semibold text-muted-foreground">
-                          <span>Fase Kelas {selected3DMoment.phase}</span>
-                          <span aria-hidden="true">·</span>
-                          <span>{selected3DMoment.category}</span>
-                          <span aria-hidden="true">·</span>
-                          <span className="tabular-nums">{selected3DMoment.taken_at}</span>
-                          <span aria-hidden="true">·</span>
-                          <span>Oleh {selected3DMoment.uploader_name}</span>
-                        </div>
-                        <p className="mt-1 font-serif text-base sm:text-lg font-bold leading-snug text-foreground">
-                          &ldquo;{selected3DMoment.caption}&rdquo;
-                        </p>
-                      </div>
-                    </div>
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => {
-                        const idx = filteredMoments.findIndex(
-                          (x) => x.id === selected3DMoment.id
-                        );
-                        if (idx >= 0) setLightboxIndex(idx);
-                      }}
-                      className="min-h-[40px] w-full sm:w-auto rounded-lg border border-border bg-background px-3.5 py-2 font-sans text-xs font-semibold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
-                    >
-                      Buka Mode Baca Pop-Up Penuh →
-                    </motion.button>
-                  </motion.div>
-                )}
-              </div>
-            }
+        <div className="mt-5">
+          <KoranGaleri
+            ref={koranRef}
+            moments={filteredMoments}
+            activeCategory={activeCategory}
+            activePhase={activePhase}
+            onSelectPhase={setActivePhase}
+            onShowAllGrid={handleOpenAllGrid}
           />
         </div>
       )}
 
-      {/* Daftar Momen Terpaginasi Bervisual Kertas Foto Cetak Asli & Font Tulisan Tangan */}
-      <section aria-labelledby="all-photos-heading" className="mt-8 sm:mt-12">
+      {/* Grid Arsip Cetak Foto Monokrom dengan Paginasi Prev/Next */}
+      <section
+        ref={gridSectionRef}
+        aria-labelledby="all-photos-heading"
+        className="mt-8 sm:mt-10"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
           <div>
             <h2
@@ -519,11 +384,11 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               className="font-serif text-lg sm:text-xl font-bold text-foreground"
             >
               {showAllGrid
-                ? `Seluruh Koleksi Lembar Foto (${listSourceMoments.length} Momen)`
-                : `Album Kertas Foto Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
+                ? `Seluruh Arsip Cetak Foto (${listSourceMoments.length} Momen)`
+                : `Arsip Foto Rubrik Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
             </h2>
-            <p className="mt-0.5 font-sans text-xs sm:text-sm text-muted-foreground">
-              Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk membuka pop-up foto dan cerita lengkap.
+            <p className="font-sans text-xs text-muted-foreground">
+              Menampilkan {MOMENTS_PER_PAGE} foto per halaman — ketuk foto untuk melihat detail ukuran penuh.
             </p>
           </div>
           <motion.button
@@ -534,56 +399,55 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="font-sans text-xs sm:text-sm font-semibold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
+            className="font-sans text-xs font-semibold text-foreground hover:underline whitespace-nowrap"
           >
             {showAllGrid
-              ? `← Filter Hanya Kelas ${activePhase}`
-              : `Gabungkan Semua ${filteredMoments.length} Lembar Foto →`}
+              ? `← Kembali ke Koran Kelas ${activePhase}`
+              : `Lihat Semua ${filteredMoments.length} Foto →`}
           </motion.button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-7 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {pagedMoments.map((m, idx) => {
             const globalIdx = filteredMoments.findIndex((x) => x.id === m.id);
-            const naturalRot = ((idx % 4) - 1.5) * 1.1;
+            const naturalRot =
+              idx % 3 === 0
+                ? "-rotate-1"
+                : idx % 3 === 1
+                  ? "rotate-1"
+                  : "rotate-0";
             return (
               <motion.button
                 key={m.id}
                 type="button"
-                initial={{ opacity: 0, y: 14, rotate: naturalRot }}
-                animate={{ opacity: 1, y: 0, rotate: naturalRot }}
-                transition={{ duration: 0.3, delay: idx * 0.04 }}
-                whileHover={{ y: -6, rotate: 0, scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, delay: idx * 0.04 }}
+                whileHover={{ y: -3, rotate: 0, scale: 1.015 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
-                className="real-photo-paper group relative flex flex-col justify-between rounded-md p-2.5 pb-3.5 pt-3 text-left sm:p-3.5 sm:pb-5 sm:pt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className={`real-photo-paper group flex flex-col justify-between rounded-xl p-3 pb-4 text-left transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${naturalRot}`}
               >
-                {/* Jepitan Kayu di Atas Bingkai Kertas Foto */}
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-2.5 left-1/2 h-4 w-2.5 -translate-x-1/2 rounded-xs border border-[#5c3d24] bg-[#c89662] shadow-sm transition-transform group-hover:scale-110"
-                />
                 <div>
-                  <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-xs border border-[#cbb799] bg-muted shadow-inner dark:border-[#544030]">
+                  <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-border bg-muted">
                     <img
                       src={m.image_url}
                       alt={m.caption}
                       referrerPolicy="no-referrer"
                       loading="lazy"
-                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="public-film-photo size-full object-cover transition-transform duration-500 group-hover:scale-103"
                     />
                   </div>
-                  {/* Judul & Caption Foto di Dagu Kertas Polaroid */}
-                  <p className="mt-2 sm:mt-3 line-clamp-2 font-serif text-sm sm:text-base font-bold leading-snug text-foreground">
+                  <p className="mt-3 line-clamp-2 font-serif text-sm sm:text-base font-bold leading-snug text-foreground">
                     {m.caption}
                   </p>
                 </div>
 
-                <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-dashed border-[#cbb799]/70 pt-1.5 sm:pt-2 font-mono text-[10px] sm:text-xs font-semibold text-muted-foreground dark:border-[#544030]">
-                  <span className="truncate">
-                    {m.phase} · {m.category}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-dashed border-border pt-2 font-mono text-[11px] font-semibold text-muted-foreground">
+                  <span>
+                    Kelas {m.phase} · {m.category}
                   </span>
-                  <span className="shrink-0 tabular-nums">{m.taken_at}</span>
+                  <span className="tabular-nums">{m.taken_at}</span>
                 </div>
               </motion.button>
             );
@@ -600,70 +464,71 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         />
       </section>
 
-      {/* Modal Lightbox Pop-Up Kertas Foto 3D (Foto & Teks Sama-Sama Terlihat Jelas dan Mudah Dibaca) */}
+      {/* Modal Lightbox Pop-Up Kertas Foto Monokrom */}
       {currentLightboxMoment && lightboxIndex !== null && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Peninjau Lembar Kertas Foto Ukuran Penuh"
+          aria-label="Peninjau Kertas Foto Ukuran Penuh"
           onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 backdrop-blur-xs sm:items-center sm:p-6"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/80 p-0 backdrop-blur-xs sm:items-center sm:p-6"
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-4 pb-6 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
+            className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-3.5 pb-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
           >
-            <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-[#cbb799]/80 pb-2.5 dark:border-[#544030]">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-mono text-xs sm:text-sm font-semibold text-muted-foreground">
-                <span className="rounded-md bg-[var(--color-accent-warm)]/15 px-2.5 py-0.5 text-foreground">
-                  Fase Kelas {currentLightboxMoment.phase}
+            <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-border pb-2.5">
+              <div className="flex flex-wrap items-center gap-2 font-mono text-xs font-bold text-muted-foreground">
+                <span className="rounded-md bg-secondary px-2.5 py-0.5 text-foreground">
+                  Kelas {currentLightboxMoment.phase}
                 </span>
                 <span aria-hidden="true">·</span>
                 <span>{currentLightboxMoment.category}</span>
                 <span aria-hidden="true">·</span>
-                <span className="tabular-nums">{currentLightboxMoment.taken_at}</span>
+                <span className="tabular-nums">
+                  {currentLightboxMoment.taken_at}
+                </span>
               </div>
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.06, rotate: 90 }}
-                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
                 aria-label="Tutup foto"
                 onClick={() => setLightboxIndex(null)}
-                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background/90 text-foreground hover:bg-muted"
+                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
               >
                 <X className="size-4" />
               </motion.button>
             </div>
 
-            {/* Bingkai Foto Proporsional agar Ruang Teks di Bawahnya Selalu Terlihat Jelas Tanpa Kedekatan Berlebih */}
-            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-md border-2 border-[#cbb799] bg-[#f7efe2] shadow-md dark:border-[#544030] dark:bg-[#231912]">
+            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-secondary shadow-md">
               <img
                 src={currentLightboxMoment.image_url}
                 alt={currentLightboxMoment.caption}
                 referrerPolicy="no-referrer"
-                className="block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
+                className="public-film-photo block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
               />
             </div>
 
-            {/* Area Teks Cerita & Keterangan yang Jelas Terbaca */}
-            <div className="mt-3.5 sm:mt-4 rounded-xl border border-[#cbb799]/80 bg-background/85 p-3.5 sm:p-4 shadow-2xs dark:border-[#544030]">
+            <div className="mt-4 rounded-xl border border-border bg-background/95 p-3.5 sm:p-4 shadow-xs">
               <p className="font-serif text-base sm:text-xl font-bold leading-relaxed text-foreground break-words">
                 &ldquo;{currentLightboxMoment.caption}&rdquo;
               </p>
-              <div className="mt-2.5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 sm:gap-3 border-t border-dashed border-border pt-2.5">
-                <p className="font-mono text-xs font-semibold text-muted-foreground">
-                  Diabadikan oleh {currentLightboxMoment.uploader_name} · Foto{" "}
-                  {lightboxIndex + 1}/{filteredMoments.length}
+              <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 border-t border-dashed border-border pt-2.5">
+                <p className="font-mono text-xs font-medium text-muted-foreground">
+                  Diabadikan oleh{" "}
+                  <strong className="font-semibold text-foreground">
+                    {currentLightboxMoment.uploader_name}
+                  </strong>{" "}
+                  · Bingkai {lightboxIndex + 1} dari {filteredMoments.length}
                 </p>
 
                 <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
-                  <motion.button
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.04, x: -2 }}
-                    whileTap={{ scale: 0.94 }}
                     aria-label="Foto sebelumnya"
                     onClick={() =>
                       setLightboxIndex(
@@ -671,26 +536,24 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                           filteredMoments.length
                       )
                     }
-                    className="inline-flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     <ChevronLeft className="size-4" />
                     <span>Sebelumnya</span>
-                  </motion.button>
-                  <motion.button
+                  </button>
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.04, x: 2 }}
-                    whileTap={{ scale: 0.94 }}
                     aria-label="Foto berikutnya"
                     onClick={() =>
                       setLightboxIndex(
                         (lightboxIndex + 1) % filteredMoments.length
                       )
                     }
-                    className="inline-flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     <span>Berikutnya</span>
                     <ChevronRight className="size-4" />
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -698,25 +561,25 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         </div>
       )}
 
-      {/* Modal Unggah Foto Momen + Crop Mandiri (HP & Desktop) */}
+      {/* Modal Unggah Foto Momen */}
       {uploadOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="upload-moment-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/70 p-0 sm:items-center sm:p-4"
         >
           <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className="font-mono text-xs font-medium text-muted-foreground">
                   Tambah Koleksi Galeri XII PPLG 1
                 </p>
                 <h2
                   id="upload-moment-title"
                   className="mt-1 font-serif text-xl font-bold text-foreground"
                 >
-                  Unggah Foto Kenangan Baru
+                  Unggah Foto Momen Kelas
                 </h2>
               </div>
               <button
@@ -730,14 +593,14 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
             </div>
 
             <form onSubmit={handleUploadSubmit} className="mt-4 space-y-4">
-              <div className="rounded-xl border border-border bg-muted/30 p-3.5">
-                <label className="block text-xs font-semibold text-foreground">
-                  Pilih Foto dari HP atau Desktop & Atur Posisi (Crop)
+              <div className="rounded-xl border border-border bg-muted/35 p-3.5">
+                <label className="block font-sans text-xs font-semibold text-foreground">
+                  Pilih Foto dari HP atau Desktop &amp; Atur Posisi (Crop)
                 </label>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-3.5 py-2 text-xs font-semibold text-[#fbf6ec] shadow-2xs hover:opacity-90">
+                  <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 rounded-lg bg-primary px-3.5 py-2 font-sans text-xs font-semibold text-primary-foreground shadow-2xs hover:opacity-90">
                     <Upload className="size-3.5" />
-                    <span>Pilih Foto (HP / Desktop)</span>
+                    <span>Pilih Foto</span>
                     <input
                       id="up-file"
                       type="file"
@@ -750,26 +613,26 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     <button
                       type="button"
                       onClick={() => setCropModalOpen(true)}
-                      className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 font-sans text-xs font-semibold text-foreground hover:bg-muted"
                     >
-                      <Crop className="size-3.5 text-[var(--color-accent-warm)]" />
-                      <span>Atur Posisi & Ukuran (Crop)</span>
+                      <Crop className="size-3.5 text-foreground" />
+                      <span>Atur Posisi (Crop)</span>
                     </button>
                   )}
                 </div>
 
                 {compressedPreview && (
                   <div className="mt-3 flex items-center gap-3">
-                    <div className="overflow-hidden rounded-lg border border-border bg-background">
+                    <div className="overflow-hidden rounded-lg border border-border bg-background shadow-2xs">
                       <img
                         src={compressedPreview}
-                        alt="Pratinjau foto"
+                        alt="Pratinjau terkompresi"
                         referrerPolicy="no-referrer"
                         className="max-h-24 w-auto object-contain"
                       />
                     </div>
-                    <p className="text-[11px] text-[var(--color-chart-2)]">
-                      ✓ Foto siap diunggah (posisi & ukuran sudah disesuaikan).
+                    <p className="font-sans text-xs text-muted-foreground">
+                      ✓ Foto siap diunggah ke galeri kelas.
                     </p>
                   </div>
                 )}
@@ -779,7 +642,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 <div>
                   <label
                     htmlFor="up-name"
-                    className="block text-xs font-semibold text-foreground"
+                    className="block font-sans text-xs font-semibold text-foreground"
                   >
                     Nama Pengunggah
                   </label>
@@ -791,13 +654,13 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     value={uploaderName}
                     onChange={(e) => setUploaderName(e.target.value)}
                     placeholder="Mis. Dimas"
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm text-foreground"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="up-phase"
-                    className="block text-xs font-semibold text-foreground"
+                    className="block font-sans text-xs font-semibold text-foreground"
                   >
                     Fase Kelas
                   </label>
@@ -805,7 +668,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     id="up-phase"
                     value={phase}
                     onChange={(e) => setPhase(e.target.value as MomentPhase)}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm text-foreground"
                   >
                     <option value="X">Kelas X</option>
                     <option value="XI">Kelas XI</option>
@@ -818,7 +681,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 <div>
                   <label
                     htmlFor="up-cat"
-                    className="block text-xs font-semibold text-foreground"
+                    className="block font-sans text-xs font-semibold text-foreground"
                   >
                     Kategori Momen
                   </label>
@@ -826,7 +689,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                     id="up-cat"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm text-foreground"
                   >
                     {SITE_CONTENT.momentCategories
                       .filter((c) => c !== "Semua")
@@ -840,7 +703,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 <div>
                   <label
                     htmlFor="up-code"
-                    className="block text-xs font-semibold text-foreground"
+                    className="block font-sans text-xs font-semibold text-foreground"
                   >
                     Kode Kelas
                   </label>
@@ -858,9 +721,9 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               <div>
                 <label
                   htmlFor="up-caption"
-                  className="block text-xs font-semibold text-foreground"
+                  className="block font-sans text-xs font-semibold text-foreground"
                 >
-                  Cerita / Caption Singkat
+                  Cerita Singkat / Caption Foto
                 </label>
                 <textarea
                   id="up-caption"
@@ -878,9 +741,9 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               {uploadFeedback && (
                 <div
                   role="status"
-                  className="flex items-start gap-2 rounded-lg border border-border bg-muted/60 p-3 text-xs text-foreground"
+                  className="flex items-start gap-2 rounded-lg border border-border bg-muted/60 p-3 font-sans text-xs text-foreground"
                 >
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                   <span>{uploadFeedback.text}</span>
                 </div>
               )}
@@ -889,17 +752,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 <button
                   type="button"
                   onClick={() => setUploadOpen(false)}
-                  className="min-h-[44px] rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
+                  className="min-h-[44px] rounded-lg border border-border px-4 py-2 font-sans text-xs font-semibold text-muted-foreground hover:bg-muted"
                 >
                   Tutup
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-accent-warm)] px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 py-2 font-sans text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Camera className="size-4" />
-                  <span>{submitting ? "Mengirim..." : "Kirim Foto"}</span>
+                  <span>{submitting ? "Mengirim..." : "Kirim ke Galeri"}</span>
                 </button>
               </div>
             </form>
@@ -912,7 +775,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
         imageSrc={rawUploadSource || compressedPreview}
         title="Atur Posisi & Ukuran Foto Galeri"
         targetAspect={4 / 3}
-        targetLabel="4:3 Polaroid Galeri"
+        targetLabel="4:3 Foto Galeri"
         onClose={() => setCropModalOpen(false)}
         onConfirm={(croppedWebp) => setCompressedPreview(croppedWebp)}
       />

@@ -99,13 +99,13 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
   return (
     <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10">
       <header className="mx-auto max-w-2xl text-center">
-        <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-[var(--color-accent-warm)]">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Sudut Nostalgia · XII PPLG 1 MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
           Kuis &amp; Polling Kelas
         </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+        <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
           Uji ingatanmu tentang kisah laboratorium RPL dan pilih momen terbaik kita.
         </p>
       </header>
@@ -131,7 +131,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                 5 Pertanyaan Kenangan XII PPLG 1
               </p>
             </div>
-            <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-[var(--color-accent-warm)]">
+            <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-foreground">
               Soal {currentQ + 1} / {questions.length}
             </span>
           </div>
@@ -211,7 +211,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     onClick={() =>
                       setCurrentQ((p) => Math.min(questions.length - 1, p + 1))
                     }
-                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-[var(--color-accent-warm)] px-4 sm:px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
+                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
                   >
                     Berikutnya →
                   </motion.button>
@@ -222,7 +222,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     type="button"
                     disabled={selectedAnswerIdx === undefined}
                     onClick={() => setQuizFinished(true)}
-                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-[var(--color-chart-2)] px-4 sm:px-5 py-2 text-xs font-semibold text-[#fbf6ec] hover:opacity-90 disabled:opacity-40"
+                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
                   >
                     Lihat Hasil Akhir
                   </motion.button>
@@ -235,7 +235,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
               animate={{ opacity: 1, scale: 1 }}
               className="mt-8 flex flex-col items-center py-6 text-center"
             >
-              <Trophy className="size-12 text-[var(--color-accent-warm)]" />
+              <Trophy className="size-12 text-foreground" />
               <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Skor Akhir Kamu
               </p>
@@ -363,7 +363,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                             onClick={() => handleVote(poll.id, opt.id)}
                             className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
                           >
-                            <Vote className="size-3.5 text-[var(--color-accent-warm)]" />
+                            <Vote className="size-3.5 text-foreground" />
                             <span>
                               {alreadyVoted ? "Sudah Memilih" : "Pilih Momen Ini"}
                             </span>
@@ -379,7 +379,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     role="status"
                     className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground"
                   >
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--color-accent-warm)]" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                     <span>{pollMessage}</span>
                   </div>
                 )}

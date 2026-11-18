@@ -19,15 +19,14 @@ export default function Icon() {
           alignItems: "center",
           justifyContent: "center",
           background:
-            "radial-gradient(circle at 30% 25%, #e88d3f 0%, #b84a27 52%, #58190e 100%)",
+            "radial-gradient(circle at 30% 25%, #3B3B38 0%, #262624 52%, #161615 100%)",
           borderRadius: "9999px",
-          border: "3px solid #f4ca7e",
-          color: "#fff9f0",
-          fontFamily: "Georgia, serif",
+          border: "3px solid #D6D2C9",
+          color: "#ECE9E1",
+          fontFamily: "serif",
           position: "relative",
         }}
       >
-        {/* 3 Titik Bintang Puncak (3 Tahun & 3 Danau Kelimutu) */}
         <div
           style={{
             display: "flex",
@@ -42,7 +41,7 @@ export default function Icon() {
               width: "4px",
               height: "4px",
               borderRadius: "9999px",
-              background: "#f7ce7e",
+              background: "#B8B4AA",
             }}
           />
           <div
@@ -50,7 +49,7 @@ export default function Icon() {
               width: "6px",
               height: "6px",
               borderRadius: "9999px",
-              background: "#ffebb8",
+              background: "#ECE9E1",
             }}
           />
           <div
@@ -58,33 +57,31 @@ export default function Icon() {
               width: "4px",
               height: "4px",
               borderRadius: "9999px",
-              background: "#f7ce7e",
+              background: "#B8B4AA",
             }}
           />
         </div>
 
-        {/* Huruf Monogram U */}
         <div
           style={{
             fontSize: 34,
-            fontWeight: 900,
+            fontWeight: 700,
             lineHeight: 1,
             letterSpacing: "-0.02em",
             display: "flex",
-            color: "#fff9f0",
+            color: "#ECE9E1",
           }}
         >
           U
         </div>
 
-        {/* Simbol Kode PPLG di Bawah Huruf U */}
         <div
           style={{
             marginTop: "1px",
             fontSize: 8,
-            fontWeight: 800,
+            fontWeight: 700,
             letterSpacing: "0.08em",
-            color: "#ffe1a6",
+            color: "#C9C4B8",
             display: "flex",
           }}
         >
