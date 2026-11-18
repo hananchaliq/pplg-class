@@ -162,8 +162,8 @@
   --font-display: var(--font-serif);
   --font-body: var(--font-sans);
   --font-arsip: var(--font-mono);
-  --font-tulis: var(--font-serif);
-  --font-hand: var(--font-serif);
+  --font-tulis: var(--font-hand);
+  --font-hand: var(--font-hand);
 }
 
 @layer base {
@@ -224,7 +224,7 @@
 
   .font-tulis,
   .font-hand {
-    font-family: var(--font-serif);
+    font-family: var(--font-hand), var(--font-serif), cursive;
   }
 }
 
@@ -412,6 +412,30 @@
   mix-blend-mode: screen;
 }
 
+@keyframes theme-radial-expand {
+  from {
+    clip-path: circle(0px at var(--theme-origin-x, 50%) var(--theme-origin-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--theme-max-r, 160vmax) at var(--theme-origin-x, 50%) var(--theme-origin-y, 50%));
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+  animation: theme-radial-expand 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -420,5 +444,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  ::view-transition-new(root) {
+    animation: none !important;
   }
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { HeartHandshake, GraduationCap } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { SingleIronRailLanyard } from "@/components/ui/single-iron-rail-lanyard";
 import { FlatIdCardRail } from "@/components/ui/flat-id-card";
 import { Adaptive } from "@/components/three/adaptive";
@@ -31,11 +31,6 @@ export function GuruClient({
   const homeroomCard = React.useMemo(
     () => (homeroomTeacher ? teacherToLanyardMember(homeroomTeacher) : null),
     [homeroomTeacher]
-  );
-
-  const nonHomeroomTeachers = React.useMemo(
-    () => teachers.filter((t) => !t.is_homeroom),
-    [teachers]
   );
 
   const groupTabs = React.useMemo<
@@ -146,16 +141,24 @@ export function GuruClient({
             </div>
 
             <div className="flex flex-col justify-between space-y-4 lg:col-span-8">
-              <div className="rounded-xl border border-border bg-background/80 p-4 sm:p-5">
+              <motion.div
+                whileHover={{ x: 3 }}
+                transition={{ type: "spring", stiffness: 320, damping: 24 }}
+                className="rounded-xl border border-border bg-background/80 p-4 sm:p-5 transition-shadow hover:shadow-xs"
+              >
                 <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                   Pesan Wali Kelas
                 </p>
                 <blockquote className="mt-2 font-serif text-base sm:text-lg font-medium italic leading-relaxed text-foreground">
                   &ldquo;{homeroomTeacher.message}&rdquo;
                 </blockquote>
-              </div>
+              </motion.div>
 
-              <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-4">
+              <motion.div
+                whileHover={{ x: 3 }}
+                transition={{ type: "spring", stiffness: 320, damping: 24 }}
+                className="flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-4 transition-shadow hover:shadow-xs"
+              >
                 <HeartHandshake className="mt-0.5 size-4 shrink-0 text-foreground" />
                 <div>
                   <p className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">
@@ -165,7 +168,7 @@ export function GuruClient({
                     &ldquo;Terima kasih {homeroomTeacher.full_name} telah menjadi orang tua kedua kami di madrasah dan membimbing kami dengan tulus.&rdquo;
                   </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </motion.section>
@@ -190,22 +193,41 @@ export function GuruClient({
                 type="button"
                 aria-selected={active}
                 onClick={() => setActiveGroup(tab.id)}
-                className={`inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
+                className={`relative inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
                   active
-                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    ? "text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <GraduationCap className="size-3.5" />
-                <span>{tab.label}</span>
+                {active && (
+                  <motion.span
+                    layoutId="guru-filter-pill"
+                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                    className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="relative z-10 inline-flex items-center gap-1.5">
+                  <GraduationCap className="size-3.5" />
+                  <span>{tab.label}</span>
+                </span>
               </motion.button>
             );
           })}
         </div>
 
-        <p className="mx-auto mt-3 max-w-xl text-center text-xs text-muted-foreground">
-          {currentTabMeta.desc}
-        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={activeGroup}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            className="mx-auto mt-3 max-w-xl text-center text-xs text-muted-foreground"
+          >
+            {currentTabMeta.desc}
+          </motion.p>
+        </AnimatePresence>
 
         {/* SATU GAGANG BESI TUNGGAL (Single Iron Rail) untuk Semua Guru di Tab Ini */}
         <div className="mt-4">

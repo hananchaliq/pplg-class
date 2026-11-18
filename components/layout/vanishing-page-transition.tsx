@@ -203,10 +203,9 @@ export function VanishingPageTransition({
 
       const bandWidth = 0.26;
 
-      // 1. Selubung kertas kecreaman/sepia
+      // 1. Selubung kertas kecreaman/sepia (hampir pekat agar konten transisi/loading di bawah tidak tembus)
       if (phase === "loop") {
-        // Selubung halus penuh selama halaman masih dimuat di balik gelombang titik-titik
-        ctx.fillStyle = `rgba(${veilRgb}, 0.88)`;
+        ctx.fillStyle = `rgba(${veilRgb}, 0.985)`;
         ctx.fillRect(0, 0, w, h);
       } else if (phase === "enter") {
         // Sapuan pembuka terakhir dari kiri-atas ke kanan-bawah
@@ -217,7 +216,7 @@ export function VanishingPageTransition({
           startStop,
           Math.min(1, frontPos + bandWidth * 0.45)
         );
-        const veilAlpha = Math.max(0, Math.min(0.92, 1.15 - progress * 0.88));
+        const veilAlpha = Math.max(0, Math.min(0.985, 1.18 - progress * 0.92));
 
         if (endStop > 0 && veilAlpha > 0.01) {
           grad.addColorStop(0, `rgba(${veilRgb}, 0)`);
@@ -240,7 +239,7 @@ export function VanishingPageTransition({
           startStop,
           Math.min(1, frontPos + bandWidth * 0.2)
         );
-        const maxAlpha = Math.min(0.92, 0.48 + progress * 0.46);
+        const maxAlpha = Math.min(0.985, 0.55 + progress * 0.46);
 
         grad.addColorStop(0, `rgba(${veilRgb}, ${maxAlpha})`);
         if (startStop > 0) {
@@ -384,14 +383,21 @@ export function VanishingPageTransition({
       gsap.to(stageEl, {
         opacity: 1,
         scale: 1,
-        duration: 0.72,
+        duration: 0.9,
         ease: "power2.out",
         clearProps: "transform,opacity",
       });
 
+      gsap.to(canvas, {
+        opacity: 0,
+        duration: 0.85,
+        delay: 0.35,
+        ease: "power2.inOut",
+      });
+
       activeTweenRef.current = gsap.to(revealState, {
-        progress: 1.32,
-        duration: 0.92,
+        progress: 1.35,
+        duration: 1.15,
         ease: "power2.inOut",
         onUpdate: () => {
           if (!cancelled) {
@@ -405,23 +411,33 @@ export function VanishingPageTransition({
             if (ctx) {
               ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
+            canvas.style.opacity = "1";
             canvas.style.display = "none";
           }
         },
       });
     };
 
-    // Tunggu halaman benar-benar siap: font + minimal 2 frame + gambar di layar + scene 3D (dengan batas aman)
+    // Tunggu halaman benar-benar siap: tanpa route/dynamic loading, font + gambar + scene 3D + jeda tenang
     const startTime = performance.now();
-    const minLoopMs = 680;
-    const maxWaitMs = 2200;
+    const minLoopMs = 760;
+    const maxWaitMs = 4500;
 
     const checkReadiness = async () => {
+      // 1. Tunggu Suspense route (`app/loading.tsx`) dan dynamic import selesai digantikan halaman nyata
+      while (
+        !cancelled &&
+        document.querySelector('[data-route-loading="true"], [data-dynamic-loading="true"]') &&
+        performance.now() - startTime < maxWaitMs
+      ) {
+        await new Promise((r) => window.setTimeout(r, 60));
+      }
+
       try {
         if ("fonts" in document) {
           await Promise.race([
             document.fonts.ready,
-            new Promise((r) => window.setTimeout(r, 900)),
+            new Promise((r) => window.setTimeout(r, 950)),
           ]);
         }
       } catch {
@@ -432,7 +448,7 @@ export function VanishingPageTransition({
         requestAnimationFrame(() => requestAnimationFrame(() => r()))
       );
 
-      // Tunggu gambar terlihat pertama di atas lipatan layar (maks 1100ms)
+      // Tunggu gambar terlihat pertama di atas lipatan layar (maks 1200ms)
       const visibleImgs = Array.from(document.querySelectorAll("img")).slice(
         0,
         6
@@ -452,23 +468,28 @@ export function VanishingPageTransition({
                 })
             )
           ),
-          new Promise<void>((r) => window.setTimeout(r, 1100)),
+          new Promise<void>((r) => window.setTimeout(r, 1200)),
         ]);
       }
 
-      // Jika masih ada scene 3D yang aktif memuat, tunggu sampai ready atau batas maxWaitMs
+      // Tunggu jika masih ada ruang 3D yang aktif membangun model
       while (
         !cancelled &&
         scenePendingRef.current &&
         performance.now() - startTime < maxWaitMs
       ) {
-        await new Promise((r) => window.setTimeout(r, 80));
+        await new Promise((r) => window.setTimeout(r, 70));
       }
 
       const elapsed = performance.now() - startTime;
       const remainingMin = Math.max(0, minLoopMs - elapsed);
       if (remainingMin > 0 && !cancelled) {
         await new Promise((r) => window.setTimeout(r, remainingMin));
+      }
+
+      // Beri jeda sejenak yang tenang sebelum layar load pudar perlahan
+      if (!cancelled) {
+        await new Promise((r) => window.setTimeout(r, 340));
       }
 
       if (!cancelled) {
@@ -480,11 +501,12 @@ export function VanishingPageTransition({
 
     const hardSafetyTimer = window.setTimeout(() => {
       if (!cancelled) triggerFinalReveal();
-    }, 2600);
+    }, 5200);
 
     return () => {
       cancelled = true;
       window.clearTimeout(hardSafetyTimer);
+      gsap.killTweensOf(canvas);
       if (activeTweenRef.current) {
         activeTweenRef.current.kill();
         activeTweenRef.current = null;
@@ -528,12 +550,23 @@ export function VanishingPageTransition({
           drawFrame(animState.progress, "exit");
         },
         onComplete: () => {
-          activeTweenRef.current = null;
           safePush();
+          // Langsung lanjutkan loop micro-dot tanpa jeda beku saat menunggu route tujuan tiba
+          const waitLoop = { phase: 0 };
+          drawFrame(0, "loop");
+          activeTweenRef.current = gsap.to(waitLoop, {
+            phase: 1,
+            duration: 0.95,
+            repeat: -1,
+            ease: "none",
+            onUpdate: () => {
+              drawFrame(waitLoop.phase, "loop");
+            },
+          });
         },
       });
 
-      pendingExitPushTimer = window.setTimeout(safePush, 400);
+      pendingExitPushTimer = window.setTimeout(safePush, 420);
     },
     [drawFrame, syncCanvasMetrics]
   );

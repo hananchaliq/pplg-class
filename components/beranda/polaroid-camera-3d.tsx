@@ -526,13 +526,13 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     let rafId = 0;
     const isSoftwareGl = isSoftwareWebGL();
 
-    const width = Math.max(300, container.clientWidth || 560);
-    const height = Math.max(340, container.clientHeight || 430);
+    const width = Math.max(320, container.clientWidth || 620);
+    const height = Math.max(380, container.clientHeight || 500);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 40);
-    camera.position.set(0, 0.42, 6.4);
-    camera.lookAt(0, 0.12, 0);
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 45);
+    camera.position.set(0, 0.36, 7.15);
+    camera.lookAt(0, 0.08, 0);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -542,6 +542,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
+    renderer.localClippingEnabled = true;
     renderer.setPixelRatio(
       isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
     );
@@ -602,7 +603,12 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     cameraRig.add(polaroidModel);
     scene.add(cameraRig);
 
-    // Lembar Foto Polaroid yang dicetak
+    // Lembar Foto Polaroid + bidang potong celah slot depan
+    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.95);
+    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.95);
+    const slotClipList = [slotClipPlane];
+    const emptyClipList: THREE.Plane[] = [];
+
     const cardGeo = new THREE.BoxGeometry(1.36, 1.63, 0.014);
     const edgeMat = new THREE.MeshStandardMaterial({
       color: 0xf5edd8,
@@ -802,9 +808,37 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           0.08
         );
 
-        // 2. Lembar Polaroid: Cetak Keluar -> Zoom Mendekat -> Pudar Pelan -> Reset
-        if (t < 1.15) {
+        cameraRig.updateMatrixWorld(true);
+
+        // 2. Lembar Polaroid: Cetak Keluar Tepat dari Mulut Slot -> Zoom Mendekat -> Pudar Pelan -> Reset
+        const setPhotoClipping = (planes: THREE.Plane[]) => {
+          if (frontMat.clippingPlanes !== planes) {
+            frontMat.clippingPlanes = planes;
+            edgeMat.clippingPlanes = planes;
+            backMat.clippingPlanes = planes;
+          }
+        };
+
+        const computeEjectPose = (pVal: number) => {
+          const rxLocal = -1.23 + pVal * 0.16;
+          const forwardDir = new THREE.Vector3(
+            0,
+            -Math.cos(rxLocal),
+            -Math.sin(rxLocal)
+          );
+          const slotOrigin = new THREE.Vector3(0, -0.565, 0.96);
+          const localCenter = slotOrigin.addScaledVector(
+            forwardDir,
+            pVal * 1.6 - 0.78
+          );
+          const worldCenter = localCenter.clone();
+          cameraRig.localToWorld(worldCenter);
+          return { worldCenter, rxLocal };
+        };
+
+        if (t < 1.08) {
           photoMesh.visible = false;
+          setPhotoClipping(emptyClipList);
           frontMat.opacity = 0;
           edgeMat.opacity = 0;
           backMat.opacity = 0;
@@ -813,30 +847,29 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Membidik momen & menekan rana...");
           }
         } else if (t < 3.05) {
-          // Fase cetak keluar dari slot depan
-          const p = easeOutCubic((t - 1.15) / (3.05 - 1.15));
+          // Fase cetak keluar tepat dari celah bibir slot depan dengan clipping bidang slot
+          const p = easeOutCubic((t - 1.08) / (3.05 - 1.08));
           photoMesh.visible = true;
-          const slotLocal = new THREE.Vector3(
-            0,
-            -0.57 - p * 0.16,
-            0.34 + p * 1.24
-          );
-          cameraRig.localToWorld(slotLocal);
-          photoMesh.position.copy(slotLocal);
+
+          slotClipPlane.copy(localSlotPlane).applyMatrix4(cameraRig.matrixWorld);
+          setPhotoClipping(slotClipList);
+
+          const { worldCenter, rxLocal } = computeEjectPose(p);
+          photoMesh.position.copy(worldCenter);
           photoMesh.rotation.set(
-            cameraRig.rotation.x + 1.16 - p * 0.18,
+            cameraRig.rotation.x + rxLocal,
             cameraRig.rotation.y,
             cameraRig.rotation.z
           );
-          const s = 0.88 + p * 0.08;
+          const s = 0.9 + p * 0.06;
           photoMesh.scale.set(s, s, s);
 
           // Efek foto Polaroid perlahan matang warnanya saat keluar
-          const dev = smoothstep(1.2, 2.7, t);
+          const dev = smoothstep(1.15, 2.75, t);
           const shade = THREE.MathUtils.lerp(0.32, 1.0, dev);
           frontMat.color.setRGB(shade, shade * 0.99, shade * 0.96);
 
-          const fadeStart = smoothstep(1.15, 1.32, t);
+          const fadeStart = smoothstep(1.08, 1.24, t);
           frontMat.opacity = fadeStart;
           edgeMat.opacity = fadeStart;
           backMat.opacity = fadeStart;
@@ -846,24 +879,24 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Mencetak lembar Polaroid kelas...");
           }
         } else if (t < 5.45) {
-          // Fase terlepas & zoom mendekat ke tengah layar
+          // Fase terlepas dari slot & zoom mendekat tanpa terpotong
+          setPhotoClipping(emptyClipList);
           const p = easeInOutCubic((t - 3.05) / 1.15);
-          const startPos = new THREE.Vector3(0, -0.73, 1.58);
-          cameraRig.localToWorld(startPos);
+          const { worldCenter: startPos, rxLocal: startRx } = computeEjectPose(1);
           const targetPos = new THREE.Vector3(
             px * 0.08,
-            0.26 + py * 0.05,
+            0.16 + py * 0.05,
             3.35
           );
 
           photoMesh.visible = true;
           photoMesh.position.lerpVectors(startPos, targetPos, p);
           photoMesh.rotation.set(
-            THREE.MathUtils.lerp(0.98, 0.02, p),
-            THREE.MathUtils.lerp(cameraRig.rotation.y, px * 0.14, p),
-            THREE.MathUtils.lerp(0, 0.02, p)
+            THREE.MathUtils.lerp(cameraRig.rotation.x + startRx, 0.02, p),
+            THREE.MathUtils.lerp(cameraRig.rotation.y, px * 0.12, p),
+            THREE.MathUtils.lerp(cameraRig.rotation.z, 0.015, p)
           );
-          const zoomScale = THREE.MathUtils.lerp(0.96, 1.26, p);
+          const zoomScale = THREE.MathUtils.lerp(0.96, 1.18, p);
           photoMesh.scale.set(zoomScale, zoomScale, zoomScale);
           frontMat.color.setRGB(1, 1, 1);
           frontMat.opacity = 1;
@@ -876,17 +909,18 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           }
         } else {
           // Fase pudar pelan-pelan sebelum looping ulang
+          setPhotoClipping(emptyClipList);
           const fadeOutP = smoothstep(5.45, 6.75, t);
           const op = Math.max(0, 1 - fadeOutP);
           photoMesh.visible = op > 0.01;
           photoMesh.position.set(
             px * 0.08,
-            0.26 + fadeOutP * 0.18,
-            3.35 + fadeOutP * 0.28
+            0.16 + fadeOutP * 0.16,
+            3.35 + fadeOutP * 0.24
           );
-          const driftScale = 1.26 + fadeOutP * 0.12;
+          const driftScale = 1.18 + fadeOutP * 0.1;
           photoMesh.scale.set(driftScale, driftScale, driftScale);
-          photoMesh.rotation.set(0.02, px * 0.14, 0.02);
+          photoMesh.rotation.set(0.02, px * 0.12, 0.015);
           frontMat.opacity = op;
           edgeMat.opacity = op;
           backMat.opacity = op;
@@ -973,25 +1007,11 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     <div
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      className="relative w-full overflow-hidden rounded-2xl border border-[#C9B794] bg-gradient-to-br from-[#F4EAD2] via-[#E8D9BA] to-[#D8C5A0] p-3 sm:p-4 text-[#261F18] shadow-xl dark:border-border dark:from-[#29231D] dark:via-[#231D18] dark:to-[#2E261F] dark:text-[#EFE5CE]"
+      className="relative w-full overflow-visible"
     >
-      {/* Bar Info Atas Kamera */}
-      <div className="relative z-10 flex items-center justify-between gap-2 border-b border-[#C9B794]/80 pb-2 font-mono text-[10px] tracking-[0.18em] text-[#6B5B4B] dark:border-border dark:text-[#B0A595] uppercase">
-        <div className="flex items-center gap-2 truncate">
-          <Camera className="size-3.5 shrink-0 text-[#261F18] dark:text-[#EFE5CE]" />
-          <span className="truncate">
-            KAMERA POLAROID 3D · {stagePhaseLabel}
-          </span>
-        </div>
-        <span className="shrink-0 tabular-nums font-semibold">
-          {String(activeIdx + 1).padStart(2, "0")}/
-          {String(Math.max(1, realMoments.length)).padStart(2, "0")}
-        </span>
-      </div>
-
-      {/* Panggung WebGL 3D (atau Fallback 2D Ringan) */}
+      {/* Panggung WebGL 3D Terbuka Menyatu dengan Halaman (Tanpa Kontainer Kotak) */}
       {is2DFallback ? (
-        <div className="relative flex h-[340px] sm:h-[400px] w-full flex-col items-center justify-center overflow-hidden rounded-xl py-4">
+        <div className="relative flex h-[380px] sm:h-[460px] w-full flex-col items-center justify-center py-4">
           <div className="relative mx-auto w-64 rounded-xl border-2 border-[#2D241C] bg-[#F5EDD8] p-3 pb-5 text-[#261F18] shadow-lg transition-all duration-700">
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded border border-[#C9B794] bg-[#2D241C]">
               {activeMoment?.image_url &&
@@ -1023,25 +1043,30 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         <div
           ref={mountRef}
           aria-label="Model 3D Kamera Polaroid Jadul mencetak foto kenangan XII PPLG 1"
-          className="relative h-[340px] sm:h-[410px] w-full cursor-grab active:cursor-grabbing"
+          className="relative h-[420px] sm:h-[500px] lg:h-[540px] w-full cursor-grab active:cursor-grabbing"
         />
       )}
 
-      {/* Bar Info Foto yang Sedang Dicetak + Tombol Foto Berikutnya */}
-      <div className="relative z-10 mt-1 flex flex-col gap-2 border-t border-[#C9B794]/80 pt-2.5 sm:flex-row sm:items-center sm:justify-between dark:border-border">
+      {/* Keterangan Tipis Foto Sedang Dicetak + Tombol Cetak Berikutnya */}
+      <div className="relative z-10 mt-1 flex flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate font-serif text-sm font-bold text-[#261F18] dark:text-[#EFE5CE]">
-            {activeCaption}
+          <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            <Camera className="size-3 shrink-0" />
+            <span className="truncate">{stagePhaseLabel}</span>
+            <span className="shrink-0 tabular-nums font-bold text-foreground">
+              · {String(activeIdx + 1).padStart(2, "0")}/
+              {String(Math.max(1, realMoments.length)).padStart(2, "0")}
+            </span>
           </p>
-          <p className="font-mono text-[11px] text-[#6B5B4B] dark:text-[#B0A595]">
-            Kelas {activeMoment?.phase ?? "XII"} · {activeDate}
+          <p className="mt-0.5 truncate font-serif text-sm font-bold text-foreground">
+            {activeCaption}
           </p>
         </div>
 
         <button
           type="button"
           onClick={handleNextPhoto}
-          className="inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 rounded-lg border border-[#C9B794] bg-[#F7EEDB] px-3 py-1.5 font-sans text-xs font-semibold text-[#261F18] transition-colors hover:bg-[#E5D7B9] dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
+          className="inline-flex min-h-[34px] shrink-0 items-center justify-center gap-1 rounded-lg border border-border bg-card/85 px-3 py-1.5 font-sans text-xs font-semibold text-foreground transition-colors hover:bg-muted"
         >
           <span>Cetak Foto Lain</span>
           <ChevronRight className="size-3.5" />

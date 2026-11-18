@@ -530,28 +530,48 @@ export function KaryaClient({
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("constellation")}
-              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+              className={`relative inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "constellation"
-                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  ? "text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Network className="size-3.5" />
-              <span>Konstelasi</span>
+              {visualMode === "constellation" && (
+                <motion.span
+                  layoutId="karya-mode-pill"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="relative z-10 inline-flex items-center gap-1.5">
+                <Network className="size-3.5" />
+                <span>Konstelasi</span>
+              </span>
             </motion.button>
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={() => setVisualMode("radar")}
-              className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+              className={`relative inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                 visualMode === "radar"
-                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  ? "text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Radar className="size-3.5" />
-              <span>Radar</span>
+              {visualMode === "radar" && (
+                <motion.span
+                  layoutId="karya-mode-pill"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="relative z-10 inline-flex items-center gap-1.5">
+                <Radar className="size-3.5" />
+                <span>Radar</span>
+              </span>
             </motion.button>
           </div>
         </div>
@@ -1198,20 +1218,28 @@ export function KaryaClient({
       </section>
 
       {/* Modal Pop-Up Pratinjau Screenshot Karya Ukuran Penuh */}
-      {previewWork && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Pratinjau Karya ${previewWork.work.title}`}
-          onClick={() => setPreviewWork(null)}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/85 p-0 sm:p-6 backdrop-blur-xs"
-        >
+      <AnimatePresence>
+        {previewWork && (
           <motion.div
-            onClick={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative mx-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl"
+            key="karya-preview-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Pratinjau Karya ${previewWork.work.title}`}
+            onClick={() => setPreviewWork(null)}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/85 p-0 sm:p-6 backdrop-blur-xs"
           >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.94, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 18 }}
+              transition={{ type: "spring", stiffness: 320, damping: 24 }}
+              className="relative mx-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl"
+            >
             <div className="mb-3 flex items-start justify-between gap-4 border-b border-border pb-3">
               <div>
                 <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1282,20 +1310,33 @@ export function KaryaClient({
                   </a>
                 )}
               </div>
-            </div>
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Modal Daftarkan / Perbarui Karya */}
-      {modalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="work-modal-title"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/75 p-0 sm:p-4"
-        >
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-xl">
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            key="karya-submit-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="work-modal-title"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-xl"
+            >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
@@ -1560,9 +1601,10 @@ export function KaryaClient({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ImageCropperModal
         open={workCropOpen}

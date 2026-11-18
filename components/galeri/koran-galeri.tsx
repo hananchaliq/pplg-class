@@ -29,15 +29,11 @@ const DynamicLeafThrough = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[500px] sm:h-[620px] w-full flex-col items-center justify-center rounded-2xl border border-[#C9B794] bg-[#EFE5CE] p-6 text-center text-[#261F18]">
-        <Newspaper className="size-8 animate-pulse text-[#6B5B4B]" />
-        <p className="mt-3 font-serif text-lg font-bold text-[#261F18]">
-          Menyiapkan Lembaran Galeri Kenangan Bersama...
-        </p>
-        <p className="mt-1 font-mono text-xs text-[#6B5B4B]">
-          MEMUAT MESIN CETAK KORAN JADUL · EDISI LENGKAP
-        </p>
-      </div>
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="h-[500px] sm:h-[620px] w-full"
+      />
     ),
   }
 );

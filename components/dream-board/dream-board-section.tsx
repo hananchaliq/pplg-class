@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import * as THREE from "three";
+import { motion, AnimatePresence } from "motion/react";
 import { StudentRecord, DREAM_PAPER_PALETTE } from "@/lib/class-data";
 import { computeDreamBoardLayout, DreamNoteBoardPose } from "@/lib/class-logic";
 import {
@@ -81,10 +82,10 @@ function createStudioEnvironmentScene(): {
     envScene.add(mesh);
   };
 
-  addPanel(0xf3f1ea, 6, 7, 7, 0.2, 6, 6);
-  addPanel(0xdcd8ce, -7, 4, 6, 0.2, 5, 5);
-  addPanel(0xece9e1, 0, 9, 0, 8, 0.2, 8);
-  addPanel(0xc9c4b8, 0, -6, 4, 6, 0.2, 4);
+  addPanel(0xfffaf0, 6, 7, 7, 0.2, 6, 6);
+  addPanel(0xffe9c7, -7, 4, 6, 0.2, 5, 5);
+  addPanel(0xffffff, 0, 9, 0, 8, 0.2, 8);
+  addPanel(0xe5c89b, 0, -6, 4, 6, 0.2, 4);
 
   return {
     scene: envScene,
@@ -123,6 +124,47 @@ function createRoundedBoxGeometry(
   return geo;
 }
 
+function createTeakWoodTexture(maxAnisotropy = 1): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, "#B8783F");
+    grad.addColorStop(0.45, "#9C602E");
+    grad.addColorStop(0.85, "#CA8B51");
+    grad.addColorStop(1, "#8A5024");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    // Serat kayu jati madu hangat
+    for (let i = 0; i < 42; i++) {
+      const baseY = (i / 42) * size;
+      ctx.strokeStyle =
+        i % 3 === 0 ? "rgba(74, 38, 12, 0.2)" : "rgba(244, 198, 140, 0.16)";
+      ctx.lineWidth = 1.2 + (i % 3) * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (let x = 0; x <= size; x += 24) {
+        const wave =
+          Math.sin(x * 0.018 + i * 0.65) * 6 + Math.cos(x * 0.045 - i) * 2.2;
+        ctx.lineTo(x, baseY + wave);
+      }
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2);
+  tex.anisotropy = maxAnisotropy;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function createBoardSurfaceTexture(
   mode: "whiteboard" | "chalkboard",
   maxAnisotropy = 1
@@ -133,15 +175,15 @@ function createBoardSurfaceTexture(
   const ctx = canvas.getContext("2d");
   if (ctx) {
     if (mode === "whiteboard") {
-      // Papan Arsip Kertas Perak (Monokrom Film Jadul Board)
+      // Papan Tulis Kelas Cerah Putih Bersih Klasik
       const grad = ctx.createLinearGradient(0, 0, 1024, 576);
-      grad.addColorStop(0, "#EFECE4");
-      grad.addColorStop(0.5, "#E2DED4");
-      grad.addColorStop(1, "#D2CEC2");
+      grad.addColorStop(0, "#FFFFFF");
+      grad.addColorStop(0.55, "#F9FBFE");
+      grad.addColorStop(1, "#F1F5FA");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 1024, 576);
 
-      ctx.strokeStyle = "rgba(27, 27, 26, 0.07)";
+      ctx.strokeStyle = "rgba(59, 130, 246, 0.08)";
       ctx.lineWidth = 1;
       for (let x = 48; x < 1024; x += 48) {
         ctx.beginPath();
@@ -156,39 +198,43 @@ function createBoardSurfaceTexture(
         ctx.stroke();
       }
 
-      // Garis cetak arsip ganda di tepi atas papan
-      ctx.fillStyle = "rgba(42, 42, 40, 0.42)";
-      ctx.fillRect(40, 10, 944, 3);
+      // Garis header warna spidol kelas (biru, merah, hijau)
+      ctx.fillStyle = "rgba(37, 99, 235, 0.55)";
+      ctx.fillRect(42, 10, 420, 3);
+      ctx.fillStyle = "rgba(220, 38, 38, 0.45)";
+      ctx.fillRect(472, 10, 260, 3);
+      ctx.fillStyle = "rgba(22, 163, 74, 0.5)";
+      ctx.fillRect(742, 10, 240, 3);
 
-      ctx.fillStyle = "rgba(27, 27, 26, 0.72)";
-      ctx.font = `700 18px ${getAlbumArsipFont()}`;
+      ctx.fillStyle = "rgba(30, 41, 59, 0.85)";
+      ctx.font = `700 23px ${getAlbumTulisFont()}`;
       ctx.textAlign = "center";
       ctx.fillText(
-        "XII PPLG 1 — MAKN ENDE · PAPAN IMPIAN & HARAPAN MASA DEPAN",
+        "XII PPLG 1 — MAKN Ende · Papan Impian & Harapan Masa Depan",
         512,
-        34
+        38
       );
       ctx.textAlign = "start";
 
-      for (let i = 0; i < 2800; i++) {
+      for (let i = 0; i < 1600; i++) {
         const nx = (i * 193) % 1024;
         const ny = (i * 109) % 576;
         ctx.fillStyle =
           i % 2 === 0
-            ? "rgba(243, 241, 234, 0.25)"
-            : "rgba(27, 27, 26, 0.08)";
-        ctx.fillRect(nx, ny, 2.5, 2.5);
+            ? "rgba(255, 255, 255, 0.3)"
+            : "rgba(148, 163, 184, 0.04)";
+        ctx.fillRect(nx, ny, 2, 2);
       }
     } else {
-      // Papan Kapur Ruang Gelap Fotografi
+      // Papan Kapur Hijau Klasik Madrasah
       const grad = ctx.createLinearGradient(0, 0, 1024, 576);
-      grad.addColorStop(0, "#242422");
-      grad.addColorStop(0.5, "#1C1C1A");
-      grad.addColorStop(1, "#141412");
+      grad.addColorStop(0, "#1F5038");
+      grad.addColorStop(0.5, "#19432F");
+      grad.addColorStop(1, "#133524");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 1024, 576);
 
-      ctx.strokeStyle = "rgba(232, 229, 220, 0.06)";
+      ctx.strokeStyle = "rgba(245, 240, 224, 0.065)";
       ctx.lineWidth = 1;
       for (let x = 48; x < 1024; x += 48) {
         ctx.beginPath();
@@ -203,13 +249,13 @@ function createBoardSurfaceTexture(
         ctx.stroke();
       }
 
-      ctx.fillStyle = "rgba(232, 229, 220, 0.65)";
-      ctx.font = `700 18px ${getAlbumArsipFont()}`;
+      ctx.fillStyle = "rgba(248, 243, 226, 0.78)";
+      ctx.font = `700 22px ${getAlbumTulisFont()}`;
       ctx.textAlign = "center";
       ctx.fillText(
-        "XII PPLG 1 — MAKN ENDE · PAPAN KAPUR CITA-CITA & HARAPAN",
+        "XII PPLG 1 — MAKN Ende · Papan Kapur Cita-Cita & Harapan",
         512,
-        34
+        36
       );
       ctx.textAlign = "start";
 
@@ -217,7 +263,7 @@ function createBoardSurfaceTexture(
         const nx = (i * 193) % 1024;
         const ny = (i * 109) % 576;
         ctx.fillStyle =
-          i % 2 === 0 ? "rgba(232,229,220,0.06)" : "rgba(18,18,17,0.1)";
+          i % 2 === 0 ? "rgba(248,243,226,0.06)" : "rgba(14,32,22,0.12)";
         ctx.fillRect(nx, ny, 2, 2);
       }
     }
@@ -243,40 +289,39 @@ function createDreamNoteTextTexture(
   const ctx = canvas.getContext("2d");
   const drawNote = () => {
     if (!ctx) return;
-    const displayFont = getAlbumDisplayFont();
     const tulisFont = getAlbumTulisFont();
     const arsipFont = getAlbumArsipFont();
 
     ctx.clearRect(0, 0, 512, 384);
 
-    // Garis buku tulis tipis di kertas catatan
-    ctx.strokeStyle = "rgba(27, 27, 26, 0.14)";
+    // Garis buku tulis tipis di kertas catatan warna-warni
+    ctx.strokeStyle = "rgba(45, 58, 84, 0.14)";
     ctx.lineWidth = 1.8;
-    for (let y = 122; y < 342; y += 46) {
+    for (let y = 126; y < 342; y += 46) {
       ctx.beginPath();
       ctx.moveTo(30, y);
       ctx.lineTo(482, y);
       ctx.stroke();
     }
 
-    // Nomor Arsip & Nama Siswa (Old Standard TT Display Serif)
-    const padded = String(rollNo).padStart(3, "0");
-    ctx.fillStyle = "#1B1B1A";
-    ctx.font = `700 22px ${displayFont}`;
+    // Nomor & Nama Siswa dengan tulisan tangan pulpen tinta biru-gelap alami (Caveat)
+    const padded = String(rollNo).padStart(2, "0");
+    ctx.fillStyle = "#1E2633";
+    ctx.font = `700 30px ${tulisFont}`;
     ctx.fillText(`#${padded} · ${name}`, 34, 68);
 
-    // Garis bawah warna pin
+    // Garis coretan warna sesuai pin
     ctx.strokeStyle = pinHex;
     ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(34, 84);
-    ctx.quadraticCurveTo(110, 80, 185, 86);
+    ctx.quadraticCurveTo(116, 79, 198, 86);
     ctx.stroke();
 
-    // Isi Cita-Cita dengan Source Serif 4 tajam
-    ctx.fillStyle = "#2A2A28";
-    ctx.font = `600 28px ${tulisFont}`;
+    // Isi Cita-Cita dengan Tulisan Tangan Caveat Natural
+    ctx.fillStyle = "#24211E";
+    ctx.font = `700 34px ${tulisFont}`;
     const words = (dreamTitle || "").split(" ");
     const lines: string[] = [];
     let currentLine = "";
@@ -293,19 +338,19 @@ function createDreamNoteTextTexture(
 
     lines.slice(0, 3).forEach((line, idx) => {
       ctx.save();
-      ctx.translate(34, 150 + idx * 46);
-      ctx.rotate(((rollNo + idx) % 3 - 1) * 0.005);
+      ctx.translate(34, 154 + idx * 46);
+      ctx.rotate(((rollNo + idx) % 3 - 1) * 0.008);
       ctx.fillText(line, 0, 0);
       ctx.restore();
     });
 
-    // Stamp metadata arsip di bagian bawah kertas (Special Elite)
-    ctx.fillStyle = "#5C5A54";
-    ctx.font = `700 15px ${arsipFont}`;
-    ctx.fillText(`No. ${(role || "UNO · XII PPLG 1").toUpperCase()}`, 34, 346);
+    // Stamp metadata arsip di bagian bawah kertas
+    ctx.fillStyle = "#52493F";
+    ctx.font = `700 14px ${arsipFont}`;
+    ctx.fillText(`${(role || "UNO · XII PPLG 1").toUpperCase()}`, 34, 346);
 
     // Lipatan sudut kanan bawah kertas
-    ctx.fillStyle = "rgba(27, 27, 26, 0.1)";
+    ctx.fillStyle = "rgba(38, 31, 24, 0.11)";
     ctx.beginPath();
     ctx.moveTo(452, 384);
     ctx.lineTo(512, 324);
@@ -577,12 +622,12 @@ export function DreamBoardSection({
     studioEnv.dispose();
     pmremGenerator.dispose();
 
-    // Studio Neutral Monochrome Lighting Rig
-    const hemiLight = new THREE.HemisphereLight(0xf3f1ea, 0x8e8b82, 1.25);
+    // Pencahayaan Ruang Kelas Hangat & Cerah
+    const hemiLight = new THREE.HemisphereLight(0xfffdf7, 0xd4b692, 1.45);
     hemiLight.position.set(0, 8, 0);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight(0xf3f1ea, 1.65);
+    const keyLight = new THREE.DirectionalLight(0xfff5e4, 1.9);
     keyLight.position.set(5.5, 7.5, 9.0);
     if (!isSoftwareGl) {
       keyLight.castShadow = true;
@@ -593,17 +638,20 @@ export function DreamBoardSection({
     }
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xdcd8ce, 0.85);
+    const fillLight = new THREE.DirectionalLight(0xffead0, 0.98);
     fillLight.position.set(-7.0, 2.5, 6.0);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xa8a49b, 0.75);
+    const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.72);
     rimLight.position.set(0, -6.0, 5.0);
     scene.add(rimLight);
 
     // Root Classroom Board Group (100% STATIC)
     const boardGroup = new THREE.Group();
     scene.add(boardGroup);
+
+    const teakWoodTex = createTeakWoodTexture(maxAnisotropy);
+    disposableTextures.push(teakWoodTex);
 
     const outerFrameGeo = createRoundedBoxGeometry(
       13.6,
@@ -614,9 +662,10 @@ export function DreamBoardSection({
     );
     disposableGeometries.push(outerFrameGeo);
     const outerFrameMat = new THREE.MeshStandardMaterial({
-      color: 0x333330,
-      roughness: 0.52,
-      metalness: 0.08,
+      map: teakWoodTex,
+      color: 0xffffff,
+      roughness: 0.44,
+      metalness: 0.06,
     });
     disposableMaterials.push(outerFrameMat);
     const outerFrameMesh = new THREE.Mesh(outerFrameGeo, outerFrameMat);
@@ -627,9 +676,9 @@ export function DreamBoardSection({
     const innerTrimGeo = createRoundedBoxGeometry(13.15, 7.15, 0.36, 0.16, 2);
     disposableGeometries.push(innerTrimGeo);
     const innerTrimMat = new THREE.MeshStandardMaterial({
-      color: 0x222220,
-      roughness: 0.55,
-      metalness: 0.12,
+      color: 0x72401d,
+      roughness: 0.48,
+      metalness: 0.08,
     });
     disposableMaterials.push(innerTrimMat);
     const innerTrimMesh = new THREE.Mesh(innerTrimGeo, innerTrimMat);
@@ -650,7 +699,7 @@ export function DreamBoardSection({
     disposableGeometries.push(surfaceGeo);
     const surfaceMat = new THREE.MeshStandardMaterial({
       map: whiteboardTex,
-      roughness: 0.68,
+      roughness: 0.56,
       metalness: 0.02,
     });
     disposableMaterials.push(surfaceMat);
@@ -660,33 +709,66 @@ export function DreamBoardSection({
     surfaceMesh.receiveShadow = true;
     boardGroup.add(surfaceMesh);
 
-    // Lampu Studio Monokrom di sepanjang bingkai atas papan
-    const bulbGeo = new THREE.SphereGeometry(0.085, 10, 10);
-    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xe8e5dc });
-    disposableGeometries.push(bulbGeo);
-    disposableMaterials.push(bulbMat);
+    // Untaian Lampu Pijar Hangat & Magnet Warna-Warni di Bingkai Atas
+    const bulbGeo = new THREE.SphereGeometry(0.09, 12, 12);
+    const bulbHaloGeo = new THREE.CircleGeometry(0.26, 16);
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe69c });
+    const bulbHaloMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b,
+      transparent: true,
+      opacity: 0.26,
+      depthWrite: false,
+    });
+    const wirePoints: THREE.Vector3[] = [];
+    disposableGeometries.push(bulbGeo, bulbHaloGeo);
+    disposableMaterials.push(bulbMat, bulbHaloMat);
     for (let bx = -5.8; bx <= 5.8; bx += 1.16) {
       const sag = Math.cos((bx / 5.8) * Math.PI * 2) * 0.08;
+      const by = 3.46 - sag;
+      wirePoints.push(new THREE.Vector3(bx, by + 0.06, 0.14));
       const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-      bulb.position.set(bx, 3.46 - sag, 0.16);
+      bulb.position.set(bx, by, 0.16);
       boardGroup.add(bulb);
+
+      const halo = new THREE.Mesh(bulbHaloGeo, bulbHaloMat);
+      halo.position.set(bx, by, 0.06);
+      boardGroup.add(halo);
     }
+    const wireCurve = new THREE.CatmullRomCurve3(wirePoints);
+    const wireGeo = new THREE.TubeGeometry(wireCurve, 44, 0.014, 6, false);
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x3b2818, roughness: 0.6 });
+    disposableGeometries.push(wireGeo);
+    disposableMaterials.push(wireMat);
+    boardGroup.add(new THREE.Mesh(wireGeo, wireMat));
+
+    // 2 Magnet Bulat Warna-Warni di Sudut Atas Papan
+    const magnetGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.06, 20);
+    magnetGeo.rotateX(Math.PI / 2);
+    const blueMagnetMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.25 });
+    const coralMagnetMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.25 });
+    disposableGeometries.push(magnetGeo);
+    disposableMaterials.push(blueMagnetMat, coralMagnetMat);
+    const magLeft = new THREE.Mesh(magnetGeo, blueMagnetMat);
+    magLeft.position.set(-5.95, 3.05, 0.05);
+    const magRight = new THREE.Mesh(magnetGeo, coralMagnetMat);
+    magRight.position.set(5.95, 3.05, 0.05);
+    boardGroup.add(magLeft, magRight);
 
     updateBoardFinishRef.current = (mode: "whiteboard" | "chalkboard") => {
       surfaceMat.map = mode === "whiteboard" ? whiteboardTex : chalkboardTex;
-      outerFrameMat.color.setHex(mode === "whiteboard" ? 0x333330 : 0x222220);
-      innerTrimMat.color.setHex(mode === "whiteboard" ? 0x222220 : 0x161614);
+      outerFrameMat.color.setHex(mode === "whiteboard" ? 0xffffff : 0xead4ba);
+      innerTrimMat.color.setHex(mode === "whiteboard" ? 0x72401d : 0x572f14);
       surfaceMat.needsUpdate = true;
     };
     updateBoardFinishRef.current(boardFinishRef.current);
 
-    // Bottom Marker Tray + Procedural Eraser + 2 Monochrome Markers
-    const trayGeo = createRoundedBoxGeometry(5.6, 0.22, 0.55, 0.06, 2);
+    // Rak Spidol + Penghapus Biru Klasik + 4 Spidol Warna-Warni (Biru, Merah, Hijau, Oranye)
+    const trayGeo = createRoundedBoxGeometry(6.3, 0.22, 0.55, 0.06, 2);
     disposableGeometries.push(trayGeo);
     const trayMat = new THREE.MeshStandardMaterial({
-      color: 0xc9c4b8,
-      roughness: 0.38,
-      metalness: 0.3,
+      color: 0xe2e8f0,
+      roughness: 0.28,
+      metalness: 0.38,
     });
     disposableMaterials.push(trayMat);
     const trayMesh = new THREE.Mesh(trayGeo, trayMat);
@@ -697,21 +779,21 @@ export function DreamBoardSection({
     const eraserFeltGeo = createRoundedBoxGeometry(0.95, 0.09, 0.36, 0.02, 2);
     disposableGeometries.push(eraserTopGeo, eraserFeltGeo);
     const eraserTopMat = new THREE.MeshStandardMaterial({
-      color: 0x4a4843,
+      color: 0x2563eb,
       roughness: 0.35,
     });
     const eraserFeltMat = new THREE.MeshStandardMaterial({
-      color: 0x222220,
+      color: 0x1e293b,
       roughness: 0.85,
     });
     disposableMaterials.push(eraserTopMat, eraserFeltMat);
 
     const eraserTop = new THREE.Mesh(eraserTopGeo, eraserTopMat);
-    eraserTop.position.set(-1.65, -3.41, 0.28);
+    eraserTop.position.set(-2.15, -3.41, 0.28);
     boardGroup.add(eraserTop);
 
     const eraserFelt = new THREE.Mesh(eraserFeltGeo, eraserFeltMat);
-    eraserFelt.position.set(-1.65, -3.51, 0.28);
+    eraserFelt.position.set(-2.15, -3.51, 0.28);
     boardGroup.add(eraserFelt);
 
     const markerBodyGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.88, 14);
@@ -721,31 +803,41 @@ export function DreamBoardSection({
     disposableGeometries.push(markerBodyGeo, markerCapGeo);
 
     const whiteMarkerMat = new THREE.MeshStandardMaterial({
-      color: 0xece9e1,
-      roughness: 0.25,
+      color: 0xf8fafc,
+      roughness: 0.22,
     });
-    const irisCapMat = new THREE.MeshStandardMaterial({
-      color: 0x2a2a28,
-      roughness: 0.3,
-    });
-    const mintCapMat = new THREE.MeshStandardMaterial({
-      color: 0x6e6b64,
-      roughness: 0.3,
-    });
-    disposableMaterials.push(whiteMarkerMat, irisCapMat, mintCapMat);
+    const blueCapMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.28 });
+    const redCapMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.28 });
+    const greenCapMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.28 });
+    const amberCapMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.28 });
+    disposableMaterials.push(whiteMarkerMat, blueCapMat, redCapMat, greenCapMat, amberCapMat);
 
     const marker1Body = new THREE.Mesh(markerBodyGeo, whiteMarkerMat);
-    marker1Body.position.set(0.35, -3.45, 0.28);
-    const marker1Cap = new THREE.Mesh(markerCapGeo, irisCapMat);
-    marker1Cap.position.set(-0.08, -3.45, 0.28);
+    marker1Body.position.set(-0.55, -3.45, 0.28);
+    const marker1Cap = new THREE.Mesh(markerCapGeo, blueCapMat);
+    marker1Cap.position.set(-0.98, -3.45, 0.28);
     boardGroup.add(marker1Body, marker1Cap);
 
     const marker2Body = new THREE.Mesh(markerBodyGeo, whiteMarkerMat);
-    marker2Body.position.set(1.65, -3.45, 0.32);
-    marker2Body.rotation.y = 0.06;
-    const marker2Cap = new THREE.Mesh(markerCapGeo, mintCapMat);
-    marker2Cap.position.set(1.22, -3.45, 0.32);
+    marker2Body.position.set(0.62, -3.45, 0.31);
+    marker2Body.rotation.y = 0.05;
+    const marker2Cap = new THREE.Mesh(markerCapGeo, redCapMat);
+    marker2Cap.position.set(0.19, -3.45, 0.31);
     boardGroup.add(marker2Body, marker2Cap);
+
+    const marker3Body = new THREE.Mesh(markerBodyGeo, whiteMarkerMat);
+    marker3Body.position.set(1.78, -3.45, 0.29);
+    marker3Body.rotation.y = -0.04;
+    const marker3Cap = new THREE.Mesh(markerCapGeo, greenCapMat);
+    marker3Cap.position.set(1.35, -3.45, 0.29);
+    boardGroup.add(marker3Body, marker3Cap);
+
+    const marker4Body = new THREE.Mesh(markerBodyGeo, whiteMarkerMat);
+    marker4Body.position.set(2.86, -3.45, 0.27);
+    marker4Body.rotation.y = 0.03;
+    const marker4Cap = new THREE.Mesh(markerCapGeo, amberCapMat);
+    marker4Cap.position.set(2.43, -3.45, 0.27);
+    boardGroup.add(marker4Body, marker4Cap);
 
     interface Note3DInstance {
       index: number;
@@ -1370,12 +1462,14 @@ export function DreamBoardSection({
             </p>
           </div>
 
-          {/* Monochrome Control Bar */}
+          {/* Kontrol Papan Cita-Cita */}
           <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] sm:gap-2">
-            <button
+            <motion.button
+              whileHover={{ y: -1.5, scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
               type="button"
               onClick={handleToggleBoardFinish}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-foreground transition hover:bg-muted"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-foreground transition-colors hover:bg-muted"
             >
               <Layers
                 className="size-3.5 shrink-0 text-primary"
@@ -1383,10 +1477,10 @@ export function DreamBoardSection({
               />
               <span>
                 {boardFinish === "whiteboard"
-                  ? "Papan Kertas"
-                  : "Papan Kapur"}
+                  ? "Papan Putih"
+                  : "Papan Hijau"}
               </span>
-            </button>
+            </motion.button>
 
             <span className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-background/70 px-3 text-foreground">
               <Pin
@@ -1397,28 +1491,32 @@ export function DreamBoardSection({
             </span>
 
             {onOpenSubmitDreamModal && (
-              <button
+              <motion.button
+                whileHover={{ y: -1.5, scale: 1.03 }}
+                whileTap={{ scale: 0.96 }}
                 type="button"
                 onClick={onOpenSubmitDreamModal}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3.5 font-sans text-xs font-semibold text-primary-foreground shadow-xs transition hover:opacity-90"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3.5 font-sans text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90"
               >
                 <Sparkles className="size-3.5 shrink-0" />
                 <span>Tempel Cita-Cita</span>
-              </button>
+              </motion.button>
             )}
 
             {zoomedStudent ? (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={() => {
                   setIsEditingModal(false);
                   setZoomedIndex(null);
                 }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-background transition hover:opacity-90"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-background transition-opacity hover:opacity-90"
               >
                 <X className="size-3.5 shrink-0" />
                 <span>Tutup</span>
-              </button>
+              </motion.button>
             ) : (
               <span className="hidden h-9 items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-foreground sm:inline-flex">
                 <MousePointerClick className="size-3.5" strokeWidth={1.5} />
@@ -1428,19 +1526,19 @@ export function DreamBoardSection({
           </div>
         </div>
 
-        {/* Main 3D Board Viewport Container — Warm Archival Studio */}
-        <div className="relative mt-4 h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#EFE5CE] via-[#E5D7B9] to-[#D8C8A6] shadow-inner sm:mt-5 sm:h-[550px] sm:rounded-[24px] lg:h-[600px] dark:from-[#29231D] dark:via-[#221D18] dark:to-[#2D2620]">
-          {/* Monochrome Studio Glow Underlay */}
+        {/* Main 3D Board Viewport Container — Bright Warm Classroom Sunlit Wall */}
+        <div className="relative mt-4 h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#FFFDF7] via-[#FBF2DC] to-[#EFE1C2] shadow-inner sm:mt-5 sm:h-[550px] sm:rounded-[24px] lg:h-[600px] dark:from-[#2C241C] dark:via-[#241D16] dark:to-[#30271E]">
+          {/* Warm Classroom Sunlit Glow Underlay */}
           <svg
             viewBox="0 0 960 560"
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-85 dark:opacity-55"
+            className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-90 dark:opacity-55"
           >
             <defs>
-              <radialGradient id="boardStudioGlow" cx="50%" cy="46%" r="54%">
-                <stop offset="0%" stopColor="#D6D2C9" stopOpacity="0.28" />
-                <stop offset="60%" stopColor="#8E8B82" stopOpacity="0.12" />
-                <stop offset="100%" stopColor="#ECE9E1" stopOpacity="0" />
+              <radialGradient id="boardStudioGlow" cx="50%" cy="44%" r="56%">
+                <stop offset="0%" stopColor="#FEF3C7" stopOpacity="0.65" />
+                <stop offset="58%" stopColor="#FDE68A" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#F5EFE2" stopOpacity="0" />
               </radialGradient>
             </defs>
             <rect width="960" height="560" fill="url(#boardStudioGlow)" />
@@ -1481,34 +1579,47 @@ export function DreamBoardSection({
           )}
 
           {/* STATE 2: COMPACT FLOATING HOVER PROMPT */}
-          {hoveredStudent && !zoomedStudent && hoverScreenPos && (
-            <div
-              data-testid="floating-hover-prompt"
-              style={{
-                left: `${hoverScreenPos.x}px`,
-                top: `${hoverScreenPos.y}px`,
-              }}
-              className="pointer-events-none absolute z-20 max-w-[90%] -translate-x-1/2 -translate-y-full transition-transform duration-150"
-            >
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 px-3 py-1.5 font-sans text-xs font-semibold text-card-foreground shadow-md backdrop-blur-md">
-                <span>Klik untuk baca catatan {hoveredStudent.name} →</span>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {hoveredStudent && !zoomedStudent && hoverScreenPos && (
+              <motion.div
+                key={`hover-tip-${hoveredStudent.id}`}
+                initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.14 }}
+                data-testid="floating-hover-prompt"
+                style={{
+                  left: `${hoverScreenPos.x}px`,
+                  top: `${hoverScreenPos.y}px`,
+                }}
+                className="pointer-events-none absolute z-20 max-w-[90%] -translate-x-1/2 -translate-y-full"
+              >
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 px-3 py-1.5 font-sans text-xs font-semibold text-card-foreground shadow-md backdrop-blur-md">
+                  <span>Klik untuk baca catatan {hoveredStudent.name} →</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* STATE 3: LEMBAR CATATAN IMPIAN BERSIH & EDITORIAL */}
-          {zoomedStudent && zoomedPose && (
-            <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-2 sm:items-center sm:justify-end sm:p-4 lg:pr-6">
-              <article
-                role="dialog"
-                aria-modal="false"
-                data-testid="dream-note-detail-modal"
-                aria-label={`Lembar cita-cita ${zoomedStudent.name}`}
-                style={{
-                  borderTopColor: activePaperHex,
-                }}
-                className="pointer-events-auto flex max-h-[65%] w-full flex-col overflow-hidden rounded-xl border border-border border-t-[5px] bg-card text-card-foreground shadow-[0_20px_45px_-12px_rgba(18,18,17,0.45)] sm:max-h-[86%] sm:max-w-[356px] lg:max-w-[372px]"
-              >
+          <AnimatePresence>
+            {zoomedStudent && zoomedPose && (
+              <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-2 sm:items-center sm:justify-end sm:p-4 lg:pr-6">
+                <motion.article
+                  key={`zoom-card-${zoomedStudent.id}`}
+                  initial={{ opacity: 0, x: 24, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                  role="dialog"
+                  aria-modal="false"
+                  data-testid="dream-note-detail-modal"
+                  aria-label={`Lembar cita-cita ${zoomedStudent.name}`}
+                  style={{
+                    borderTopColor: activePaperHex,
+                  }}
+                  className="pointer-events-auto flex max-h-[65%] w-full flex-col overflow-hidden rounded-xl border border-border border-t-[5px] bg-card text-card-foreground shadow-[0_20px_45px_-12px_rgba(18,18,17,0.45)] sm:max-h-[86%] sm:max-w-[356px] lg:max-w-[372px]"
+                >
                 {/* Header Kartu Indeks Bersih */}
                 <div className="flex shrink-0 items-start justify-between gap-2.5 border-b border-border px-3.5 py-2.5 sm:px-4 sm:py-3.5">
                   <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -1673,19 +1784,19 @@ export function DreamBoardSection({
                     </form>
                   ) : (
                     <>
-                      {/* Cita-Cita Utama dengan Old Standard TT Editorial */}
+                      {/* Cita-Cita Utama dengan Tulisan Tangan Caveat Indah */}
                       <div>
                         <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
                           CITA-CITA UTAMA:
                         </p>
-                        <p className="mt-1 font-serif text-lg sm:text-xl leading-snug font-bold text-foreground">
+                        <p className="mt-1 font-hand text-2xl sm:text-[26px] leading-snug font-bold text-foreground">
                           &ldquo;{zoomedStudent.dream_title}&rdquo;
                         </p>
                       </div>
 
-                      {/* Kutipan Cerita di Atas Garis Buku (Source Serif 4, line-height 1.6) */}
+                      {/* Kutipan Cerita di Atas Garis Buku (Caveat Tulisan Tangan) */}
                       <div className="border-y border-dashed border-border py-2.5 sm:py-3">
-                        <p className="font-sans text-xs sm:text-sm leading-[1.6] font-semibold text-foreground">
+                        <p className="font-hand text-lg sm:text-xl leading-relaxed font-semibold text-foreground">
                           &ldquo;{zoomedStudent.dream_reason}&rdquo;
                         </p>
                         {zoomedStudent.dream_description && (
@@ -1753,9 +1864,10 @@ export function DreamBoardSection({
                     <ChevronRight className="size-3.5" />
                   </button>
                 </div>
-              </article>
-            </div>
-          )}
+                </motion.article>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Quick Selector Strip dengan Tipografi Bersih & Prev/Next */}
@@ -1821,9 +1933,12 @@ export function DreamBoardSection({
                   const isZoomed = zoomedIndex === idx;
                   const isHovered = hoveredIndex === idx;
                   return (
-                    <button
+                    <motion.button
                       key={st.id}
                       type="button"
+                      whileHover={{ y: -3, scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 360, damping: 24 }}
                       data-testid={`dream-note-btn-${st.roll_no}`}
                       onMouseEnter={() => {
                         if (zoomedIndex === null) {
@@ -1851,7 +1966,7 @@ export function DreamBoardSection({
                       style={{
                         borderLeftColor: pose?.pinColorHex ?? "#5C5A54",
                       }}
-                      className={`group flex items-center justify-between gap-2 rounded-lg border border-border border-l-[4px] px-2.5 py-2 sm:px-3 text-left transition-all hover:-translate-y-0.5 ${
+                      className={`group flex items-center justify-between gap-2 rounded-lg border border-border border-l-[4px] px-2.5 py-2 sm:px-3 text-left transition-colors ${
                         isZoomed
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : isHovered
@@ -1861,6 +1976,11 @@ export function DreamBoardSection({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
+                          <span
+                            aria-hidden="true"
+                            style={{ backgroundColor: pose?.pinColorHex ?? "#5C5A54" }}
+                            className="size-2 shrink-0 rounded-full"
+                          />
                           <span className="shrink-0 font-mono text-[11px] font-bold opacity-75">
                             #{String(st.roll_no).padStart(2, "0")}
                           </span>
@@ -1873,10 +1993,10 @@ export function DreamBoardSection({
                         </p>
                       </div>
                       <Pin
-                        className="size-3.5 shrink-0 opacity-40 transition group-hover:rotate-12 group-hover:opacity-90"
+                        className="size-3.5 shrink-0 opacity-45 transition-transform group-hover:rotate-12 group-hover:opacity-100"
                         strokeWidth={1.5}
                       />
-                    </button>
+                    </motion.button>
                   );
                 });
             })()}

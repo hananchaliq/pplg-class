@@ -3,13 +3,51 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, Calendar, Camera, Users } from "lucide-react";
+import { motion } from "motion/react";
+import { ArrowRight, BookOpen, Calendar, Users } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
 import { usePageFlipSound } from "@/lib/page-flip-audio";
 import { useLivePublicData } from "@/lib/use-public-data";
 import { useGsap, gsap } from "@/lib/gsap-utils";
 import { navigateWithVanishingPoint } from "@/components/layout/vanishing-page-transition";
 import type { MomentRow } from "@/lib/types";
+
+function AnimatedCounter({ value }: { value: number }) {
+  const [display, setDisplay] = React.useState(value);
+  const prevRef = React.useRef(value);
+
+  React.useEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      setDisplay(value);
+      prevRef.current = value;
+      return;
+    }
+
+    const startVal = prevRef.current === value ? 0 : prevRef.current;
+    const duration = 680;
+    const startTime = performance.now();
+    let rafId = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(startVal + (value - startVal) * eased));
+      if (progress < 1) {
+        rafId = window.requestAnimationFrame(tick);
+      } else {
+        prevRef.current = value;
+      }
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [value]);
+
+  return <>{display}</>;
+}
 
 const DynamicPolaroidCamera3D = dynamic(
   () =>
@@ -19,15 +57,11 @@ const DynamicPolaroidCamera3D = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[430px] sm:h-[500px] w-full flex-col items-center justify-center rounded-2xl border border-[#C9B794] bg-gradient-to-br from-[#F4EAD2] via-[#E8D9BA] to-[#D8C5A0] p-6 text-center text-[#261F18] dark:border-border dark:from-[#29231D] dark:via-[#231D18] dark:to-[#2E261F] dark:text-[#EFE5CE]">
-        <Camera className="size-8 animate-pulse text-[#6B5B4B] dark:text-[#B0A595]" />
-        <p className="mt-3 font-serif text-lg font-bold">
-          Menyiapkan Kamera Polaroid 3D...
-        </p>
-        <p className="mt-1 font-mono text-xs text-[#6B5B4B] dark:text-[#B0A595]">
-          MERAKIT LENSA &amp; ROL FILM KENANGAN XII PPLG 1
-        </p>
-      </div>
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="h-[430px] sm:h-[520px] w-full"
+      />
     ),
   }
 );
@@ -247,10 +281,20 @@ export function BerandaClient({
           </p>
 
           {/* Kartu Countdown Kelulusan */}
-          <div className="hero-reveal mt-5 w-full rounded-xl border border-border bg-card p-4 shadow-xs">
-            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              <Calendar className="size-4 text-foreground" />
-              <span>{SITE_CONTENT.hero.countdownLabel}</span>
+          <motion.div
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 360, damping: 24 }}
+            className="hero-reveal mt-5 w-full rounded-xl border border-border bg-card p-4 shadow-xs transition-shadow hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Calendar className="size-4 text-foreground" />
+                <span>{SITE_CONTENT.hero.countdownLabel}</span>
+              </div>
+              <span
+                aria-hidden="true"
+                className="inline-block size-2 rounded-full bg-primary animate-pulse"
+              />
             </div>
             <p className="mt-1.5 font-serif text-xl font-bold text-foreground sm:text-2xl">
               {daysLeft === null ? (
@@ -259,7 +303,7 @@ export function BerandaClient({
                 <>
                   {SITE_CONTENT.hero.countdownPrefix}{" "}
                   <span className="font-mono text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
-                    {daysLeft}
+                    <AnimatedCounter value={daysLeft} />
                   </span>{" "}
                   {SITE_CONTENT.hero.countdownSuffix}
                 </>
@@ -267,32 +311,38 @@ export function BerandaClient({
                 SITE_CONTENT.hero.countdownPassed
               )}
             </p>
-          </div>
+          </motion.div>
 
           {/* Tombol Aksi Utama */}
           <div className="hero-reveal mt-5 sm:mt-6 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
-            <a
+            <motion.a
               href="/galeri"
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 24 }}
               onClick={(e) => handleNavigate(e, "/galeri")}
               className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-primary px-4 sm:px-5 py-2.5 font-sans text-xs sm:text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
             >
               <BookOpen className="size-4 shrink-0" />
               <span className="truncate">Baca Koran Galeri</span>
-            </a>
+            </motion.a>
 
-            <a
+            <motion.a
               href="/anggota"
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 24 }}
               onClick={(e) => handleNavigate(e, "/anggota")}
               className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 sm:px-5 py-2.5 font-sans text-xs sm:text-sm font-semibold text-foreground transition-colors hover:bg-muted whitespace-nowrap"
             >
               <Users className="size-4 shrink-0 text-foreground" />
               <span className="truncate">{SITE_CONTENT.hero.ctaSecondary}</span>
-            </a>
+            </motion.a>
           </div>
         </div>
 
-        {/* Kolom Kanan: Kamera Polaroid 3D Jadul + Cetak Foto Looping */}
-        <div className="hero-reveal lg:col-span-7">
+        {/* Kolom Kanan: Kamera Polaroid 3D Jadul Terbuka Menyatu Halaman */}
+        <div className="hero-reveal overflow-visible lg:col-span-7">
           <DynamicPolaroidCamera3D moments={moments} />
         </div>
       </section>
@@ -300,11 +350,15 @@ export function BerandaClient({
       {/* Baris Angka Statistik Arsip */}
       <section
         aria-label="Ringkasan Kelas XII PPLG 1"
-        className="mt-10 grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-4 sm:p-6"
+        className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 rounded-xl border border-border bg-card p-3 sm:grid-cols-4 sm:p-5"
       >
-        <div>
+        <motion.div
+          whileHover={{ y: -3, scale: 1.015 }}
+          transition={{ type: "spring", stiffness: 360, damping: 24 }}
+          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
+        >
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.activeStudents}{" "}
+            <AnimatedCounter value={stats.activeStudents} />{" "}
             <span className="font-sans text-xs font-normal text-muted-foreground">
               (+{stats.movedStudents} sahabat)
             </span>
@@ -312,34 +366,46 @@ export function BerandaClient({
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             Anggota Keluarga Kelas
           </p>
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div
+          whileHover={{ y: -3, scale: 1.015 }}
+          transition={{ type: "spring", stiffness: 360, damping: 24 }}
+          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
+        >
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.totalTeachers}
+            <AnimatedCounter value={stats.totalTeachers} />
           </p>
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             Pendidik &amp; Wali Kelas
           </p>
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div
+          whileHover={{ y: -3, scale: 1.015 }}
+          transition={{ type: "spring", stiffness: 360, damping: 24 }}
+          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
+        >
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.totalMoments}
+            <AnimatedCounter value={stats.totalMoments} />
           </p>
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             Foto Momen Kelas X–XII
           </p>
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div
+          whileHover={{ y: -3, scale: 1.015 }}
+          transition={{ type: "spring", stiffness: 360, damping: 24 }}
+          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
+        >
           <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            {stats.totalWorks}
+            <AnimatedCounter value={stats.totalWorks} />
           </p>
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             Karya Siswa &amp; {stats.totalDreams} Cita-Cita
           </p>
-        </div>
+        </motion.div>
       </section>
 
       <div className="ikat-divider my-12" aria-hidden="true" />
@@ -364,24 +430,27 @@ export function BerandaClient({
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {dynamicMapCards.map((card) => (
             <div key={card.href} className="map-card-reveal">
-              <a
+              <motion.a
                 href={card.href}
+                whileHover={{ y: -5, scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                transition={{ type: "spring", stiffness: 360, damping: 24 }}
                 onClick={(e) => handleNavigate(e, card.href)}
-                className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <div>
                   <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                    <span className="font-bold text-foreground">
+                    <span className="font-bold text-foreground transition-transform duration-200 group-hover:translate-x-0.5">
                       NO. {card.index}
                     </span>
                     <span>{card.meta}</span>
                   </div>
 
                   <div className="mt-2.5 flex items-center justify-between gap-2">
-                    <h3 className="font-serif text-lg font-bold text-foreground transition-opacity group-hover:opacity-80">
+                    <h3 className="font-serif text-lg font-bold text-foreground transition-opacity group-hover:opacity-85">
                       {card.title}
                     </h3>
-                    <ArrowRight className="size-4 shrink-0 text-foreground transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="size-4 shrink-0 text-foreground transition-transform duration-200 group-hover:translate-x-1.5" />
                   </div>
 
                   <p className="mt-1 font-sans text-xs font-semibold text-muted-foreground">
@@ -392,7 +461,7 @@ export function BerandaClient({
                     {card.description}
                   </p>
                 </div>
-              </a>
+              </motion.a>
             </div>
           ))}
         </div>

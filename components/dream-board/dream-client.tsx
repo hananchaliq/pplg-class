@@ -185,7 +185,7 @@ export function DreamBoardClient({
                 >
                   Untuk {cheerTargetDream.student_name}
                 </h2>
-                <p className="mt-1 font-serif text-sm sm:text-base font-semibold italic text-muted-foreground">
+                <p className="mt-1 font-hand text-lg sm:text-xl font-bold text-foreground/85">
                   &ldquo;{cheerTargetDream.dream}&rdquo;
                 </p>
               </div>

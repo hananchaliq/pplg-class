@@ -112,15 +112,15 @@ export function getAlbumArsipFont(): string {
 
 export function getAlbumTulisFont(): string {
   return resolveCssFontVar(
-    "--font-serif",
-    `"Old Standard TT", Georgia, serif`
+    "--font-hand",
+    `"Caveat", "Old Standard TT", cursive, serif`
   );
 }
 
 let fontsLoadPromise: Promise<void> | null = null;
 
 /**
- * Memastikan 3 font cetak koran & film (Old Standard TT + Source Serif 4 + Special Elite)
+ * Memastikan font cetak koran, film, dan tulisan tangan (Caveat)
  * selesai dimuat sebelum teks digambar ke kanvas 2D/3D.
  */
 export async function ensureAlbumFontsLoaded(): Promise<void> {
@@ -131,6 +131,7 @@ export async function ensureAlbumFontsLoaded(): Promise<void> {
         const displayFam = getAlbumDisplayFont();
         const bodyFam = getAlbumBodyFont();
         const arsipFam = getAlbumArsipFont();
+        const handFam = getAlbumTulisFont();
 
         await Promise.allSettled([
           document.fonts.load(`700 32px ${displayFam}`),
@@ -139,6 +140,9 @@ export async function ensureAlbumFontsLoaded(): Promise<void> {
           document.fonts.load(`500 24px ${bodyFam}`),
           document.fonts.load(`700 24px ${bodyFam}`),
           document.fonts.load(`400 20px ${arsipFam}`),
+          document.fonts.load(`400 28px ${handFam}`),
+          document.fonts.load(`600 32px ${handFam}`),
+          document.fonts.load(`700 36px ${handFam}`),
         ]);
         await document.fonts.ready;
       } catch {

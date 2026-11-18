@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, RotateCcw, Trophy, Vote } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
 import {
@@ -136,131 +136,156 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
             </span>
           </div>
 
-          {!quizFinished ? (
-            <motion.div
-              key={activeQuestion.id}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25 }}
-              className="mt-5 sm:mt-6"
-            >
-              <p className="font-serif text-base sm:text-lg font-bold leading-snug text-foreground">
-                {activeQuestion.question}
-              </p>
+          <AnimatePresence mode="wait">
+            {!quizFinished ? (
+              <motion.div
+                key={activeQuestion.id}
+                initial={{ opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -14 }}
+                transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                className="mt-5 sm:mt-6"
+              >
+                <p className="font-serif text-base sm:text-lg font-bold leading-snug text-foreground">
+                  {activeQuestion.question}
+                </p>
 
-              <div className="mt-4 space-y-2.5">
-                {activeQuestion.options.map((opt, idx) => {
-                  const chosen = selectedAnswerIdx === idx;
-                  const isCorrect = idx === activeQuestion.correctIndex;
-                  const showResult = selectedAnswerIdx !== undefined;
+                <div className="mt-4 space-y-2.5">
+                  {activeQuestion.options.map((opt, idx) => {
+                    const chosen = selectedAnswerIdx === idx;
+                    const isCorrect = idx === activeQuestion.correctIndex;
+                    const showResult = selectedAnswerIdx !== undefined;
 
-                  return (
-                    <motion.button
-                      key={opt}
-                      type="button"
-                      whileHover={{ x: 3 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => handleSelectOption(idx)}
-                      className={`flex min-h-[48px] w-full items-center justify-between rounded-xl border px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-xs sm:text-sm transition-colors ${
-                        chosen
-                          ? isCorrect
-                            ? "border-[var(--color-chart-2)] bg-[var(--color-chart-2)]/15 font-semibold text-foreground"
-                            : "border-[var(--color-chart-3)] bg-[var(--color-chart-3)]/15 font-semibold text-foreground"
-                          : "border-border bg-background text-foreground hover:bg-muted"
-                      }`}
+                    return (
+                      <motion.button
+                        key={opt}
+                        type="button"
+                        whileHover={{ x: 4, scale: 1.005 }}
+                        whileTap={{ scale: 0.985 }}
+                        transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                        onClick={() => handleSelectOption(idx)}
+                        className={`flex min-h-[48px] w-full items-center justify-between rounded-xl border px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-xs sm:text-sm transition-colors ${
+                          chosen
+                            ? isCorrect
+                              ? "border-[var(--color-chart-2)] bg-[var(--color-chart-2)]/15 font-semibold text-foreground shadow-xs"
+                              : "border-[var(--color-chart-3)] bg-[var(--color-chart-3)]/15 font-semibold text-foreground shadow-xs"
+                            : "border-border bg-background text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span>{opt}</span>
+                        {showResult && isCorrect && (
+                          <motion.span
+                            initial={{ scale: 0.7, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 450, damping: 22 }}
+                            className="ml-2 shrink-0 text-xs font-bold text-[var(--color-chart-2)]"
+                          >
+                            ✓ Tepat
+                          </motion.span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                <AnimatePresence>
+                  {selectedAnswerIdx !== undefined && (
+                    <motion.p
+                      key={`exp-${activeQuestion.id}`}
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ type: "spring", stiffness: 360, damping: 24 }}
+                      className="mt-4 rounded-xl border border-border bg-muted/60 p-3.5 text-xs leading-relaxed text-foreground"
                     >
-                      <span>{opt}</span>
-                      {showResult && isCorrect && (
-                        <span className="ml-2 shrink-0 text-xs font-bold text-[var(--color-chart-2)]">
-                          ✓ Tepat
-                        </span>
-                      )}
+                      {activeQuestion.explanation}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+
+                <div className="mt-5 sm:mt-6 flex items-center justify-between gap-2">
+                  <motion.button
+                    whileHover={{ x: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    type="button"
+                    disabled={currentQ === 0}
+                    onClick={() => setCurrentQ((p) => Math.max(0, p - 1))}
+                    className="min-h-[42px] sm:min-h-[44px] rounded-lg border border-border px-3 sm:px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
+                  >
+                    ← Sebelumnya
+                  </motion.button>
+
+                  {currentQ < questions.length - 1 ? (
+                    <motion.button
+                      whileHover={{ x: 2, scale: 1.02 }}
+                      whileTap={{ scale: 0.96 }}
+                      type="button"
+                      disabled={selectedAnswerIdx === undefined}
+                      onClick={() =>
+                        setCurrentQ((p) => Math.min(questions.length - 1, p + 1))
+                      }
+                      className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                    >
+                      Berikutnya →
                     </motion.button>
-                  );
-                })}
-              </div>
-
-              {selectedAnswerIdx !== undefined && (
-                <motion.p
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 rounded-xl border border-border bg-muted/60 p-3.5 text-xs leading-relaxed text-foreground"
+                  ) : (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                      type="button"
+                      disabled={selectedAnswerIdx === undefined}
+                      onClick={() => setQuizFinished(true)}
+                      className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                    >
+                      Lihat Hasil Akhir
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="quiz-finished"
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ type: "spring", stiffness: 320, damping: 24 }}
+                className="mt-8 flex flex-col items-center py-6 text-center"
+              >
+                <motion.div
+                  initial={{ scale: 0.5, rotate: -18 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 340, damping: 16, delay: 0.08 }}
                 >
-                  {activeQuestion.explanation}
-                </motion.p>
-              )}
-
-              <div className="mt-5 sm:mt-6 flex items-center justify-between gap-2">
+                  <Trophy className="size-12 text-foreground" />
+                </motion.div>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Skor Akhir Kamu
+                </p>
+                <p className="mt-1 font-serif text-4xl sm:text-5xl font-bold tabular-nums text-foreground">
+                  {totalScore} / 100
+                </p>
+                <p className="mt-3 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  {totalScore >= 80
+                    ? "Luar biasa! Kamu benar-benar penghuni sejati laboratorium XII PPLG 1 yang hafal setiap sudut cerita kita."
+                    : "Terima kasih sudah ikut bernostalgia! Buka kembali halaman Anggota dan Galeri untuk menyegarkan ingatanmu."}
+                </p>
                 <motion.button
-                  whileHover={{ x: -2 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
                   whileTap={{ scale: 0.96 }}
                   type="button"
-                  disabled={currentQ === 0}
-                  onClick={() => setCurrentQ((p) => Math.max(0, p - 1))}
-                  className="min-h-[42px] sm:min-h-[44px] rounded-lg border border-border px-3 sm:px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
+                  onClick={() => {
+                    setAnswers({});
+                    setCurrentQ(0);
+                    setQuizFinished(false);
+                  }}
+                  className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-background px-5 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                 >
-                  ← Sebelumnya
+                  <RotateCcw className="size-4" />
+                  <span>Mainkan Ulang Kuis</span>
                 </motion.button>
-
-                {currentQ < questions.length - 1 ? (
-                  <motion.button
-                    whileHover={{ x: 2, scale: 1.02 }}
-                    whileTap={{ scale: 0.96 }}
-                    type="button"
-                    disabled={selectedAnswerIdx === undefined}
-                    onClick={() =>
-                      setCurrentQ((p) => Math.min(questions.length - 1, p + 1))
-                    }
-                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
-                  >
-                    Berikutnya →
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96 }}
-                    type="button"
-                    disabled={selectedAnswerIdx === undefined}
-                    onClick={() => setQuizFinished(true)}
-                    className="min-h-[42px] sm:min-h-[44px] rounded-lg bg-primary px-4 sm:px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
-                  >
-                    Lihat Hasil Akhir
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mt-8 flex flex-col items-center py-6 text-center"
-            >
-              <Trophy className="size-12 text-foreground" />
-              <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Skor Akhir Kamu
-              </p>
-              <p className="mt-1 font-serif text-4xl sm:text-5xl font-bold tabular-nums text-foreground">
-                {totalScore} / 100
-              </p>
-              <p className="mt-3 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                {totalScore >= 80
-                  ? "Luar biasa! Kamu benar-benar penghuni sejati laboratorium XII PPLG 1 yang hafal setiap sudut cerita kita."
-                  : "Terima kasih sudah ikut bernostalgia! Buka kembali halaman Anggota dan Galeri untuk menyegarkan ingatanmu."}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setAnswers({});
-                  setCurrentQ(0);
-                  setQuizFinished(false);
-                }}
-                className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-background px-5 py-2 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                <RotateCcw className="size-4" />
-                <span>Mainkan Ulang Kuis</span>
-              </button>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.section>
 
         {/* Bagian Kanan: Polling Kelas dengan Batang 3D Ringan */}
@@ -329,9 +354,11 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                     const barClass = barColors[idx % barColors.length]!;
 
                     return (
-                      <div
+                      <motion.div
                         key={opt.id}
-                        className="rounded-xl border border-border bg-background p-4"
+                        whileHover={{ y: -2 }}
+                        transition={{ type: "spring", stiffness: 360, damping: 24 }}
+                        className="rounded-xl border border-border bg-background p-4 transition-shadow hover:shadow-xs"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <span className="text-sm font-medium text-foreground">
@@ -342,12 +369,20 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                           </span>
                         </div>
 
-                        {/* Batang 3D Berlapis (Efek Kedalaman Kubus 3D Ringan) */}
+                        {/* Batang 3D Berlapis dengan Animasi Spring */}
                         <div className="mt-3 h-4 w-full overflow-hidden rounded-md bg-muted p-0.5 shadow-inner">
-                          <div
-                            className={`h-full rounded transition-all duration-500 ${barClass}`}
-                            style={{
+                          <motion.div
+                            initial={{ width: "6%" }}
+                            animate={{
                               width: `${Math.max(6, (opt.votes / maxVotes) * 100)}%`,
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 200,
+                              damping: 24,
+                            }}
+                            className={`h-full rounded ${barClass}`}
+                            style={{
                               boxShadow:
                                 "inset 0 2px 0 rgba(255,255,255,0.35), 2px 2px 0 rgba(0,0,0,0.2)",
                             }}
@@ -369,20 +404,26 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
                             </span>
                           </motion.button>
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
 
-                {pollMessage && (
-                  <div
-                    role="status"
-                    className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground"
-                  >
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
-                    <span>{pollMessage}</span>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {pollMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ type: "spring", stiffness: 360, damping: 24 }}
+                      role="status"
+                      className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground"
+                    >
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
+                      <span>{pollMessage}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })

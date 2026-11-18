@@ -61,13 +61,13 @@ export interface NewspaperPlan {
   totalPhotos: number;
 }
 
-// Palet Koran Jadul Kecreaman (Aged Cream Parchment & Espresso-Sepia Ink)
+// Palet Koran Jadul Kecreaman (Aged Cream Parchment & Crisp Espresso-Sepia Ink)
 const PAPER_CREAM = "#EFE5CE";
 const PAPER_WARM_ALT = "#E5D7B9";
 const PAPER_FOXING = "#D4C29E";
-const INK_DARK = "#261F18";
-const INK_BODY = "#382E24";
-const INK_MUTED = "#6B5B4B";
+const INK_DARK = "#1E1712";
+const INK_BODY = "#2A211A";
+const INK_MUTED = "#5A4B3C";
 const INK_RULE = "#8A7864";
 const BOX_INVERTED_BG = "#2D241C";
 const BOX_INVERTED_FG = "#EFE5CE";
@@ -657,7 +657,7 @@ function drawRunningHeaderAndFooter(
 
 /**
  * Gambar foto dalam nuansa pucat/faded vintage film (bukan hitam-putih pekat),
- * mendukung bentuk kotak maupun lingkaran seperti di The Daily Chronicle.
+ * mendukung bentuk kotak dengan sedikit miring natural maupun lingkaran seperti di The Daily Chronicle.
  */
 function drawVintagePhotoFrame(
   ctx: CanvasRenderingContext2D,
@@ -670,21 +670,46 @@ function drawVintagePhotoFrame(
   frameLabel: string,
   shape: "rect" | "circle" = "rect"
 ) {
+  // Hitung rotasi miring natural tipis (±1.3° .. ±2.1°) untuk foto kotak agar tidak kaku
+  const seedStr = `${moment?.id || ""}|${frameLabel}|${Math.round(x)}|${Math.round(y)}`;
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = (hash * 31 + seedStr.charCodeAt(i)) | 0;
+  }
+  const tiltSign = hash % 2 === 0 ? 1 : -1;
+  const tiltDeg = 1.2 + (Math.abs(hash) % 10) * 0.1;
+  const tiltRad = shape === "circle" ? 0 : (tiltSign * tiltDeg * Math.PI) / 180;
+
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (tiltRad !== 0) {
+    ctx.rotate(tiltRad);
+  }
+  const lx = -w / 2;
+  const ly = -h / 2;
+
+  if (shape === "rect") {
+    // Bayangan tipis kertas tempel agar foto miring terasa organik di atas kertas koran
+    ctx.fillStyle = "rgba(38, 31, 24, 0.15)";
+    ctx.fillRect(lx + 4, ly + 5, w, h);
+  }
+
   ctx.save();
   if (shape === "circle") {
-    const cx = x + w / 2;
-    const cy = y + h / 2;
     const r = Math.min(w, h) / 2;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fillStyle = PAPER_WARM_ALT;
     ctx.fill();
     ctx.clip();
   } else {
     ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(lx, ly, w, h);
     ctx.beginPath();
-    ctx.rect(x + 2, y + 2, w - 4, h - 4);
+    ctx.rect(lx + 2, ly + 2, w - 4, h - 4);
     ctx.clip();
   }
 
@@ -695,20 +720,20 @@ function drawVintagePhotoFrame(
     const scale = Math.max(w / iw, h / ih);
     const dw = iw * scale;
     const dh = ih * scale;
-    const dx = x + (w - dw) / 2;
-    const dy = y + (h - dh) / 2;
+    const dx = lx + (w - dw) / 2;
+    const dy = ly + (h - dh) / 2;
 
     // Pucat ala foto cetak koran jadul (bukan hitam putih pekat)
-    ctx.filter = "saturate(42%) contrast(90%) brightness(105%) sepia(24%)";
+    ctx.filter = "saturate(44%) contrast(94%) brightness(104%) sepia(22%)";
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.filter = "none";
 
     // Lapisan tipis warna kertas cream agar menyatu dengan kertas koran
-    ctx.fillStyle = "rgba(239, 229, 206, 0.14)";
-    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "rgba(239, 229, 206, 0.12)";
+    ctx.fillRect(lx, ly, w, h);
   } else {
     ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(lx, ly, w, h);
     ctx.fillStyle = INK_MUTED;
     ctx.textAlign = "center";
     ctx.font = '14px "Special Elite", "Courier New", monospace';
@@ -716,8 +741,8 @@ function drawVintagePhotoFrame(
       imgResult?.status === "cors-blocked"
         ? "ARSIP EKSTERNAL · BUKA GRID"
         : "REKAMAN FOTO VINTAGE",
-      x + w / 2,
-      y + h / 2
+      0,
+      0
     );
     ctx.textAlign = "left";
   }
@@ -725,38 +750,38 @@ function drawVintagePhotoFrame(
 
   // Garis bingkai cetak koran
   if (shape === "circle") {
-    const cx = x + w / 2;
-    const cy = y + h / 2;
     const r = Math.min(w, h) / 2;
     ctx.strokeStyle = INK_DARK;
     ctx.lineWidth = 2.6;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = PAPER_CREAM;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 4, 0, Math.PI * 2);
+    ctx.arc(0, 0, r - 4, 0, Math.PI * 2);
     ctx.stroke();
   } else {
     ctx.strokeStyle = INK_DARK;
     ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, w, h);
+    ctx.strokeRect(lx, ly, w, h);
     ctx.strokeStyle = INK_MUTED;
     ctx.lineWidth = 0.8;
-    ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+    ctx.strokeRect(lx + 3, ly + 3, w - 6, h - 6);
 
     if (frameLabel) {
-      const badgeW = Math.min(w - 14, ctx.measureText(frameLabel).width + 24);
-      ctx.fillStyle = "rgba(38, 31, 24, 0.84)";
-      ctx.fillRect(x + 8, y + 8, Math.max(96, badgeW), 22);
-      ctx.fillStyle = PAPER_CREAM;
       ctx.font = '11px "Special Elite", "Courier New", monospace';
+      const badgeW = Math.min(w - 14, ctx.measureText(frameLabel).width + 24);
+      ctx.fillStyle = "rgba(38, 31, 24, 0.86)";
+      ctx.fillRect(lx + 8, ly + 8, Math.max(96, badgeW), 22);
+      ctx.fillStyle = PAPER_CREAM;
       ctx.textAlign = "left";
-      ctx.fillText(frameLabel, x + 14, y + 23);
+      ctx.fillText(frameLabel, lx + 14, ly + 23);
     }
   }
+
+  ctx.restore();
 }
 
 /**
@@ -2614,13 +2639,18 @@ export async function renderNewspaperPageToBlobUrl(
     })
   );
 
+  const RASTER_SCALE = 1.75;
   const canvas = document.createElement("canvas");
-  canvas.width = NEWSPAPER_WIDTH;
-  canvas.height = NEWSPAPER_HEIGHT;
+  canvas.width = Math.round(NEWSPAPER_WIDTH * RASTER_SCALE);
+  canvas.height = Math.round(NEWSPAPER_HEIGHT * RASTER_SCALE);
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return { url: createSkeletonNewspaperUrl(spec), corsBlockedCount };
   }
+
+  ctx.scale(RASTER_SCALE, RASTER_SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   drawCreamNewsprintBase(ctx);
 
@@ -2674,7 +2704,7 @@ export async function renderNewspaperPageToBlobUrl(
   }
 
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), "image/webp", 0.88);
+    canvas.toBlob((b) => resolve(b), "image/webp", 0.94);
   });
 
   if (blob) {

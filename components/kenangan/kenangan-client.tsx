@@ -549,52 +549,85 @@ export function KenanganClient({
         <motion.button
           role="tab"
           type="button"
-          whileHover={{ y: -1 }}
+          whileHover={{ y: -1.5 }}
           whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
           aria-selected={activeTab === "buku"}
           onClick={() => setActiveTab("buku")}
-          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`relative inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "buku"
-              ? "bg-primary text-primary-foreground shadow-sm"
+              ? "text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
-          <BookOpen className="size-4" />
-          <span>Buku Kenangan</span>
+          {activeTab === "buku" && (
+            <motion.span
+              layoutId="kenangan-tab-pill"
+              transition={{ type: "spring", stiffness: 420, damping: 30 }}
+              className="absolute inset-0 rounded-lg bg-primary shadow-sm"
+              aria-hidden="true"
+            />
+          )}
+          <span className="relative z-10 inline-flex items-center gap-1.5 sm:gap-2">
+            <BookOpen className="size-4" />
+            <span>Buku Kenangan</span>
+          </span>
         </motion.button>
 
         <motion.button
           role="tab"
           type="button"
-          whileHover={{ y: -1 }}
+          whileHover={{ y: -1.5 }}
           whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
           aria-selected={activeTab === "kapsul"}
           onClick={() => setActiveTab("kapsul")}
-          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`relative inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "kapsul"
-              ? "bg-primary text-primary-foreground shadow-sm"
+              ? "text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
-          <Clock className="size-4" />
-          <span>Kapsul Waktu ({timeCapsules.length})</span>
+          {activeTab === "kapsul" && (
+            <motion.span
+              layoutId="kenangan-tab-pill"
+              transition={{ type: "spring", stiffness: 420, damping: 30 }}
+              className="absolute inset-0 rounded-lg bg-primary shadow-sm"
+              aria-hidden="true"
+            />
+          )}
+          <span className="relative z-10 inline-flex items-center gap-1.5 sm:gap-2">
+            <Clock className="size-4" />
+            <span>Kapsul Waktu ({timeCapsules.length})</span>
+          </span>
         </motion.button>
 
         <motion.button
           role="tab"
           type="button"
-          whileHover={{ y: -1 }}
+          whileHover={{ y: -1.5 }}
           whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
           aria-selected={activeTab === "thanks"}
           onClick={() => setActiveTab("thanks")}
-          className={`inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          className={`relative inline-flex min-h-[42px] sm:flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
             activeTab === "thanks"
-              ? "bg-primary text-primary-foreground shadow-sm"
+              ? "text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
-          <Heart className="size-4" />
-          <span>Wall of Thanks ({thanksList.length})</span>
+          {activeTab === "thanks" && (
+            <motion.span
+              layoutId="kenangan-tab-pill"
+              transition={{ type: "spring", stiffness: 420, damping: 30 }}
+              className="absolute inset-0 rounded-lg bg-primary shadow-sm"
+              aria-hidden="true"
+            />
+          )}
+          <span className="relative z-10 inline-flex items-center gap-1.5 sm:gap-2">
+            <Heart className="size-4" />
+            <span>Wall of Thanks ({thanksList.length})</span>
+          </span>
         </motion.button>
       </div>
 

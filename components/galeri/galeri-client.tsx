@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Camera,
   ChevronLeft,
@@ -298,20 +298,29 @@ export function GaleriClient({
             <motion.button
               key={p.id}
               type="button"
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ y: -3, scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 380, damping: 24 }}
               onClick={() => {
                 setActivePhase(p.id);
                 setMomentPage(1);
                 koranRef.current?.goToPhase(p.id);
               }}
-              className={`flex flex-col items-start rounded-xl border p-2.5 sm:p-4 text-left transition-colors ${
+              className={`relative flex flex-col items-start rounded-xl border p-2.5 sm:p-4 text-left transition-colors ${
                 active
-                  ? "border-foreground bg-card shadow-xs"
+                  ? "border-transparent bg-card shadow-sm"
                   : "border-border bg-card/50 hover:bg-card"
               }`}
             >
-              <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+              {active && (
+                <motion.span
+                  layoutId="galeri-phase-ring"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  className="pointer-events-none absolute inset-0 rounded-xl border-2 border-foreground"
+                  aria-hidden="true"
+                />
+              )}
+              <div className="relative z-10 flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
                 <span className="font-serif text-sm sm:text-lg font-bold text-foreground">
                   {p.label}
                 </span>
@@ -319,7 +328,7 @@ export function GaleriClient({
                   {countInPhase} foto
                 </span>
               </div>
-              <span className="mt-1 hidden font-sans text-xs text-muted-foreground sm:block">
+              <span className="relative z-10 mt-1 hidden font-sans text-xs text-muted-foreground sm:block">
                 {p.subtitle}
               </span>
             </motion.button>
@@ -339,19 +348,28 @@ export function GaleriClient({
             <motion.button
               key={cat}
               type="button"
-              whileHover={{ y: -1 }}
+              whileHover={{ y: -1.5 }}
               whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 380, damping: 24 }}
               onClick={() => {
                 setActiveCategory(cat);
                 setMomentPage(1);
               }}
-              className={`min-h-[34px] rounded-lg px-3 py-1 font-sans text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`relative min-h-[34px] rounded-lg px-3 py-1 font-sans text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 active
-                  ? "bg-foreground text-background font-semibold"
+                  ? "text-background font-semibold"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              {cat}
+              {active && (
+                <motion.span
+                  layoutId="galeri-cat-pill"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-lg bg-foreground shadow-2xs"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="relative z-10">{cat}</span>
             </motion.button>
           );
         })}
@@ -465,111 +483,132 @@ export function GaleriClient({
       </section>
 
       {/* Modal Lightbox Pop-Up Kertas Foto Monokrom */}
-      {currentLightboxMoment && lightboxIndex !== null && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Peninjau Kertas Foto Ukuran Penuh"
-          onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/80 p-0 backdrop-blur-xs sm:items-center sm:p-6"
-        >
+      <AnimatePresence>
+        {currentLightboxMoment && lightboxIndex !== null && (
           <motion.div
-            onClick={(e) => e.stopPropagation()}
-            initial={{ opacity: 0, scale: 0.94, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-3.5 pb-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
+            key="galeri-lightbox-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Peninjau Kertas Foto Ukuran Penuh"
+            onClick={() => setLightboxIndex(null)}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/80 p-0 backdrop-blur-xs sm:items-center sm:p-6"
           >
-            <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-border pb-2.5">
-              <div className="flex flex-wrap items-center gap-2 font-mono text-xs font-bold text-muted-foreground">
-                <span className="rounded-md bg-secondary px-2.5 py-0.5 text-foreground">
-                  Kelas {currentLightboxMoment.phase}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span>{currentLightboxMoment.category}</span>
-                <span aria-hidden="true">·</span>
-                <span className="tabular-nums">
-                  {currentLightboxMoment.taken_at}
-                </span>
+            <motion.div
+              key={currentLightboxMoment.id}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.94, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 18 }}
+              transition={{ type: "spring", stiffness: 320, damping: 24 }}
+              className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-3.5 pb-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-border pb-2.5">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs font-bold text-muted-foreground">
+                  <span className="rounded-md bg-secondary px-2.5 py-0.5 text-foreground">
+                    Kelas {currentLightboxMoment.phase}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{currentLightboxMoment.category}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums">
+                    {currentLightboxMoment.taken_at}
+                  </span>
+                </div>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  aria-label="Tutup foto"
+                  onClick={() => setLightboxIndex(null)}
+                  className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
+                >
+                  <X className="size-4" />
+                </motion.button>
               </div>
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.94 }}
-                aria-label="Tutup foto"
-                onClick={() => setLightboxIndex(null)}
-                className="inline-flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
-              >
-                <X className="size-4" />
-              </motion.button>
-            </div>
 
-            <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-secondary shadow-md">
-              <img
-                src={currentLightboxMoment.image_url}
-                alt={currentLightboxMoment.caption}
-                referrerPolicy="no-referrer"
-                className="public-film-photo block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
-              />
-            </div>
+              <div className="photo-gloss-sheen relative mx-auto flex w-fit max-w-full items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-secondary shadow-md">
+                <img
+                  src={currentLightboxMoment.image_url}
+                  alt={currentLightboxMoment.caption}
+                  referrerPolicy="no-referrer"
+                  className="public-film-photo block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
+                />
+              </div>
 
-            <div className="mt-4 rounded-xl border border-border bg-background/95 p-3.5 sm:p-4 shadow-xs">
-              <p className="font-serif text-base sm:text-xl font-bold leading-relaxed text-foreground break-words">
-                &ldquo;{currentLightboxMoment.caption}&rdquo;
-              </p>
-              <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 border-t border-dashed border-border pt-2.5">
-                <p className="font-mono text-xs font-medium text-muted-foreground">
-                  Diabadikan oleh{" "}
-                  <strong className="font-semibold text-foreground">
-                    {currentLightboxMoment.uploader_name}
-                  </strong>{" "}
-                  · Bingkai {lightboxIndex + 1} dari {filteredMoments.length}
+              <div className="mt-4 rounded-xl border border-border bg-background/95 p-3.5 sm:p-4 shadow-xs">
+                <p className="font-serif text-base sm:text-xl font-bold leading-relaxed text-foreground break-words">
+                  &ldquo;{currentLightboxMoment.caption}&rdquo;
                 </p>
+                <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 border-t border-dashed border-border pt-2.5">
+                  <p className="font-mono text-xs font-medium text-muted-foreground">
+                    Diabadikan oleh{" "}
+                    <strong className="font-semibold text-foreground">
+                      {currentLightboxMoment.uploader_name}
+                    </strong>{" "}
+                    · Bingkai {lightboxIndex + 1} dari {filteredMoments.length}
+                  </p>
 
-                <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    aria-label="Foto sebelumnya"
-                    onClick={() =>
-                      setLightboxIndex(
-                        (lightboxIndex - 1 + filteredMoments.length) %
-                          filteredMoments.length
-                      )
-                    }
-                    className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
-                  >
-                    <ChevronLeft className="size-4" />
-                    <span>Sebelumnya</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Foto berikutnya"
-                    onClick={() =>
-                      setLightboxIndex(
-                        (lightboxIndex + 1) % filteredMoments.length
-                      )
-                    }
-                    className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
-                  >
-                    <span>Berikutnya</span>
-                    <ChevronRight className="size-4" />
-                  </button>
+                  <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      aria-label="Foto sebelumnya"
+                      onClick={() =>
+                        setLightboxIndex(
+                          (lightboxIndex - 1 + filteredMoments.length) %
+                            filteredMoments.length
+                        )
+                      }
+                      className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <ChevronLeft className="size-4" />
+                      <span>Sebelumnya</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Foto berikutnya"
+                      onClick={() =>
+                        setLightboxIndex(
+                          (lightboxIndex + 1) % filteredMoments.length
+                        )
+                      }
+                      className="inline-flex min-h-[38px] items-center justify-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 font-sans text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <span>Berikutnya</span>
+                      <ChevronRight className="size-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Modal Unggah Foto Momen */}
-      {uploadOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="upload-moment-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/70 p-0 sm:items-center sm:p-4"
-        >
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-2xl sm:p-6">
+      <AnimatePresence>
+        {uploadOpen && (
+          <motion.div
+            key="galeri-upload-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upload-moment-title"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[#241E18]/70 p-0 backdrop-blur-xs sm:items-center sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-2xl sm:p-6"
+            >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-mono text-xs font-medium text-muted-foreground">
@@ -766,9 +805,10 @@ export function GaleriClient({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ImageCropperModal
         open={cropModalOpen}

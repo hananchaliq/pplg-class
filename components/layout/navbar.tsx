@@ -10,19 +10,19 @@ import {
   Compass,
   X,
   Loader2,
-  Volume2,
-  VolumeX,
+  Music,
+  Disc3,
   SkipForward,
+  SlidersHorizontal,
   Box,
   Home,
   Users,
   GraduationCap,
-  Camera,
-  Star,
+  Newspaper,
+  Pin,
   BookOpen,
   Code2,
   Gamepad2,
-  Info,
 } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
 import { useTheme } from "@/lib/theme";
@@ -54,13 +54,13 @@ const NAV_ITEMS = [
     href: "/galeri",
     label: "Galeri",
     shortDesc: "Koran jadul kenangan & foto kelas",
-    icon: Camera,
+    icon: Newspaper,
   },
   {
     href: "/dream-board",
     label: "Dream Board",
     shortDesc: "Papan cita-cita & catatan doa",
-    icon: Star,
+    icon: Pin,
   },
   {
     href: "/kenangan",
@@ -85,7 +85,7 @@ const NAV_ITEMS = [
 const MOBILE_PRIMARY_TABS = [
   { href: "/", label: "Beranda", icon: Home },
   { href: "/anggota", label: "Anggota", icon: Users },
-  { href: "/galeri", label: "Galeri", icon: Camera },
+  { href: "/galeri", label: "Galeri", icon: Newspaper },
   { href: "/kenangan", label: "Kenangan", icon: BookOpen },
   { href: "/karya", label: "Karya", icon: Code2 },
 ] as const;
@@ -95,15 +95,20 @@ export function Navbar() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { tier, webglSupported, setManualTier } = useVisualTier();
-  const { playing, trackIndex, currentTrack, toggleAudio, nextTrack } =
-    useSadAudio();
+  const {
+    playing,
+    trackIndex,
+    currentTrack,
+    musicMenuOpen,
+    toggleAudio,
+    nextTrack,
+    toggleMusicMenu,
+  } = useSadAudio();
   const [mobileSheetOpen, setMobileSheetOpen] = React.useState(false);
-  const [logoMeaningOpen, setLogoMeaningOpen] = React.useState(false);
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setMobileSheetOpen(false);
-    setLogoMeaningOpen(false);
     setPendingHref(null);
   }, [pathname]);
 
@@ -124,7 +129,6 @@ export function Navbar() {
 
     e.preventDefault();
     setMobileSheetOpen(false);
-    setLogoMeaningOpen(false);
     if (window.location.pathname !== targetHref) {
       setPendingHref(targetHref);
     }
@@ -151,8 +155,8 @@ export function Navbar() {
         )}
 
         <div className="mx-auto flex h-15 sm:h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-6">
-          {/* Identitas Brand + Logo UNO + Popover Filosofi */}
-          <div className="relative flex min-w-0 items-center gap-1.5 sm:gap-2">
+          {/* Identitas Brand Kiri: Logo + PPLG 1 / MAKN Ende */}
+          <div className="relative flex min-w-0 items-center">
             <Link
               href="/"
               prefetch={false}
@@ -167,76 +171,13 @@ export function Navbar() {
               </motion.div>
               <div className="flex min-w-0 flex-col leading-tight">
                 <span className="truncate font-serif text-sm sm:text-base font-bold tracking-tight text-foreground transition-opacity group-hover:opacity-75">
-                  UNO · {SITE_CONTENT.school.className}
+                  PPLG 1
                 </span>
                 <span className="truncate font-mono text-[10px] sm:text-[11px] text-muted-foreground">
-                  {SITE_CONTENT.school.shortSchool} · {SITE_CONTENT.school.cohortYears}
+                  {SITE_CONTENT.school.shortSchool}
                 </span>
               </div>
             </Link>
-
-            <button
-              type="button"
-              onClick={() => setLogoMeaningOpen((prev) => !prev)}
-              aria-expanded={logoMeaningOpen}
-              aria-label="Makna lambang UNO XII PPLG 1"
-              title="Lihat filosofi lambang UNO"
-              className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full border text-xs transition-colors ${
-                logoMeaningOpen
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background/80 text-muted-foreground hover:border-foreground/50 hover:text-foreground"
-              }`}
-            >
-              <Info className="size-3.5" />
-            </button>
-
-            <AnimatePresence>
-              {logoMeaningOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                  transition={{ duration: 0.16 }}
-                  className="absolute top-full left-0 z-50 mt-2 w-72 sm:w-80 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <UnoLogo size="sm" />
-                      <div>
-                        <p className="font-serif text-sm font-bold text-foreground">
-                          Filosofi Lambang &ldquo;UNO&rdquo;
-                        </p>
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          Satu Keluarga, Satu Cerita
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setLogoMeaningOpen(false)}
-                      aria-label="Tutup penjelasan logo"
-                      className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                  <ul className="mt-2.5 space-y-1.5 border-t border-border pt-2.5 font-sans text-xs leading-relaxed text-muted-foreground">
-                    <li>
-                      <strong className="text-foreground">Lingkaran Utuh (UNO = Satu):</strong>{" "}
-                      Persatuan keluarga besar {SITE_CONTENT.school.className} yang tak terputus oleh jarak &amp; waktu.
-                    </li>
-                    <li>
-                      <strong className="text-foreground">3 Bintang Angkatan:</strong>{" "}
-                      Melambangkan 3 tahun perjalanan bersama di madrasah (Kelas X, XI, dan XII).
-                    </li>
-                    <li>
-                      <strong className="text-foreground">Simbol &lt;•&gt; &amp; Cincin Film:</strong>{" "}
-                      Rekam jejak kode perangkat lunak PPLG yang terbingkai dalam arsip film kenangan.
-                    </li>
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           {/* Navigasi Utama Desktop (lg+) */}
@@ -262,32 +203,44 @@ export function Navbar() {
                   aria-current={isActive ? "page" : undefined}
                   className={`group relative inline-flex min-h-[34px] items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-semibold whitespace-nowrap transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-xs"
+                      ? "text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                   }`}
                 >
-                  {isPending ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Icon
-                      className={`size-3.5 ${
-                        isActive
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground group-hover:text-foreground"
-                      }`}
+                  {isActive && (
+                    <motion.span
+                      layoutId="desktop-nav-pill"
+                      transition={{ type: "spring", stiffness: 440, damping: 32 }}
+                      className="absolute inset-0 rounded-md bg-primary shadow-xs"
+                      aria-hidden="true"
                     />
                   )}
-                  <span>{link.label}</span>
+                  <span className="relative z-10 inline-flex items-center gap-1.5">
+                    {isPending ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Icon
+                        className={`size-3.5 transition-transform duration-200 group-hover:scale-110 ${
+                          isActive
+                            ? "text-primary-foreground"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        }`}
+                      />
+                    )}
+                    <span>{link.label}</span>
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Kontrol Global: Musik + 3D/2D + Tema */}
+          {/* Kontrol Global: Musik (Hover Expand CD) + 3D/2D + Tema Radial */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <div className="inline-flex items-center rounded-lg border border-border bg-background/80 p-0.5">
-              <button
+            <div className="group/music inline-flex items-center rounded-lg border border-border bg-background/80 p-0.5 transition-all duration-300 ease-out">
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={toggleAudio}
                 aria-pressed={playing}
                 aria-label={
@@ -300,36 +253,79 @@ export function Navbar() {
                     ? `Sedang diputar: ${currentTrack.title}`
                     : "Putar Musik Kenangan"
                 }
-                className={`inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 font-sans text-xs font-semibold transition-colors whitespace-nowrap ${
+                className={`inline-flex size-8 items-center justify-center rounded-md font-sans text-xs font-semibold transition-colors ${
                   playing
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                {playing ? (
-                  <Volume2 className="size-3.5" />
-                ) : (
-                  <VolumeX className="size-3.5 text-muted-foreground" />
-                )}
-                <span className="hidden sm:inline">
-                  {playing ? `#${trackIndex + 1}` : "Musik"}
+                <AnimatePresence mode="wait" initial={false}>
+                  {playing ? (
+                    <motion.span
+                      key="disc-playing"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="inline-flex"
+                    >
+                      <Disc3 className="size-4 animate-spin [animation-duration:3.5s]" />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="music-idle"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="inline-flex"
+                    >
+                      <Music className="size-3.5" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+
+              {/* Tombol Kontrol CD Tambahan: Melebar Halus ke Kanan saat Hover / Focus */}
+              <div className="flex max-w-0 items-center overflow-hidden opacity-0 transition-all duration-300 ease-out group-hover/music:max-w-[140px] group-hover/music:pl-1 group-hover/music:opacity-100 group-focus-within/music:max-w-[140px] group-focus-within/music:pl-1 group-focus-within/music:opacity-100">
+                <span className="px-1.5 font-mono text-[10px] font-bold text-foreground whitespace-nowrap">
+                  CD #{trackIndex + 1}
                 </span>
-              </button>
-              {playing && (
-                <button
+                <motion.button
                   type="button"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={nextTrack}
                   aria-label="Ganti lagu kenangan berikutnya"
-                  title={`Ganti lagu (${currentTrack.title})`}
-                  className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title={`Lagu berikutnya (${currentTrack.title})`}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <SkipForward className="size-3.5" />
-                </button>
-              )}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleMusicMenu}
+                  aria-expanded={musicMenuOpen}
+                  aria-label="Buka daftar putar musik"
+                  title="Buka daftar lagu YouTube"
+                  className={`inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                    musicMenuOpen
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <SlidersHorizontal className="size-3.5" />
+                </motion.button>
+              </div>
             </div>
 
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.04, y: -1 }}
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: "spring", stiffness: 420, damping: 24 }}
               disabled={!webglSupported && tier === "simple"}
               onClick={() => setManualTier(tier === "hd" ? "simple" : "hd")}
               aria-label={
@@ -349,12 +345,25 @@ export function Navbar() {
               }`}
             >
               <Box className="size-3.5 text-foreground" />
-              <span>{tier === "hd" ? "3D" : "2D"}</span>
-            </button>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={tier}
+                  initial={{ y: -6, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 6, opacity: 0 }}
+                  transition={{ duration: 0.16 }}
+                >
+                  {tier === "hd" ? "3D" : "2D"}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
 
-            <button
+            <motion.button
               type="button"
-              onClick={toggleTheme}
+              whileHover={{ scale: 1.04, y: -1 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 420, damping: 24 }}
+              onClick={(e) => toggleTheme(e)}
               aria-label={
                 theme === "light"
                   ? "Ganti ke Ruang Gelap (Dark Mode)"
@@ -367,18 +376,34 @@ export function Navbar() {
               }
               className="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-lg border border-border bg-background/80 px-2.5 py-1 font-sans text-xs font-semibold text-foreground transition-colors hover:border-foreground/50 hover:bg-muted whitespace-nowrap"
             >
-              {theme === "light" ? (
-                <>
-                  <Sun className="size-3.5 text-foreground" />
-                  <span className="hidden xl:inline">Terang</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="size-3.5 text-foreground" />
-                  <span className="hidden xl:inline">Gelap</span>
-                </>
-              )}
-            </button>
+              <AnimatePresence mode="wait" initial={false}>
+                {theme === "light" ? (
+                  <motion.span
+                    key="theme-sun"
+                    initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 22 }}
+                    className="inline-flex items-center gap-1"
+                  >
+                    <Sun className="size-3.5 text-foreground" />
+                    <span className="hidden xl:inline">Terang</span>
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="theme-moon"
+                    initial={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                    exit={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 22 }}
+                    className="inline-flex items-center gap-1"
+                  >
+                    <Moon className="size-3.5 text-foreground" />
+                    <span className="hidden xl:inline">Gelap</span>
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
           </div>
         </div>
       </header>
@@ -511,18 +536,28 @@ export function Navbar() {
                 prefetch={false}
                 onClick={(e) => handleNavigate(e, item.href)}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 font-sans text-[10px] font-semibold transition-colors ${
+                className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 font-sans text-[10px] font-semibold transition-colors ${
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-xs"
+                    ? "text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Icon className="size-4" />
+                {isActive && (
+                  <motion.span
+                    layoutId="mobile-nav-pill"
+                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                    className="absolute inset-0 rounded-lg bg-primary shadow-xs"
+                    aria-hidden="true"
+                  />
                 )}
-                <span className="max-w-full truncate px-0.5">{item.label}</span>
+                <span className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+                  {isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Icon className="size-4" />
+                  )}
+                  <span className="max-w-full truncate px-0.5">{item.label}</span>
+                </span>
               </Link>
             );
           })}

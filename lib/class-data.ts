@@ -8,14 +8,14 @@ export interface DreamPaperPaletteItem {
 }
 
 export const DREAM_PAPER_PALETTE: DreamPaperPaletteItem[] = [
-  { name: "Kertas Gading", hex: "#F3F1EA", pinHex: "#2A2A28" },
-  { name: "Kertas Arsip", hex: "#ECE9E1", pinHex: "#3D3D3A" },
-  { name: "Kertas Perak", hex: "#E6E3DA", pinHex: "#4A4843" },
-  { name: "Kertas Koran", hex: "#E2DED4", pinHex: "#2A2A28" },
-  { name: "Kertas Abu", hex: "#DAD6CC", pinHex: "#5C5A54" },
-  { name: "Kertas Gelap Tipis", hex: "#D4D0C5", pinHex: "#1B1B1A" },
-  { name: "Kertas Album", hex: "#EFECE4", pinHex: "#4A4843" },
-  { name: "Kertas Kapur", hex: "#E9E6DE", pinHex: "#383734" },
+  { name: "Kuning Hangat", hex: "#FFF3B0", pinHex: "#D6453A" },
+  { name: "Mint Segar", hex: "#D9F2DF", pinHex: "#1F7A6E" },
+  { name: "Biru Langit", hex: "#DCEEFF", pinHex: "#2B5EA8" },
+  { name: "Persik Pastel", hex: "#FFE4D6", pinHex: "#D96831" },
+  { name: "Lavender Lembut", hex: "#EAE4FF", pinHex: "#6B4DB8" },
+  { name: "Merah Muda", hex: "#FFE0E9", pinHex: "#C73866" },
+  { name: "Krem Vanilla", hex: "#FBF5DF", pinHex: "#B57A25" },
+  { name: "Hijau Lemon", hex: "#ECF7C8", pinHex: "#3E8242" },
 ];
 
 export interface StudentRecord {

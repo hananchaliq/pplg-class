@@ -240,36 +240,53 @@ export function AnggotaClient({
               type="button"
               aria-selected={active}
               onClick={() => setFilter(tab.id)}
-              className={`inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+              className={`relative inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
                 active
-                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  ? "text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              {tab.isCrown ? (
-                <Crown className="size-3.5" />
-              ) : (
-                <Users className="size-3.5" />
+              {active && (
+                <motion.span
+                  layoutId="anggota-filter-pill"
+                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
+                  aria-hidden="true"
+                />
               )}
-              <span>{tab.label}</span>
+              <span className="relative z-10 inline-flex items-center gap-1.5">
+                {tab.isCrown ? (
+                  <Crown className="size-3.5" />
+                ) : (
+                  <Users className="size-3.5" />
+                )}
+                <span>{tab.label}</span>
+              </span>
             </motion.button>
           );
         })}
       </div>
 
       {/* Keterangan Singkat Saat Tab Sahabat Istimewa Dipilih */}
-      {filter === "moved" && (
-        <div
-          data-testid="special-friends-section"
-          className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-foreground/35 bg-secondary px-4 py-2 text-center text-xs font-medium text-foreground"
-        >
-          <Crown className="size-4 shrink-0 text-foreground" />
-          <span>
-            Edisi Platinum Kehormatan untuk {movedStudents.length} sahabat yang pernah berjuang bersama di Kelas X.
-          </span>
-          <Sparkles className="size-3.5 shrink-0 text-foreground" />
-        </div>
-      )}
+      <AnimatePresence>
+        {filter === "moved" && (
+          <motion.div
+            key="special-friends-banner"
+            data-testid="special-friends-section"
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 360, damping: 24 }}
+            className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-foreground/35 bg-secondary px-4 py-2 text-center text-xs font-medium text-foreground shadow-xs"
+          >
+            <Crown className="size-4 shrink-0 text-foreground" />
+            <span>
+              Edisi Platinum Kehormatan untuk {movedStudents.length} sahabat yang pernah berjuang bersama di Kelas X.
+            </span>
+            <Sparkles className="size-3.5 shrink-0 text-foreground" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* SATU GAGANG BESI UTUH (Single Iron Rail) — Tanpa Duplikasi Rail Kedua di Bawah */}
       <div className="mt-5">

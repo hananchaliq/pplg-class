@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  Caveat,
   Old_Standard_TT,
   Source_Serif_4,
   Special_Elite,
@@ -13,7 +14,6 @@ import { PageFlipAudioProvider } from "@/lib/page-flip-audio";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { AmbientParticles } from "@/components/layout/ambient-particles";
-import { ViewportCurtainLoader } from "@/components/layout/viewport-curtain-loader";
 import { FilmEffectsOverlay } from "@/components/layout/film-effects-overlay";
 import { VanishingPageTransition } from "@/components/layout/vanishing-page-transition";
 
@@ -40,6 +40,14 @@ const specialElite = Special_Elite({
   weight: ["400"],
   display: "swap",
   variable: "--font-mono",
+  adjustFontFallback: true,
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  display: "swap",
+  variable: "--font-hand",
   adjustFontFallback: true,
 });
 
@@ -78,7 +86,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${oldStandardTT.variable} ${sourceSerif4.variable} ${specialElite.variable}`}
+      className={`${oldStandardTT.variable} ${sourceSerif4.variable} ${specialElite.variable} ${caveat.variable}`}
     >
       <body
         suppressHydrationWarning
@@ -90,7 +98,6 @@ export default function RootLayout({
               <PageFlipAudioProvider>
                 <LoadingProvider>
                   <FilmEffectsOverlay />
-                  <ViewportCurtainLoader />
                   <AmbientParticles />
                   <Navbar />
                   <main className="flex-1">
