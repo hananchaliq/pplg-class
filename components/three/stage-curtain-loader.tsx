@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { UnoLogo } from "@/components/ui/uno-logo";
 
 export interface StageCurtainLoaderProps {
-  /** Whether the 3D model/scene has finished generating and rendering its initial frame */
+  /** Whether the 3D model/scene or page has finished generating and rendering its initial frame */
   ready: boolean;
   /** Loading progress percentage (0 - 100) */
   progress?: number;
@@ -11,6 +12,8 @@ export interface StageCurtainLoaderProps {
   label?: string;
   /** Optional subtitle or scene title */
   sceneTitle?: string;
+  /** Whether rendered at full-viewport root level (fixed inset-0 z-50) */
+  fullViewport?: boolean;
 }
 
 // Pre-computed 256-step Crimson Velvet 3D PBR Color Lookup Table (Zero string allocation in render loop)
@@ -38,24 +41,26 @@ function smoothstep(min: number, max: number, value: number): number {
 }
 
 /**
- * Animasi Tirai Beludru Merah 3D Bioskop/Teater Versi Ultra-Ringan (Mengacu pada "Red Curtains Drawn Open - AE" Cs-IoT2lERQ).
- * - Dioptimalkan dengan Color LUT 256-langkah, resolusi buffer terkendali, tanpa ctx.stroke() berlebih,
- *   serta throttling saat kompilasi WebGL berlangsung sehingga sangat ringan di CPU/GPU (60fps mulus).
+ * Animasi Tirai Beludru Merah 3D Bioskop/Teater Versi Ultra-Ringan + Fade-Out Halus
+ * Menampilkan Kartu Progres Bulat UNO dengan sistem tipografi Memories (Fraunces + Plus Jakarta Sans + Space Mono).
  */
 export function StageCurtainLoader({
   ready,
   progress = 25,
-  label = "Menyiapkan model 3D interaktif...",
-  sceneTitle = "PANGGUNG VISUAL 3D · XII PPLG 1",
+  label = "Menyiapkan ruang kenangan...",
+  sceneTitle = "ALBUM MEMORIES · UNO XII PPLG 1",
+  fullViewport = false,
 }: StageCurtainLoaderProps) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const readyRef = React.useRef(ready);
   const [unmounted, setUnmounted] = React.useState(false);
+  const [fadingOut, setFadingOut] = React.useState(false);
 
   React.useEffect(() => {
     readyRef.current = ready;
     if (!ready) {
       setUnmounted(false);
+      setFadingOut(false);
     }
   }, [ready]);
 
@@ -68,13 +73,12 @@ export function StageCurtainLoader({
 
     let animId = 0;
     let openElapsed = 0;
-    const openDuration = 1.35; // Cepat, ringan, dan responsif (~1.35 detik)
+    const openDuration = 1.25;
     const startTime = performance.now();
 
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-      // Batasi ukuran buffer internal agar pengisian piksel sangat ringan di semua perangkat
       const scaleDown = Math.min(
         1,
         820 / Math.max(1, parent.clientWidth),
@@ -91,11 +95,10 @@ export function StageCurtainLoader({
     window.addEventListener("resize", resize);
 
     const focalLength = 2.4;
-    const cols = 42; // 42 segmen horizontal per sisi (cukup halus untuk 8 lipatan silindris namun 4x lebih ringan)
-    const rows = 10; // 10 segmen vertikal untuk lengkungan V-terbalik (\ /) yang mulus
+    const cols = 42;
+    const rows = 10;
     const foldFreq = 8.2;
 
-    // Pre-allocate typed/reusable buffers per side so GC never runs during animation
     interface VertexPoint {
       sx: number;
       sy: number;
@@ -122,9 +125,9 @@ export function StageCurtainLoader({
 
     let lastNow = performance.now();
     let lastIdleDraw = 0;
+    let fadeTriggered = false;
 
     const renderFrame = (now: number) => {
-      // Saat masih menunggu kompilasi scene 3D (ready = false), hemat CPU dengan ~20fps agar WebGL cepat selesai
       if (!readyRef.current && now - lastIdleDraw < 48) {
         animId = window.requestAnimationFrame(renderFrame);
         return;
@@ -137,12 +140,17 @@ export function StageCurtainLoader({
 
       if (readyRef.current) {
         openElapsed += dt;
+        if (!fadeTriggered && openElapsed >= openDuration * 0.58) {
+          fadeTriggered = true;
+          setFadingOut(true);
+        }
         if (openElapsed >= openDuration) {
           setUnmounted(true);
           return;
         }
       } else {
         openElapsed = 0;
+        fadeTriggered = false;
       }
 
       const rawP = Math.min(1, openElapsed / openDuration);
@@ -158,7 +166,6 @@ export function StageCurtainLoader({
         ctx.fillRect(0, 0, w, h);
       }
 
-      // Pre-compute row opening progress along v (0 = rel atas, 1 = ujung bawah)
       const rowOpenArr = new Float32Array(rows + 1);
       for (let r = 0; r <= rows; r++) {
         const v = r / rows;
@@ -232,7 +239,6 @@ export function StageCurtainLoader({
           }
         }
 
-        // Bayangan jatuh 3D (Cast Shadow) di tepi pembuka tengah tirai
         if (rawP > 0.01 && rawP < 0.98) {
           const innerCol = grid[cols]!;
           ctx.save();
@@ -265,7 +271,6 @@ export function StageCurtainLoader({
         const ly = -0.28;
         const lz = 0.93;
 
-        // Render permukaan lipatan beludru 3D (hanya ctx.fill() dengan overlap 0.9px tanpa ctx.stroke() agar 3x lebih cepat)
         for (let c = 0; c < cols; c++) {
           const col0 = grid[c]!;
           const col1 = grid[c + 1]!;
@@ -342,7 +347,6 @@ export function StageCurtainLoader({
             );
             ctx.fillStyle = VELVET_COLOR_LUT[lutIdx]!;
 
-            // Overlap sedikit (+0.9px ke arah luar/bawah) untuk menutup celah antar poligon tanpa perlu ctx.stroke()
             const padX = side === -1 ? -0.9 : 0.9;
             ctx.beginPath();
             ctx.moveTo(p00.sx, p00.sy);
@@ -375,9 +379,11 @@ export function StageCurtainLoader({
       aria-live="polite"
       aria-busy={!ready}
       data-testid="stage-curtain-loader"
-      className={`absolute inset-0 z-30 overflow-hidden select-none ${
-        ready ? "pointer-events-none" : "pointer-events-auto"
-      }`}
+      className={`${
+        fullViewport ? "fixed inset-0 z-50" : "absolute inset-0 z-30"
+      } overflow-hidden select-none transition-opacity duration-500 ease-out ${
+        fadingOut ? "opacity-0" : "opacity-100"
+      } ${ready ? "pointer-events-none" : "pointer-events-auto"}`}
     >
       <canvas
         ref={canvasRef}
@@ -386,22 +392,28 @@ export function StageCurtainLoader({
       />
 
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4 transition-all duration-150 ${
-          ready ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"
+        className={`pointer-events-none absolute inset-x-0 bottom-8 sm:bottom-12 z-20 flex justify-center px-4 transition-all duration-300 ${
+          ready ? "translate-y-4 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
-        <div className="rounded-xl border border-[#f3ca82]/40 bg-[#1a0506]/90 px-5 py-3 text-center text-[#fbf6ec] shadow-[0_16px_40px_rgba(0,0,0,0.85)]">
-          <p className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#f3ca82]">
+        <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-[#f3ca82]/40 bg-[#1a0506]/95 px-6 py-4 text-center text-[#fbf6ec] shadow-[0_20px_50px_rgba(0,0,0,0.85)]">
+          <UnoLogo size="sm" />
+          <p className="mt-2.5 font-mono text-[11px] font-bold tracking-[0.18em] text-[#f3ca82] uppercase">
             {sceneTitle}
           </p>
-          <p className="mt-1 font-serif text-sm font-medium text-[#fbf6ec]">
+          <p className="mt-1 font-serif text-base font-semibold text-[#fbf6ec]">
             {label}
           </p>
-          <div className="mx-auto mt-2.5 h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-[#2c080a]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#b80d13] via-[#ef1c22] to-[#f3ca82] transition-all duration-150"
-              style={{ width: `${clampedProgress}%` }}
-            />
+          <div className="mt-3 flex w-full items-center gap-2.5">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#2c080a]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#b80d13] via-[#ef1c22] to-[#f3ca82] transition-all duration-200"
+                style={{ width: `${clampedProgress}%` }}
+              />
+            </div>
+            <span className="font-mono text-xs font-bold tabular-nums text-[#f3ca82]">
+              {clampedProgress}%
+            </span>
           </div>
         </div>
       </div>

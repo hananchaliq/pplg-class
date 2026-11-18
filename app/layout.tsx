@@ -6,6 +6,7 @@ import { SadAudioProvider } from "@/lib/sad-audio";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { AmbientParticles } from "@/components/layout/ambient-particles";
+import { ViewportCurtainLoader } from "@/components/layout/viewport-curtain-loader";
 
 export const metadata: Metadata = {
   title: "Album Kenangan XII PPLG 1 — MAKN Ende",
@@ -49,7 +50,7 @@ export default function RootLayout({
         />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500..800;1,9..144,500..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
         />
       </head>
       <body
@@ -59,10 +60,13 @@ export default function RootLayout({
         <ThemeProvider>
           <VisualTierProvider>
             <SadAudioProvider>
+              {/* Full-Viewport Loading Screen (fixed inset-0 z-50) di Root Level */}
+              <ViewportCurtainLoader />
+
               {/* Subtle SVG film grain overlay */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none fixed inset-0 z-50 opacity-[0.03] dark:opacity-[0.045]"
+                className="pointer-events-none fixed inset-0 z-40 opacity-[0.03] dark:opacity-[0.045]"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
                 }}

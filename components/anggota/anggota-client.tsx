@@ -371,7 +371,7 @@ export function AnggotaClient({
                     htmlFor="mem-text"
                     className="block text-xs font-semibold text-foreground"
                   >
-                    Pesan Kenangan (akan ditulis dengan gaya tulisan tangan)
+                    Pesan Kenangan (akan ditampilkan di Buku Kenangan)
                   </label>
                   <textarea
                     id="mem-text"
@@ -382,7 +382,7 @@ export function AnggotaClient({
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={`Tuliskan kesan, doa, atau momen paling berkesan bersama ${modalStudent.name}...`}
-                    className="mt-1.5 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 font-hand text-lg text-foreground outline-none focus:ring-2 focus:ring-ring"
+                    className="mt-1.5 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 font-sans text-sm leading-relaxed text-foreground outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
 

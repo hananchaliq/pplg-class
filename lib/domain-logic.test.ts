@@ -14,12 +14,12 @@ import { AUTO_MIGRATE_SQL } from "./db-sql";
 import type { StudentRow, TeacherRow, WorkRow } from "./types";
 
 describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
-  it("sanitizeText escapes HTML tags and quotes to prevent XSS", () => {
-    const raw = `  <script>alert("xss")</script> & 'teman'  `;
+  it("sanitizeText strips HTML tags while preserving quotes and decoding &quot;", () => {
+    const raw = `  <script>alert("xss")</script> & 'teman' &quot;BORN TO WIN&quot;  `;
     const cleaned = sanitizeText(raw);
     assert.equal(
       cleaned,
-      "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; &amp; &#39;teman&#39;"
+      `alert("xss") & 'teman' "BORN TO WIN"`
     );
   });
 

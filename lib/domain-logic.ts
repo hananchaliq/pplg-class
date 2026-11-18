@@ -8,15 +8,52 @@ import type {
 } from "@/lib/types";
 
 /**
- * Sanitasi teks untuk mencegah injeksi HTML/XSS pada semua input pengguna.
+ * Decode entitas HTML (&quot;, &#39;, &apos;, &amp;, dll.) agar tanda kutip dan simbol
+ * pada data lama maupun baru tampil bersih tanpa kode &quot; di layar.
+ */
+export function decodeHtmlEntities(raw: string): string {
+  if (!raw) return "";
+  let out = raw;
+  for (let i = 0; i < 2; i++) {
+    out = out
+      .replace(/&quot;|&#34;|&#x22;/gi, '"')
+      .replace(/&#39;|&#x27;|&apos;/gi, "'")
+      .replace(/&lt;|&#60;/gi, "<")
+      .replace(/&gt;|&#62;/gi, ">")
+      .replace(/&amp;|&#38;/gi, "&");
+  }
+  return out;
+}
+
+/**
+ * Normalisasi rekursif seluruh string di dalam objek/array data agar bebas dari &quot; / &#39;.
+ */
+export function decodeDeepText<T>(value: T): T {
+  if (typeof value === "string") {
+    if (value.startsWith("data:")) return value;
+    return decodeHtmlEntities(value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => decodeDeepText(item)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = decodeDeepText(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
+/**
+ * Sanitasi teks untuk mencegah injeksi HTML/XSS pada semua input pengguna
+ * sekaligus menjaga tanda kutip (" dan ') serta simbol & tetap utuh (tidak berubah jadi &quot;).
  */
 export function sanitizeText(raw: string): string {
-  return raw
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
+  return decodeHtmlEntities(raw)
+    .replace(/<\/?[a-zA-Z][^>]*>/g, "")
+    .replace(/[<>]/g, "")
     .trim();
 }
 
@@ -90,27 +127,29 @@ export function studentToLanyardMember(
       ? student.tone
       : cycledActiveTone;
 
+  const cleanTags = (student.tags ?? []).map((t) => decodeHtmlEntities(t));
   const roleLabel = isMoved
     ? "Sahabat yang pernah di sini"
-    : student.tags[0]
-      ? `Peminatan ${student.tags[0]}`
+    : cleanTags[0]
+      ? `Peminatan ${cleanTags[0]}`
       : "Siswa XII PPLG 1";
 
+  const cleanName = decodeHtmlEntities(student.full_name);
   const image =
     !student.show_photo
       ? ""
       : student.photo_url && student.photo_url.trim().length > 0
         ? student.photo_url
-        : createAvatarPlaceholderDataUri(student.full_name, tone, true);
+        : createAvatarPlaceholderDataUri(cleanName, tone, true);
 
   return {
     id: student.id,
-    name: student.full_name,
+    name: cleanName,
     role: roleLabel,
     team: isMoved ? "✦ SAHABAT ISTIMEWA SELAMANYA" : "XII PPLG 1 · MAKN Ende",
     image,
-    bio: student.bio,
-    tags: student.tags.slice(0, 3),
+    bio: decodeHtmlEntities(student.bio),
+    tags: cleanTags.slice(0, 3),
     links: (student.links ?? []).slice(0, 3),
     tone,
   };
@@ -132,18 +171,19 @@ export function teacherToLanyardMember(teacher: TeacherRow): LanyardMember {
     akademik: "Guru Bidang Akademik",
   };
 
+  const cleanName = decodeHtmlEntities(teacher.full_name);
   const image =
     teacher.photo_url && teacher.photo_url.trim().length > 0
       ? teacher.photo_url
-      : createAvatarPlaceholderDataUri(teacher.full_name, tone, true);
+      : createAvatarPlaceholderDataUri(cleanName, tone, true);
 
   return {
     id: teacher.id,
-    name: teacher.full_name,
-    role: teacher.title,
+    name: cleanName,
+    role: decodeHtmlEntities(teacher.title),
     team: teacher.is_homeroom ? "Wali Kelas XII PPLG 1" : groupLabel[teacher.grp],
     image,
-    bio: teacher.message,
+    bio: decodeHtmlEntities(teacher.message),
     tags: [teacher.is_homeroom ? "Wali Kelas" : groupLabel[teacher.grp], "MAKN Ende"],
     links: [],
     tone,

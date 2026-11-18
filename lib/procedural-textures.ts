@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { decodeDeepText, decodeHtmlEntities } from "@/lib/domain-logic";
 
 function applyTextureSettings(
   tex: THREE.CanvasTexture,
@@ -287,22 +288,22 @@ export function createBookCoverTextures(
     ctx.fillRect(-115, -16, 230, 32);
     ctx.restore();
 
-    // Caption Tulisan Tangan di bawah Foto Bersama pada Sampul
+    // Caption Editorial di bawah Foto Bersama pada Sampul
     ctx.fillStyle = "#1f1208";
-    ctx.font = `700 40px ${handFont}`;
+    ctx.font = `700 32px ${handFont}`;
     ctx.textAlign = "center";
     const cap =
       coverCaption && coverCaption.trim().length > 0
-        ? coverCaption.trim().slice(0, 38)
+        ? coverCaption.trim().slice(0, 42)
         : "Keluarga Besar UNO · XII PPLG 1";
-    ctx.fillText(`★ ${cap} ★`, width / 2, photoY + photoH + 56);
+    ctx.fillText(`★ ${cap} ★`, width / 2, photoY + photoH + 54);
 
     ctx.fillStyle = "#8c3b2b";
-    ctx.font = `700 28px ${handFont}`;
+    ctx.font = `600 22px ${getSansFont()}`;
     ctx.fillText(
       "Satu Atap, Satu Cerita, Selamanya Saudara ♥",
       width / 2,
-      photoY + photoH + 96
+      photoY + photoH + 92
     );
     ctx.restore();
   };
@@ -408,19 +409,19 @@ export function createChalkboardTexture(renderer?: THREE.WebGLRenderer | null) {
 }
 
 /**
- * Helper untuk mengambil font tulisan tangan asli (--font-caveat dari next/font)
- * agar teks yang digambar di HTML5 Canvas 2D benar-benar tampak seperti tulisan tangan pena/spidol, bukan ketikan.
+ * Helper tipografi 3-Font Memories (Fraunces, Plus Jakarta Sans, Space Mono)
+ * untuk seluruh tekstur kanvas 3D agar konsisten, hangat, dan tajam dibaca.
  */
 export function getHandwritingFont(): string {
-  if (typeof document !== "undefined") {
-    const cssVar = getComputedStyle(document.documentElement)
-      .getPropertyValue("--font-caveat")
-      .trim();
-    if (cssVar) {
-      return `${cssVar}, "Caveat", "Segoe Print", "Bradley Hand", cursive`;
-    }
-  }
-  return `"Caveat", "Segoe Print", "Bradley Hand", cursive`;
+  return `"Fraunces", Georgia, "Times New Roman", serif`;
+}
+
+export function getSansFont(): string {
+  return `"Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+}
+
+export function getMonoFont(): string {
+  return `"Space Mono", ui-monospace, monospace`;
 }
 
 export interface FarewellMemeStickerDef {
@@ -666,20 +667,20 @@ function drawFarewellMemeSticker(
   ctx.roundRect(-w / 2 + 84, -h / 2 + 10, 176, 22, 6);
   ctx.fill();
   ctx.fillStyle = "#fffdf9";
-  ctx.font = `bold 13px monospace`;
+  ctx.font = `700 12px ${getMonoFont()}`;
   ctx.textAlign = "center";
   ctx.fillText(`★ ${meme.badge} ★`, -w / 2 + 172, -h / 2 + 25);
 
-  // Teks meme atas (Handwriting Tebal)
+  // Teks meme atas (Display Serif)
   ctx.fillStyle = meme.ink;
   ctx.textAlign = "left";
-  ctx.font = `700 22px ${handFont}`;
+  ctx.font = `700 17px ${handFont}`;
   ctx.fillText(meme.topText.slice(0, 28), -w / 2 + 82, 6);
 
-  // Teks meme bawah (Handwriting Miring/Santai)
+  // Teks meme bawah (Body Sans)
   ctx.fillStyle = meme.accent;
-  ctx.font = `700 19px ${handFont}`;
-  ctx.fillText(meme.bottomText.slice(0, 36), -w / 2 + 82, 34);
+  ctx.font = `600 14px ${getSansFont()}`;
+  ctx.fillText(meme.bottomText.slice(0, 36), -w / 2 + 82, 32);
 
   ctx.restore();
 }
@@ -736,16 +737,16 @@ export function createDreamNoteTexture(
   ctx.lineWidth = 7;
   ctx.strokeRect(4, 4, size - 8, size - 8);
 
-  // Nama siswa di kiri atas dengan tulisan tangan spidol
+  // Nama siswa di kiri atas (Display Serif)
   ctx.fillStyle = "#2b1608";
-  ctx.font = `700 42px ${handFont}`;
+  ctx.font = `700 32px ${handFont}`;
   ctx.textAlign = "left";
-  ctx.fillText(opts.studentName.slice(0, 18), 28, 64);
+  ctx.fillText(decodeHtmlEntities(opts.studentName).slice(0, 20), 28, 60);
 
-  // Isi cita-cita dengan tulisan tangan pena tebal & kontras tinggi
+  // Isi cita-cita dengan tipografi bersih & kontras tinggi (Body Sans)
   ctx.fillStyle = "#140903";
-  ctx.font = `700 48px ${handFont}`;
-  const words = opts.dream.trim().split(/\s+/);
+  ctx.font = `700 34px ${getSansFont()}`;
+  const words = decodeHtmlEntities(opts.dream).trim().split(/\s+/);
   let line = "";
   let y = 148;
   const maxWidth = size - 56;
@@ -764,11 +765,11 @@ export function createDreamNoteTexture(
     ctx.fillText(line, 28, y);
   }
 
-  // Tanda tangan kecil tulisan tangan di sudut kanan bawah
-  ctx.fillStyle = "rgba(168, 66, 50, 0.9)";
-  ctx.font = `700 30px ${handFont}`;
+  // Stamp metadata arsip di sudut kanan bawah (Space Mono)
+  ctx.fillStyle = "rgba(168, 66, 50, 0.92)";
+  ctx.font = `700 20px ${getMonoFont()}`;
   ctx.textAlign = "right";
-  ctx.fillText("~ UNO · XII PPLG 1 ★", size - 24, size - 20);
+  ctx.fillText("UNO · XII PPLG 1 ★", size - 24, size - 20);
 
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
 }
@@ -798,11 +799,7 @@ export function createPolaroidTexture(
   const handFont = getHandwritingFont();
   const rand = seededRandom(opts.seed || 101);
 
-  const cleanCaption = (opts.caption || "Kenangan XII PPLG 1")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&amp;/gi, "&")
-    .trim();
+  const cleanCaption = decodeHtmlEntities(opts.caption || "Kenangan XII PPLG 1").trim();
 
   // Dasar Kertas Foto Matte/Satin Hangat (Tidak Silau di Bawah Lampu 3D)
   const paperGrad = ctx.createLinearGradient(0, 0, width, height);
@@ -865,23 +862,23 @@ export function createPolaroidTexture(
     ctx.lineWidth = 3;
     ctx.strokeRect(48, 96, width - 96, height - 148);
 
-    // Kotak perangko / cap tanggal di kanan atas
+    // Kotak perangko / cap tanggal di kanan atas (Space Mono)
     ctx.strokeStyle = "rgba(156, 58, 42, 0.65)";
     ctx.setLineDash([7, 5]);
     ctx.strokeRect(width - 190, 122, 114, 128);
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(156, 58, 42, 0.9)";
-    ctx.font = `700 32px ${handFont}`;
+    ctx.font = `700 24px ${getMonoFont()}`;
     ctx.textAlign = "center";
-    ctx.fillText("UNO", width - 133, 178);
-    ctx.fillText(opts.phase || "XII", width - 133, 218);
+    ctx.fillText("UNO", width - 133, 176);
+    ctx.fillText(opts.phase || "XII", width - 133, 214);
 
-    // Header tulisan tangan di kiri atas
+    // Header editorial di kiri atas (Fraunces Serif)
     ctx.textAlign = "left";
     ctx.fillStyle = "#7a3020";
-    ctx.font = `700 46px ${handFont}`;
+    ctx.font = `700 34px ${handFont}`;
     ctx.fillText(
-      `Fase Kelas ${opts.phase} ~ ${opts.category}`,
+      `Fase Kelas ${opts.phase} · ${opts.category}`,
       76,
       172
     );
@@ -896,9 +893,9 @@ export function createPolaroidTexture(
       ctx.stroke();
     }
 
-    // Catatan di balik foto dengan tulisan tangan pena biru/sepia asli yang mudah dibaca
+    // Catatan cerita di balik foto dengan Plus Jakarta Sans yang bersih dan nyaman dibaca
     ctx.fillStyle = "#141f36";
-    ctx.font = `700 56px ${handFont}`;
+    ctx.font = `600 38px ${getSansFont()}`;
     const words = (
       cleanCaption || "Kenangan manis bersama keluarga UNO XII PPLG 1"
     ).split(/\s+/);
@@ -917,11 +914,11 @@ export function createPolaroidTexture(
     }
     if (line && y <= height - 165) ctx.fillText(line, 76, y);
 
-    // Tanda tangan tanggal di bawah dengan tulisan tangan
+    // Stamp tanggal arsip di bawah dengan Space Mono
     ctx.fillStyle = "#5c3f24";
-    ctx.font = `700 42px ${handFont}`;
+    ctx.font = `700 24px ${getMonoFont()}`;
     ctx.fillText(
-      `Abadi di MAKN Ende · ${opts.dateStr || "2026"} ♥`,
+      `ARSIP MAKN ENDE · ${opts.dateStr || "2026"} ♥`,
       76,
       height - 78
     );
@@ -1049,13 +1046,13 @@ export function createPolaroidTexture(
 
   drawPhotoGlassAndFrame();
 
-  // Caption Tulisan Tangan Spidol Asli di dagu bawah kertas Polaroid (tinta pekat kontras tinggi, mendukung 2 baris penuh)
+  // Caption Editorial di dagu bawah kertas Polaroid (Fraunces Serif + Space Mono metadata)
   ctx.save();
   ctx.translate(width / 2, topPad + photoH + 74);
-  ctx.rotate(((opts.seed % 5) - 2) * 0.008);
+  ctx.rotate(((opts.seed % 5) - 2) * 0.006);
 
   ctx.fillStyle = "#120a04";
-  ctx.font = `700 50px ${handFont}`;
+  ctx.font = `700 36px ${handFont}`;
   ctx.textAlign = "center";
 
   const maxLineW = width - 92;
@@ -1075,22 +1072,22 @@ export function createPolaroidTexture(
   if (cur && lines.length < 2) {
     lines.push(cur);
   } else if (cur && lines.length === 2) {
-    lines[1] = `${lines[1]!.slice(0, 28)}...`;
+    lines[1] = `${lines[1]!.slice(0, 32)}...`;
   }
 
   if (lines.length === 1) {
-    ctx.fillText(lines[0]!, 0, 18);
+    ctx.fillText(lines[0]!, 0, 16);
   } else {
     ctx.fillText(lines[0] || "", 0, -6);
-    ctx.fillText(lines[1] || "", 0, 44);
+    ctx.fillText(lines[1] || "", 0, 40);
   }
 
   ctx.fillStyle = "#6e3214";
-  ctx.font = `700 34px ${handFont}`;
+  ctx.font = `700 22px ${getMonoFont()}`;
   ctx.fillText(
-    `~ Kelas ${opts.phase} · ${opts.category} (${opts.dateStr || "2026"}) ~`,
+    `KELAS ${opts.phase} · ${opts.category.toUpperCase()} (${opts.dateStr || "2026"})`,
     0,
-    98
+    96
   );
   ctx.restore();
 
@@ -1651,9 +1648,10 @@ function drawRandomScrapbookBox(
  * Font Tulisan Tangan Asli (Caveat) + Stiker Meme Perpisahan Lucu di Setiap Lembar.
  */
 export function createBookPageTexture(
-  page: BookPageData,
+  rawPage: BookPageData,
   renderer?: THREE.WebGLRenderer | null
 ) {
+  const page = decodeDeepText(rawPage);
   const width = 1024;
   const height = 1280;
   const canvas = document.createElement("canvas");
@@ -1907,7 +1905,7 @@ export function createBookPageTexture(
     );
 
     ctx.fillStyle = "#1f1208";
-    ctx.font = `700 48px ${handFont}`;
+    ctx.font = `700 36px ${handFont}`;
     ctx.textAlign = "center";
     ctx.fillText(
       page.groupTitle || "Album Foto Bersama UNO · XII PPLG 1",
@@ -1916,11 +1914,11 @@ export function createBookPageTexture(
     );
 
     ctx.fillStyle = "#8c3b2b";
-    ctx.font = `700 30px ${handFont}`;
+    ctx.font = `600 22px ${getSansFont()}`;
     ctx.fillText(
       page.groupSubtitle || "Kenangan Satu Angkatan Sebelum Memasuki Daftar Isi ♥",
       width / 2,
-      234
+      232
     );
 
     const items = page.groupPhotos && page.groupPhotos.length > 0
@@ -2008,16 +2006,16 @@ export function createBookPageTexture(
       ctx.fillStyle = idx % 2 === 0 ? "rgba(200, 109, 59, 0.72)" : "rgba(45, 106, 110, 0.72)";
       ctx.fillRect(-95, -cardH / 2 - 14, 190, 28);
 
-      // Caption tulisan tangan di bagian bawah bingkai foto
+      // Caption di bagian bawah bingkai foto bersama
       ctx.fillStyle = "#182542";
-      ctx.font = `700 34px ${handFont}`;
+      ctx.font = `600 25px ${getSansFont()}`;
       ctx.textAlign = "center";
-      const capText = item.caption.length > 46 ? `${item.caption.slice(0, 44)}...` : item.caption;
+      const capText = item.caption.length > 52 ? `${item.caption.slice(0, 50)}...` : item.caption;
       ctx.fillText(`"${capText}"`, 0, cardH / 2 - 44);
 
       ctx.fillStyle = "#8c3b2b";
-      ctx.font = `700 24px ${handFont}`;
-      ctx.fillText(`✦ ${item.category} · ${item.dateStr || "2026"} ✦`, 0, cardH / 2 - 14);
+      ctx.font = `700 18px ${getMonoFont()}`;
+      ctx.fillText(`✦ ${item.category.toUpperCase()} · ${item.dateStr || "2026"} ✦`, 0, cardH / 2 - 14);
       ctx.restore();
     });
 
@@ -2050,13 +2048,13 @@ export function createBookPageTexture(
     );
 
     ctx.fillStyle = "#1f1208";
-    ctx.font = `700 50px ${handFont}`;
+    ctx.font = `700 38px ${handFont}`;
     ctx.textAlign = "center";
     ctx.fillText("Daftar Isi Buku Kenangan UNO · XII PPLG 1", width / 2, 204);
 
     ctx.fillStyle = "#8c3b2b";
-    ctx.font = `700 32px ${handFont}`;
-    ctx.fillText("MAKN Ende · Angkatan 2024—2027", width / 2, 246);
+    ctx.font = `700 22px ${getMonoFont()}`;
+    ctx.fillText("MAKN ENDE · ANGKATAN 2024—2027", width / 2, 244);
 
     ctx.textAlign = "left";
     const entries = page.tocEntries ?? [];
@@ -2079,18 +2077,18 @@ export function createBookPageTexture(
       ctx.strokeRect(-(width - 180) / 2, -26, width - 180, 52);
 
       ctx.fillStyle = penInks[idx % penInks.length]!;
-      ctx.font = `700 35px ${handFont}`;
+      ctx.font = `700 26px ${getSansFont()}`;
       ctx.textAlign = "left";
       ctx.fillText(
-        `${String(entry.spreadIndex).padStart(2, "0")}. ${entry.name.slice(0, 26)}`,
+        `${String(entry.spreadIndex).padStart(2, "0")}. ${entry.name.slice(0, 28)}`,
         -(width - 216) / 2,
-        10
+        9
       );
 
       ctx.textAlign = "right";
       ctx.fillStyle = "#a84232";
-      ctx.font = `700 30px ${handFont}`;
-      ctx.fillText(`Hal. ${entry.spreadIndex * 2} →`, (width - 216) / 2, 10);
+      ctx.font = `700 22px ${getMonoFont()}`;
+      ctx.fillText(`HAL. ${entry.spreadIndex * 2} →`, (width - 216) / 2, 9);
       ctx.restore();
     });
 
@@ -2221,8 +2219,8 @@ export function createBookPageTexture(
       ctx.strokeRect(-160, 140, 320, 54);
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = `700 42px ${handFont}`;
-      ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 179);
+      ctx.font = `700 32px ${handFont}`;
+      ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 176);
     } else if (photoLayout === 2) {
       ctx.fillStyle = "#181412";
       ctx.fillRect(-205, -195, 410, 395);
@@ -2249,8 +2247,8 @@ export function createBookPageTexture(
 
       ctx.fillStyle = "#f3ca82";
       ctx.textAlign = "center";
-      ctx.font = `700 38px ${handFont}`;
-      ctx.fillText(`KODAK 400 · ${page.studentNickname || "UNO"}`, 0, 164);
+      ctx.font = `700 26px ${getMonoFont()}`;
+      ctx.fillText(`KODAK 400 · ${(page.studentNickname || "UNO").toUpperCase()}`, 0, 162);
     } else if (photoLayout === 3) {
       ctx.fillStyle = "#f6ebd8";
       ctx.fillRect(-192, -195, 384, 395);
@@ -2287,8 +2285,8 @@ export function createBookPageTexture(
 
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = `700 44px ${handFont}`;
-      ctx.fillText(`"${page.studentNickname || "Sahabat"}"`, 0, 168);
+      ctx.font = `700 34px ${handFont}`;
+      ctx.fillText(`"${page.studentNickname || "Sahabat"}"`, 0, 166);
     } else {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(-188, -195, 376, 395);
@@ -2318,12 +2316,12 @@ export function createBookPageTexture(
 
       ctx.fillStyle = "#170d05";
       ctx.textAlign = "center";
-      ctx.font = `700 44px ${handFont}`;
-      ctx.fillText(`★ ${page.studentNickname || "Sahabat"} ★`, 0, 166);
+      ctx.font = `700 34px ${handFont}`;
+      ctx.fillText(`★ ${page.studentNickname || "Sahabat"} ★`, 0, 164);
     }
     ctx.restore();
 
-    // KOTAK NAMA SISWA DENGAN POSISI & KEMIRINGAN ACAK
+    // KOTAK NAMA SISWA DENGAN POSISI & KEMIRINGAN ACAK (Fraunces Serif + Plus Jakarta Sans)
     const nameShiftX = (rand() - 0.5) * 68;
     const nameRot = (rand() - 0.5) * 0.065;
     ctx.save();
@@ -2339,19 +2337,19 @@ export function createBookPageTexture(
 
     ctx.textAlign = "center";
     ctx.fillStyle = themeIdx % 2 === 0 ? "#140b04" : "#fbf5e8";
-    ctx.font = `700 50px ${handFont}`;
+    ctx.font = `700 38px ${handFont}`;
     ctx.fillText(page.studentName || "Siswa XII PPLG 1", 0, -4);
 
     ctx.fillStyle = themeIdx % 2 === 0 ? "#a84232" : "#f3ca82";
-    ctx.font = `700 31px ${handFont}`;
+    ctx.font = `600 22px ${getSansFont()}`;
     ctx.fillText(
       page.studentRole || "Pengembangan Perangkat Lunak & Gim",
       0,
-      38
+      36
     );
     ctx.restore();
 
-    // KOTAK BIO SISWA DENGAN TATA LETAK, BENTUK KERTAS & KEMIRINGAN ACAK
+    // KOTAK BIO SISWA DENGAN PLUS JAKARTA SANS YANG BERSIH & NYAMAN DIBACA
     const bioShiftX = (rand() - 0.5) * 74;
     const bioRot = (rand() - 0.5) * 0.075;
     const bioW = width - 190 - Math.floor(rand() * 65);
@@ -2373,20 +2371,20 @@ export function createBookPageTexture(
     );
 
     ctx.fillStyle = penInks[spreadNumber % penInks.length]!;
-    ctx.font = `700 42px ${handFont}`;
+    ctx.font = `600 30px ${getSansFont()}`;
     ctx.textAlign = "center";
     const bioWords = (
       page.studentBio ||
       "Terima kasih untuk tiga tahun cerita dan persaudaraan hangat di MAKN Ende."
     ).split(" ");
     let line = "";
-    let y = -58;
+    let y = -56;
     for (const w of bioWords) {
       const test = line ? `${line} ${w}` : w;
       if (ctx.measureText(test).width > bioW - 72) {
         ctx.fillText(line, 0, y);
         line = w;
-        y += 50;
+        y += 48;
       } else {
         line = test;
       }
@@ -2395,7 +2393,7 @@ export function createBookPageTexture(
 
     if (page.studentTags && page.studentTags.length > 0) {
       ctx.fillStyle = "#a84232";
-      ctx.font = `700 28px ${handFont}`;
+      ctx.font = `700 20px ${getMonoFont()}`;
       ctx.fillText(
         `#${page.studentTags.join("   #")}`,
         0,
@@ -2427,7 +2425,7 @@ export function createBookPageTexture(
       7
     );
   } else {
-    // HALAMAN KANAN: SURAT & CATATAN SAHABAT DENGAN KOTAK TEKS ACAK + TULISAN TANGAN + STIKER MEME
+    // HALAMAN KANAN: SURAT & CATATAN SAHABAT DENGAN KOTAK TEKS ACAK + STIKER MEME
     const headerWords = ["FRIENDS", "MEMORIES", "OUR CORE", "UNO PPLG"];
     const hdrShift = (rand() - 0.5) * 40;
     drawRansomWord(
@@ -2448,12 +2446,12 @@ export function createBookPageTexture(
     ctx.strokeRect(-210, -32, 420, 64);
 
     ctx.fillStyle = "#1f1208";
-    ctx.font = `700 38px ${handFont}`;
+    ctx.font = `700 28px ${handFont}`;
     ctx.textAlign = "center";
     ctx.fillText(
       `Surat Sahabat utk ${page.studentNickname || page.studentName || "Kamu"} ♥`,
       0,
-      11
+      10
     );
     ctx.restore();
 
@@ -2488,22 +2486,21 @@ export function createBookPageTexture(
       );
       ctx.textAlign = "center";
       ctx.fillStyle = "#6e5a47";
-      ctx.font = `700 40px ${handFont}`;
+      ctx.font = `600 28px ${getSansFont()}`;
       ctx.fillText(
         "Belum ada pesan kenangan di database",
         0,
-        -12
+        -10
       );
       ctx.fillText(
         "untuk halaman sahabat ini.",
         0,
-        42
+        36
       );
       ctx.restore();
     }
     msgs.slice(0, 3).forEach((m, idx) => {
       const mRand = seededRandom((m.seed || 101) + idx * 53 + page.pageNumber * 17);
-      // Setiap kotak teks memiliki lebar, posisi horizontal, dan sudut kemiringan acak yang unik!
       const boxW = width - 210 - Math.floor(mRand() * 90);
       const boxH = 248;
       const offsetX = (mRand() - 0.5) * 110;
@@ -2523,20 +2520,20 @@ export function createBookPageTexture(
         tapeColors[(idx + msgLayout) % tapeColors.length]!
       );
 
-      // Teks Pesan Sahabat dengan Font Tulisan Tangan Asli (Bukan Ketikan)
+      // Teks Pesan Sahabat dengan Plus Jakarta Sans yang tajam dan mudah dibaca
       ctx.textAlign = "left";
       ctx.fillStyle = penInks[(idx + spreadNumber) % penInks.length]!;
-      ctx.font = `700 40px ${handFont}`;
+      ctx.font = `600 28px ${getSansFont()}`;
       const words = m.text.split(" ");
       let line = "";
-      let ly = -boxH / 2 + 66;
+      let ly = -boxH / 2 + 64;
       const maxLineW = boxW - 68;
       for (const w of words) {
         const test = line ? `${line} ${w}` : w;
         if (ctx.measureText(test).width > maxLineW) {
           ctx.fillText(line, -boxW / 2 + 34, ly);
           line = w;
-          ly += 46;
+          ly += 44;
           if (ly > boxH / 2 - 54) break;
         } else {
           line = test;
@@ -2546,11 +2543,11 @@ export function createBookPageTexture(
         ctx.fillText(line, -boxW / 2 + 34, ly);
       }
 
-      // Nama Pengirim dengan Tulisan Tangan Miring di Sudut Kanan Bawah Kotak
+      // Nama Pengirim di Sudut Kanan Bawah Kotak (Fraunces Serif)
       ctx.fillStyle = "#a84232";
-      ctx.font = `700 32px ${handFont}`;
+      ctx.font = `700 24px ${handFont}`;
       ctx.textAlign = "right";
-      ctx.fillText(`~ Dari: ${m.author} ♥`, boxW / 2 - 28, boxH / 2 - 22);
+      ctx.fillText(`— Dari: ${m.author} ♥`, boxW / 2 - 28, boxH / 2 - 22);
       ctx.restore();
 
       curY += 282;
@@ -2593,16 +2590,16 @@ export function createBookPageTexture(
   // Lubang 6 Ring Binder di tepi punggung tengah
   drawBinderHoles(ctx, isLeftPage, height);
 
-  // Nomor halaman dengan tulisan tangan di bagian bawah
+  // Nomor halaman dengan Space Mono di bagian bawah
   ctx.fillStyle = "#2b190d";
   ctx.fillRect(width / 2 - 165, height - 92, 330, 42);
   ctx.fillStyle = "#fbf5e8";
-  ctx.font = `700 28px ${handFont}`;
+  ctx.font = `700 20px ${getMonoFont()}`;
   ctx.textAlign = "center";
   ctx.fillText(
-    `~ Lembar ${page.pageNumber} · UNO Scrapbook ~`,
+    `LEMBAR ${page.pageNumber} · UNO SCRAPBOOK`,
     width / 2,
-    height - 62
+    height - 64
   );
 
   const bookTex = applyTextureSettings(
@@ -2649,8 +2646,8 @@ export function createBookPageTexture(
         ctx.strokeRect(-160, 140, 320, 54);
         ctx.fillStyle = "#170d05";
         ctx.textAlign = "center";
-        ctx.font = `700 42px ${handFont}`;
-        ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 179);
+        ctx.font = `700 32px ${handFont}`;
+        ctx.fillText(`✦ ${page.studentNickname || "Sahabat"} ✦`, 0, 176);
       } else {
         const boxX = -158;
         const boxY = -168;

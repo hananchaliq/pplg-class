@@ -874,10 +874,10 @@ export function GaleriSceneHD({
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 sm:line-clamp-none font-hand text-lg sm:text-xl font-bold leading-snug text-[#1f1610] break-words">
+              <p className="line-clamp-2 sm:line-clamp-none font-serif text-sm sm:text-base font-bold leading-snug text-[#1f1610] break-words">
                 &ldquo;{selectedMoment.caption}&rdquo;
               </p>
-              <p className="mt-0.5 text-[11px] font-medium text-[#654d38] truncate">
+              <p className="mt-0.5 font-mono text-[10px] sm:text-[11px] font-medium text-[#654d38] truncate">
                 Oleh {selectedMoment.uploader_name} · {selectedMoment.taken_at}
               </p>
             </div>

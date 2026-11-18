@@ -5,21 +5,15 @@ export default function Loading() {
     <div
       role="status"
       aria-label="Memuat halaman..."
-      className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+      className="min-h-[70vh] w-full"
     >
-      <div className="mx-auto max-w-3xl text-center">
-        <div className="mx-auto h-3.5 w-44 animate-pulse rounded-full bg-muted" />
-        <div className="mx-auto mt-3 h-9 w-80 max-w-full animate-pulse rounded-xl bg-muted" />
-        <div className="mx-auto mt-3 h-4 w-96 max-w-full animate-pulse rounded-lg bg-muted/70" />
-      </div>
-      <div className="relative mt-10 h-[440px] w-full overflow-hidden rounded-2xl border border-border bg-[#1f1610]">
-        <StageCurtainLoader
-          ready={false}
-          progress={24}
-          label="Menyiapkan panggung 3D XII PPLG 1..."
-        />
-      </div>
+      <StageCurtainLoader
+        fullViewport
+        ready={false}
+        progress={26}
+        label="Menyiapkan album kenangan XII PPLG 1..."
+        sceneTitle="ALBUM MEMORIES · UNO XII PPLG 1"
+      />
     </div>
   );
 }
-

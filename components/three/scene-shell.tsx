@@ -4,7 +4,6 @@ import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
-import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 export interface SceneShellContext {
   scene: THREE.Scene;
@@ -145,25 +144,43 @@ export function SceneShell({
     downgradeRef.current = downgradeToSimple;
   }, [onSetup, downgradeToSimple]);
 
-  const [progress, setProgressState] = React.useState(22);
-  const [progressLabel, setProgressLabel] = React.useState(
-    "Menyiapkan ruang kenangan 3D..."
+  const setProgress = React.useCallback(
+    (pct: number, label?: string) => {
+      const clamped = Math.min(100, Math.max(0, Math.round(pct)));
+      try {
+        window.dispatchEvent(
+          new CustomEvent("app:scene-progress", {
+            detail: {
+              sceneTitle: ariaLabel.toUpperCase(),
+              progress: clamped,
+              label,
+            },
+          })
+        );
+      } catch {
+        // Ignore
+      }
+    },
+    [ariaLabel]
   );
-  const [ready, setReady] = React.useState(false);
-
-  const setProgress = React.useCallback((pct: number, label?: string) => {
-    const clamped = Math.min(100, Math.max(0, Math.round(pct)));
-    setProgressState(clamped);
-    if (label) setProgressLabel(label);
-  }, []);
 
   React.useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
-    setReady(false);
-    setProgressState(28);
-    setProgressLabel("Membangun geometri & tekstur 3D...");
+    try {
+      window.dispatchEvent(
+        new CustomEvent("app:scene-loading", {
+          detail: {
+            sceneTitle: ariaLabel.toUpperCase(),
+            progress: 28,
+            label: "Membangun geometri & tekstur 3D...",
+          },
+        })
+      );
+    } catch {
+      // Ignore
+    }
 
     const isSoftwareGl = isSoftwareWebGL();
     const width = Math.max(1, container.clientWidth);
@@ -275,22 +292,32 @@ export function SceneShell({
       setProgress,
     });
 
-    setProgressState(76);
-    setProgressLabel("Menyalakan tata cahaya panggung 3D...");
+    setProgress(76, "Menyalakan tata cahaya panggung 3D...");
 
     if (!isSoftwareGl) {
       renderer.compile(scene, camera);
     }
 
-    // Render frame pertama model 3D di balik tirai 3D
+    // Render frame pertama model 3D di balik tirai layar penuh
     userHooks.onTick?.(0.016, 0);
     renderer.render(scene, camera);
-    setProgressState(100);
-    setProgressLabel("Model 3D siap ditampilkan!");
+    setProgress(100, "Model 3D siap ditampilkan!");
 
     curtainTimerId = window.setTimeout(() => {
       if (!disposed) {
-        setReady(true);
+        try {
+          window.dispatchEvent(
+            new CustomEvent("app:scene-ready", {
+              detail: {
+                sceneTitle: ariaLabel.toUpperCase(),
+                progress: 100,
+                label: "Model 3D siap ditampilkan!",
+              },
+            })
+          );
+        } catch {
+          // Ignore
+        }
       }
     }, 90);
 
@@ -406,14 +433,6 @@ export function SceneShell({
           background:
             "radial-gradient(circle at 50% 50%, transparent 58%, rgba(18, 11, 7, 0.52) 100%)",
         }}
-      />
-
-      {/* Tirai Merah Bioskop / Panggung 3D (Bukaan V-Terbalik \ / sesuai referensi Cs-IoT2lERQ) */}
-      <StageCurtainLoader
-        ready={ready}
-        progress={progress}
-        label={progressLabel}
-        sceneTitle={ariaLabel.toUpperCase()}
       />
 
       {/* Sibling HTML HUD / Overlay */}

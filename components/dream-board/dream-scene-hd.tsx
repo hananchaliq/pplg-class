@@ -422,13 +422,13 @@ export function DreamBoardSceneHD({
           role="status"
           className="pointer-events-none absolute top-3 left-1/2 z-20 w-[92%] max-w-xl -translate-x-1/2 rounded-xl border border-[#e09f4c] bg-[#1e150f]/95 px-4 py-2.5 text-center text-[#f2e6d5] shadow-xl"
         >
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#f3ca82]">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#f3ca82]">
             {hoveredDream.student_name} ({hoveredDream.student_nickname})
           </p>
-          <p className="mt-0.5 font-hand text-xl font-bold text-white">
+          <p className="mt-0.5 font-serif text-base sm:text-lg font-bold text-white">
             &ldquo;{hoveredDream.dream}&rdquo;
           </p>
-          <p className="mt-0.5 text-[11px] text-[#d5c3ad]">
+          <p className="mt-0.5 font-sans text-xs leading-relaxed text-[#d5c3ad]">
             Alasan: {hoveredDream.reason} · (Klik kertas untuk kirim semangat)
           </p>
         </div>

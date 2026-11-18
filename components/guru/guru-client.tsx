@@ -161,7 +161,7 @@ export function GuruClient({
                   <p className="text-xs font-semibold text-foreground">
                     Terima Kasih Keluarga XII PPLG 1:
                   </p>
-                  <p className="mt-0.5 font-hand text-base sm:text-lg leading-snug text-foreground/90">
+                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-foreground/90">
                     &ldquo;Terima kasih {homeroomTeacher.full_name} telah menjadi orang tua kedua kami di madrasah dan membimbing kami dengan tulus.&rdquo;
                   </p>
                 </div>

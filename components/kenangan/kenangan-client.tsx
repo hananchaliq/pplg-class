@@ -86,12 +86,12 @@ function FarewellMemeStickerCard({
         >
           ★ {meme.badge} ★
         </span>
-        <p className="mt-1 font-hand text-base font-bold leading-none">
+        <p className="mt-1 font-serif text-xs sm:text-sm font-bold leading-snug">
           {meme.topText}
         </p>
         <p
           style={{ color: meme.accent }}
-          className="mt-0.5 font-hand text-sm font-bold leading-tight"
+          className="mt-0.5 font-sans text-[11px] sm:text-xs font-semibold leading-snug"
         >
           {meme.bottomText}
         </p>
@@ -752,7 +752,7 @@ export function KenanganClient({
                       <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold text-[#f7d794]">
                         Kenangan XII PPLG 1
                       </h2>
-                      <p className="mt-1 font-hand text-2xl text-[#ebd0a0]">
+                      <p className="mt-1 font-mono text-xs sm:text-sm font-semibold tracking-wider text-[#ebd0a0]">
                         MAKN Ende · Angkatan 2024 — 2027
                       </p>
 
@@ -778,13 +778,13 @@ export function KenanganClient({
                           ) : (
                             <div className="flex size-full flex-col items-center justify-center bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] p-4 text-[#fbf6ec]">
                               <Camera className="size-8 opacity-80" />
-                              <span className="mt-1 font-hand text-xl font-bold">
+                              <span className="mt-1 font-serif text-base font-bold">
                                 Keluarga Besar XII PPLG 1
                               </span>
                             </div>
                           )}
                         </div>
-                        <p className="mt-2.5 font-hand text-xl font-bold text-[#2b190e]">
+                        <p className="mt-2.5 font-serif text-sm sm:text-base font-bold leading-snug text-[#2b190e]">
                           ★ {coverPhotoMoment?.caption || "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"} ★
                         </p>
                       </motion.div>
@@ -814,10 +814,10 @@ export function KenanganClient({
                         />
                         {currentSpread.leftPage.type === "group-photo" ? (
                           <div>
-                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
                               {currentSpread.leftPage.groupTitle}
                             </h2>
-                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#6e5a47]">
                               {currentSpread.leftPage.groupSubtitle}
                             </p>
                             <div className="mt-5 space-y-5">
@@ -847,10 +847,10 @@ export function KenanganClient({
                                       {gp.dateStr}
                                     </span>
                                   </div>
-                                  <h3 className="mt-2.5 font-hand text-2xl font-bold text-[#23140b]">
+                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#23140b]">
                                     ★ {gp.category}
                                   </h3>
-                                  <p className="mt-0.5 font-hand text-lg leading-snug text-[#4e3824]">
+                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#4e3824]">
                                     {gp.caption}
                                   </p>
                                 </motion.div>
@@ -859,10 +859,10 @@ export function KenanganClient({
                           </div>
                         ) : currentSpread.leftPage.type === "toc" ? (
                           <div>
-                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
                               Daftar Isi — Bagian I
                             </h2>
-                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#6e5a47]">
                               Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
                             </p>
                             <ul className="mt-4 space-y-2.5">
@@ -881,13 +881,13 @@ export function KenanganClient({
                                         onClick={() =>
                                           setSpreadIndex(entry.spreadIndex)
                                         }
-                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
                                       >
                                         <span>
                                           {String(stuNumber).padStart(2, "0")}.{" "}
                                           {entry.name}
                                         </span>
-                                        <span className="font-hand text-lg text-[#a84232]">
+                                        <span className="font-mono text-xs font-bold text-[#a84232]">
                                           Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
@@ -906,7 +906,7 @@ export function KenanganClient({
                                   ((spreadIndex % 5) - 2) * 1.8
                                 }deg)`,
                               }}
-                              className="real-photo-paper photo-gloss-sheen w-48 rounded-lg p-3 pb-5 shadow-md"
+                              className="real-photo-paper photo-gloss-sheen w-48 rounded-lg p-3 pb-4 shadow-md"
                             >
                               <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded bg-gradient-to-br from-[#2d6a6e] to-[#8c3b2b] text-[#fbf6ec]">
                                 {currentSpread.leftPage.studentPhotoUrl &&
@@ -918,7 +918,7 @@ export function KenanganClient({
                                     className="size-full object-cover"
                                   />
                                 ) : (
-                                  <span className="font-hand text-4xl font-bold">
+                                  <span className="font-serif text-3xl font-bold">
                                     {currentSpread.leftPage.studentNickname?.slice(
                                       0,
                                       2
@@ -926,7 +926,7 @@ export function KenanganClient({
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-2.5 font-hand text-2xl font-bold text-[#2b2118]">
+                              <p className="mt-2 font-serif text-base font-bold text-[#2b2118]">
                                 ★ {currentSpread.leftPage.studentNickname} ★
                               </p>
                             </motion.div>
@@ -940,10 +940,10 @@ export function KenanganClient({
                               }}
                               className="mt-5 w-full max-w-md rounded-xl border-2 border-[#d99b4e] bg-[#fffdf7] px-4 py-2.5 shadow-xs"
                             >
-                              <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
                                 {currentSpread.leftPage.studentName}
                               </h2>
-                              <p className="font-hand text-lg font-bold text-[#a84232]">
+                              <p className="mt-0.5 font-sans text-xs sm:text-sm font-semibold text-[#a84232]">
                                 {currentSpread.leftPage.studentRole}
                               </p>
                             </div>
@@ -963,11 +963,11 @@ export function KenanganClient({
                                 aria-hidden="true"
                                 className="absolute -top-3 left-6 h-5 w-16 -rotate-6 bg-[#c86d3b]/45"
                               />
-                              <p className="font-hand text-2xl leading-relaxed text-[#182542]">
+                              <p className="font-sans text-sm sm:text-base leading-relaxed text-[#182542]">
                                 &ldquo;{currentSpread.leftPage.studentBio}&rdquo;
                               </p>
                               {currentSpread.leftPage.studentTags && (
-                                <p className="mt-3 font-hand text-lg font-bold text-[#a84232]">
+                                <p className="mt-3 font-mono text-xs font-bold text-[#a84232]">
                                   #{currentSpread.leftPage.studentTags.join("  #")}
                                 </p>
                               )}
@@ -982,8 +982,8 @@ export function KenanganClient({
                           memeIdx={spreadIndex * 2 + 1}
                           rotateDeg={spreadIndex % 2 === 0 ? -3 : 3}
                         />
-                        <p className="text-center font-hand text-lg font-bold text-[#6e5a47]">
-                          ~ Lembar {currentSpread.leftPage.pageNumber} · UNO Scrapbook ~
+                        <p className="text-center font-mono text-xs font-bold text-[#6e5a47]">
+                          LEMBAR {currentSpread.leftPage.pageNumber} · UNO SCRAPBOOK
                         </p>
                       </div>
                     </div>
@@ -997,10 +997,10 @@ export function KenanganClient({
                         />
                         {currentSpread.rightPage.type === "group-photo" ? (
                           <div>
-                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
                               {currentSpread.rightPage.groupTitle}
                             </h2>
-                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#6e5a47]">
                               {currentSpread.rightPage.groupSubtitle}
                             </p>
                             <div className="mt-5 space-y-5">
@@ -1030,10 +1030,10 @@ export function KenanganClient({
                                       {gp.dateStr}
                                     </span>
                                   </div>
-                                  <h3 className="mt-2.5 font-hand text-2xl font-bold text-[#23140b]">
+                                  <h3 className="mt-2.5 font-serif text-base sm:text-lg font-bold text-[#23140b]">
                                     ★ {gp.category}
                                   </h3>
-                                  <p className="mt-0.5 font-hand text-lg leading-snug text-[#4e3824]">
+                                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-[#4e3824]">
                                     {gp.caption}
                                   </p>
                                 </motion.div>
@@ -1042,10 +1042,10 @@ export function KenanganClient({
                           </div>
                         ) : currentSpread.rightPage.type === "toc" ? (
                           <div>
-                            <h2 className="font-hand text-3xl font-bold text-[#2b2118]">
+                            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#2b2118]">
                               Daftar Isi — Bagian II
                             </h2>
-                            <p className="mt-1 font-hand text-lg text-[#6e5a47]">
+                            <p className="mt-1 font-sans text-xs sm:text-sm text-[#6e5a47]">
                               Ketuk nama sahabat untuk langsung membuka lembar kenangannya:
                             </p>
                             <ul className="mt-4 space-y-2.5">
@@ -1064,13 +1064,13 @@ export function KenanganClient({
                                         onClick={() =>
                                           setSpreadIndex(entry.spreadIndex)
                                         }
-                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2 text-left font-hand text-xl font-bold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
+                                        className={`flex w-full items-center justify-between rounded-xl border border-[#d8c7ae] bg-[#fffdf7] px-3.5 py-2.5 text-left font-sans text-sm font-semibold text-[#2b2118] shadow-2xs hover:bg-[#ebe0cd] ${tilt}`}
                                       >
                                         <span>
                                           {String(stuNumber).padStart(2, "0")}.{" "}
                                           {entry.name}
                                         </span>
-                                        <span className="font-hand text-lg text-[#a84232]">
+                                        <span className="font-mono text-xs font-bold text-[#a84232]">
                                           Hal. {entry.spreadIndex * 2 + 1} →
                                         </span>
                                       </motion.button>
@@ -1083,8 +1083,8 @@ export function KenanganClient({
                         ) : (
                           <div className="space-y-5">
                             <div className="inline-block -rotate-1 rounded-xl border-2 border-[#2b190d] bg-[#fffdf7] px-4 py-1.5 shadow-2xs">
-                              <h3 className="font-hand text-2xl font-bold text-[#2b2118]">
-                                Surat Sahabat utk{" "}
+                              <h3 className="font-serif text-base sm:text-lg font-bold text-[#2b2118]">
+                                Surat Sahabat untuk{" "}
                                 {currentSpread.rightPage.studentNickname} ♥
                               </h3>
                             </div>
@@ -1119,18 +1119,18 @@ export function KenanganClient({
                                       aria-hidden="true"
                                       className="absolute -top-2.5 left-1/2 h-4 w-20 -translate-x-1/2 bg-[#c86d3b]/45"
                                     />
-                                    <p className="font-hand text-2xl leading-snug text-[#182542]">
+                                    <p className="font-sans text-sm sm:text-base leading-relaxed text-[#182542]">
                                       &ldquo;{m.text}&rdquo;
                                     </p>
-                                    <footer className="mt-2 text-right font-hand text-xl font-bold text-[#a84232]">
-                                      ~ Dari: {m.author} ♥
+                                    <footer className="mt-2.5 text-right font-serif text-xs sm:text-sm font-bold text-[#a84232]">
+                                      — Dari: {m.author} ♥
                                     </footer>
                                   </motion.blockquote>
                                 );
                               })
                             ) : (
                               <div className="rounded-2xl border-2 border-dashed border-[#c4a782] bg-[#fffdf7]/80 p-5 text-center">
-                                <p className="font-hand text-2xl text-[#6e5a47]">
+                                <p className="font-sans text-sm text-[#6e5a47]">
                                   Belum ada pesan kenangan di database untuk halaman ini.
                                 </p>
                               </div>
@@ -1145,8 +1145,8 @@ export function KenanganClient({
                           memeIdx={spreadIndex * 2 + 2}
                           rotateDeg={spreadIndex % 2 === 0 ? 3 : -3}
                         />
-                        <p className="text-center font-hand text-lg font-bold text-[#6e5a47]">
-                          ~ Lembar {currentSpread.rightPage.pageNumber} · UNO Scrapbook ~
+                        <p className="text-center font-mono text-xs font-bold text-[#6e5a47]">
+                          LEMBAR {currentSpread.rightPage.pageNumber} · UNO SCRAPBOOK
                         </p>
                       </div>
                     </div>
@@ -1175,11 +1175,11 @@ export function KenanganClient({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[var(--color-accent-warm)]" />
-                <span className="font-hand text-xl font-bold text-foreground">
+                <span className="font-serif text-sm sm:text-base font-bold text-foreground">
                   Stiker Meme Perpisahan Lembar Ini (Hal. {currentSpread.leftPage.pageNumber} &ndash; {currentSpread.rightPage.pageNumber})
                 </span>
               </div>
-              <span className="font-hand text-base text-muted-foreground">
+              <span className="font-sans text-xs text-muted-foreground">
                 Setiap halaman menyimpan stiker kenangan masa sekolah yang berbeda ✨
               </span>
             </div>
@@ -1333,7 +1333,7 @@ export function KenanganClient({
                     value={memMessage}
                     onChange={(e) => setMemMessage(e.target.value)}
                     placeholder="Tuliskan pesan hangatmu di sini..."
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                   />
                 </div>
 
@@ -1429,7 +1429,7 @@ export function KenanganClient({
                         </p>
 
                         {cap.is_unlocked && cap.message ? (
-                          <blockquote className="mt-4 rounded-xl border border-border bg-background p-3.5 font-hand text-xl leading-snug text-foreground">
+                          <blockquote className="mt-4 rounded-xl border border-border bg-background p-3.5 font-sans text-sm sm:text-base leading-relaxed text-foreground">
                             &ldquo;{cap.message}&rdquo;
                           </blockquote>
                         ) : (
@@ -1557,7 +1557,7 @@ export function KenanganClient({
                   value={capMessage}
                   onChange={(e) => setCapMessage(e.target.value)}
                   placeholder="Tuliskan pesan rahasia yang baru boleh dibaca saat tanggal buka tiba..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                 />
               </div>
 
@@ -1611,7 +1611,7 @@ export function KenanganClient({
                           {th.to_name}
                         </strong>
                       </p>
-                      <p className="mt-3 font-hand text-2xl leading-snug text-foreground">
+                      <p className="mt-3 font-sans text-sm sm:text-base leading-relaxed text-foreground">
                         &ldquo;{th.message}&rdquo;
                       </p>
                     </div>
@@ -1698,7 +1698,7 @@ export function KenanganClient({
                   value={thMessage}
                   onChange={(e) => setThMessage(e.target.value)}
                   placeholder="Terima kasih sudah..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                 />
               </div>
 

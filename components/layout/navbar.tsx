@@ -179,7 +179,7 @@ export function Navbar() {
                 <span className="truncate font-serif text-xs sm:text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-[var(--color-accent-warm)]">
                   UNO · {SITE_CONTENT.school.className}
                 </span>
-                <span className="truncate font-hand text-[11px] sm:text-sm font-bold text-muted-foreground">
+                <span className="truncate font-mono text-[10px] sm:text-xs font-medium tracking-wide text-muted-foreground">
                   {SITE_CONTENT.school.shortSchool} · {SITE_CONTENT.school.cohortYears}
                 </span>
               </div>

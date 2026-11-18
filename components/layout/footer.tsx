@@ -68,10 +68,10 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Tautan Navigasi Ringkas */}
+          {/* Tautan Navigasi Ringkas (Hanya Desktop karena Mobile sudah menggunakan Bottom Navigation Bar) */}
           <nav
             aria-label="Navigasi Footer"
-            className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs"
+            className="hidden lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1.5 text-xs"
           >
             {SITE_CONTENT.nav.links.map((l) => (
               <a
@@ -87,10 +87,10 @@ export function Footer() {
         </div>
 
         <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-border/60 pt-4 text-xs text-muted-foreground sm:flex-row">
-          <p className="font-hand text-base text-foreground/85">
-            &ldquo;Tiga tahun merajut logika, seumur hidup menjaga saudara.&rdquo;
+          <p className="font-serif text-sm sm:text-base italic font-medium text-foreground/90">
+            &ldquo;UNO Born to Win, selamat menjalani hidup baru&rdquo;
           </p>
-          <p>
+          <p className="font-mono text-[11px] text-muted-foreground">
             {SITE_CONTENT.school.schoolName} · Ende, Flores — NTT
           </p>
         </div>

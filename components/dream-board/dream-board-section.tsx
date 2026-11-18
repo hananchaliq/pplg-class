@@ -20,7 +20,6 @@ import {
   Layers,
   MessageSquareHeart,
 } from "lucide-react";
-import { StageCurtainLoader } from "@/components/three/stage-curtain-loader";
 
 export type ExtendedStudentRecord = StudentRecord & {
   nis?: string;
@@ -237,15 +236,9 @@ function createDreamNoteTextTexture(
   canvas.height = 384;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    const caveatVar =
-      typeof document !== "undefined"
-        ? getComputedStyle(document.documentElement)
-            .getPropertyValue("--font-caveat")
-            .trim()
-        : "";
-    const handFont = caveatVar
-      ? `${caveatVar}, "Caveat", "Segoe Print", "Bradley Hand", cursive`
-      : `"Caveat", "Segoe Print", "Bradley Hand", cursive`;
+    const serifFont = `"Fraunces", Georgia, "Times New Roman", serif`;
+    const sansFont = `"Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+    const monoFont = `"Space Mono", ui-monospace, monospace`;
 
     ctx.clearRect(0, 0, 512, 384);
 
@@ -259,25 +252,25 @@ function createDreamNoteTextTexture(
       ctx.stroke();
     }
 
-    // Nomor & Nama Siswa dengan tulisan tangan spidol
+    // Nomor & Nama Siswa dengan Space Mono + Fraunces Serif
     const padded = String(rollNo).padStart(2, "0");
     ctx.fillStyle = "#5c3d24";
-    ctx.font = `700 34px ${handFont}`;
-    ctx.fillText(`#${padded} ~ ${name}`, 34, 74);
+    ctx.font = `700 24px ${serifFont}`;
+    ctx.fillText(`#${padded} · ${name}`, 34, 70);
 
-    // Garis bawah coretan spidol warna pin
+    // Garis bawah warna pin
     ctx.strokeStyle = pinHex;
-    ctx.lineWidth = 4.5;
+    ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(34, 88);
-    ctx.quadraticCurveTo(110, 83, 185, 90);
+    ctx.moveTo(34, 86);
+    ctx.quadraticCurveTo(110, 82, 185, 88);
     ctx.stroke();
 
-    // Isi Cita-Cita dengan Tulisan Tangan Pena Tebal (Bukan Ketikan)
+    // Isi Cita-Cita dengan Plus Jakarta Sans Tebal yang Sangat Mudah Dibaca
     const inkColors = ["#182542", "#231309", "#3b1712", "#142e24"];
     ctx.fillStyle = inkColors[rollNo % inkColors.length]!;
-    ctx.font = `700 46px ${handFont}`;
+    ctx.font = `700 30px ${sansFont}`;
     const words = (dreamTitle || "").split(" ");
     const lines: string[] = [];
     let currentLine = "";
@@ -294,16 +287,16 @@ function createDreamNoteTextTexture(
 
     lines.slice(0, 3).forEach((line, idx) => {
       ctx.save();
-      ctx.translate(34, 152 + idx * 46);
-      ctx.rotate(((rollNo + idx) % 3 - 1) * 0.008);
+      ctx.translate(34, 150 + idx * 46);
+      ctx.rotate(((rollNo + idx) % 3 - 1) * 0.005);
       ctx.fillText(line, 0, 0);
       ctx.restore();
     });
 
-    // Catatan kecil tulisan tangan di bagian bawah kertas
-    ctx.fillStyle = "rgba(92, 54, 32, 0.82)";
-    ctx.font = `700 27px ${handFont}`;
-    ctx.fillText(`~ ${role || "UNO · XII PPLG 1"} ♥`, 34, 348);
+    // Stamp metadata arsip di bagian bawah kertas (Space Mono)
+    ctx.fillStyle = "rgba(92, 54, 32, 0.85)";
+    ctx.font = `700 18px ${monoFont}`;
+    ctx.fillText(`${(role || "UNO · XII PPLG 1").toUpperCase()}`, 34, 346);
 
     // Lipatan sudut kanan bawah kertas
     ctx.fillStyle = "rgba(43, 28, 16, 0.1)";
@@ -404,8 +397,6 @@ export function DreamBoardSection({
   >({});
   const [isEditingModal, setIsEditingModal] = React.useState(false);
   const [isSavingEdit, setIsSavingEdit] = React.useState(false);
-  const [boardReady, setBoardReady] = React.useState(false);
-  const [boardProgress, setBoardProgress] = React.useState(24);
   const [editTitle, setEditTitle] = React.useState("");
   const [editReason, setEditReason] = React.useState("");
   const [editDesc, setEditDesc] = React.useState("");
@@ -1240,17 +1231,35 @@ export function DreamBoardSection({
     };
     window.addEventListener("app:route-transition-start", onRouteTransitionStart);
 
+    window.dispatchEvent(
+      new CustomEvent("app:scene-loading", {
+        detail: {
+          progress: 32,
+          label: "Menyiapkan papan cita-cita 3D...",
+          sceneTitle: "PANGGUNG 3D · PAPAN IMPIAN XII PPLG 1",
+        },
+      })
+    );
+
     const wrappedTick = () => {
       if (routeTransitionStopped) return;
       tick();
     };
     wrappedTick();
-    setBoardProgress(100);
+    window.dispatchEvent(
+      new CustomEvent("app:scene-progress", {
+        detail: {
+          progress: 100,
+          label: "Menyiapkan papan cita-cita 3D...",
+          sceneTitle: "PANGGUNG 3D · PAPAN IMPIAN XII PPLG 1",
+        },
+      })
+    );
     const curtainTimer = window.setTimeout(() => {
       if (!routeTransitionStopped) {
-        setBoardReady(true);
+        window.dispatchEvent(new CustomEvent("app:scene-ready"));
       }
-    }, 340);
+    }, 280);
 
     return () => {
       routeTransitionStopped = true;
@@ -1428,14 +1437,6 @@ export function DreamBoardSection({
             aria-label="Kanvas 3D Papan Tulis Cita-Cita Siswa XII PPLG 1"
           />
 
-          {/* Tirai Merah Bioskop / Panggung 3D saat Papan Cita-Cita 3D Di-Generate */}
-          <StageCurtainLoader
-            ready={boardReady}
-            progress={boardProgress}
-            label="Menyiapkan papan cita-cita 3D..."
-            sceneTitle="PANGGUNG 3D · PAPAN IMPIAN XII PPLG 1"
-          />
-
           {orderedStudents.length === 0 && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center">
               <div className="max-w-md rounded-2xl border border-[#d8c7ae] bg-[#fbf6ec]/95 p-6 text-[#2b2118] shadow-lg dark:border-[#463629] dark:bg-[#241b14]/95 dark:text-[#f2e6d5]">
@@ -1473,7 +1474,7 @@ export function DreamBoardSection({
               }}
               className="pointer-events-none absolute z-20 max-w-[90%] -translate-x-1/2 -translate-y-full transition-transform duration-150"
             >
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#c86d3b]/40 bg-[#fffdf7]/95 px-3 py-1 font-hand text-base font-bold text-[#2b2118] shadow-md backdrop-blur-md dark:border-[#e09f4c]/40 dark:bg-[#261d16]/95 dark:text-[#f2e6d5]">
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#c86d3b]/40 bg-[#fffdf7]/95 px-3 py-1.5 font-sans text-xs font-semibold text-[#2b2118] shadow-md backdrop-blur-md dark:border-[#e09f4c]/40 dark:bg-[#261d16]/95 dark:text-[#f2e6d5]">
                 <span>Klik untuk baca catatan {hoveredStudent.name} →</span>
               </div>
             </div>
@@ -1504,8 +1505,8 @@ export function DreamBoardSection({
                       className="size-9 sm:size-10 shrink-0 rounded-lg border border-[#cbb799] object-cover shadow-2xs dark:border-[#544030]"
                     />
                     <div className="min-w-0">
-                      <p className="font-hand text-sm sm:text-base font-bold text-[#a84232] dark:text-[#e09f4c]">
-                        Absen #{String(zoomedStudent.roll_no).padStart(2, "0")} ·{" "}
+                      <p className="font-mono text-[11px] font-bold text-[#a84232] dark:text-[#e09f4c]">
+                        ABSEN #{String(zoomedStudent.roll_no).padStart(2, "0")} ·{" "}
                         {zoomedStudent.role}
                       </p>
                       <h3 className="truncate font-serif text-sm sm:text-base font-bold leading-snug">
@@ -1637,13 +1638,13 @@ export function DreamBoardSection({
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="h-9 w-full rounded-lg border border-[#d8c7ae] bg-white px-2.5 font-hand text-xl font-bold text-[#2b2118]"
+                        className="h-9 w-full rounded-lg border border-[#d8c7ae] bg-white px-2.5 font-sans text-sm font-semibold text-[#2b2118]"
                       />
                       <textarea
                         rows={3}
                         value={editReason}
                         onChange={(e) => setEditReason(e.target.value)}
-                        className="w-full rounded-lg border border-[#d8c7ae] bg-white p-2.5 font-hand text-lg text-[#2b2118]"
+                        className="w-full rounded-lg border border-[#d8c7ae] bg-white p-2.5 font-sans text-sm leading-relaxed text-[#2b2118]"
                       />
                       <button
                         type="submit"
@@ -1656,24 +1657,24 @@ export function DreamBoardSection({
                     </form>
                   ) : (
                     <>
-                      {/* Cita-Cita Utama dengan Tulisan Tangan Besar */}
+                      {/* Cita-Cita Utama dengan Fraunces Serif */}
                       <div>
                         <p className="text-[11px] font-medium text-[#6e5a47] dark:text-[#b8a38c]">
                           Cita-cita masa depan:
                         </p>
-                        <h4 className="mt-0.5 font-hand text-2xl sm:text-3xl font-bold leading-tight text-[#182542] dark:text-[#f5d08a]">
+                        <h4 className="mt-0.5 font-serif text-lg sm:text-xl font-bold leading-snug text-[#182542] dark:text-[#f5d08a]">
                           {zoomedStudent.dream_title}
                         </h4>
                       </div>
 
-                      {/* Kutipan Tulisan Tangan di Atas Garis Buku */}
-                      <div className="border-y border-dashed border-[#dccbb2] py-2 sm:py-3 dark:border-[#463629]">
-                        <p className="font-hand text-xl sm:text-2xl leading-snug text-[#2b2118] dark:text-[#f2e6d5]">
+                      {/* Kutipan Cerita di Atas Garis Buku (Plus Jakarta Sans, line-height 1.6) */}
+                      <div className="border-y border-dashed border-[#dccbb2] py-2.5 sm:py-3 dark:border-[#463629]">
+                        <p className="font-sans text-sm sm:text-[15px] leading-relaxed text-[#2b2118] dark:text-[#f2e6d5]">
                           &ldquo;{zoomedStudent.dream_reason}&rdquo;
                         </p>
                         {zoomedStudent.dream_description && (
-                          <p className="mt-1.5 sm:mt-2 font-hand text-base sm:text-lg leading-relaxed text-[#6e5a47] dark:text-[#b8a38c]">
-                            ~ {zoomedStudent.dream_description}
+                          <p className="mt-1.5 sm:mt-2 font-sans text-xs sm:text-sm leading-relaxed text-[#6e5a47] dark:text-[#b8a38c]">
+                            — {zoomedStudent.dream_description}
                           </p>
                         )}
                       </div>
@@ -1715,7 +1716,7 @@ export function DreamBoardSection({
                     <span>Sebelumnya</span>
                   </button>
 
-                  <span className="font-hand text-base sm:text-lg font-bold text-[#6e5a47] dark:text-[#b8a38c]">
+                  <span className="font-mono text-xs font-bold tabular-nums text-[#6e5a47] dark:text-[#b8a38c]">
                     Lembar {String(zoomedStudent.roll_no).padStart(2, "0")} /{" "}
                     {orderedStudents.length}
                   </span>
@@ -1741,10 +1742,10 @@ export function DreamBoardSection({
           )}
         </div>
 
-        {/* Quick Selector Strip dengan Font Tulisan Tangan & Prev/Next */}
+        {/* Quick Selector Strip dengan Tipografi Bersih & Prev/Next */}
         <div className="mt-4 rounded-xl border border-[#8c6b48]/25 bg-[#fffdf9]/85 p-3 sm:p-3.5 shadow-xs backdrop-blur-md dark:border-[#d4a36a]/20 dark:bg-[#231912]/80">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="font-hand text-lg sm:text-xl font-bold text-[#6e5a47] dark:text-[#c7b39b]">
+            <span className="font-serif text-sm sm:text-base font-bold text-[#6e5a47] dark:text-[#c7b39b]">
               Pintasan Kertas Cita-Cita ({orderedStudents.length})
             </span>
             <div className="flex items-center gap-2">
@@ -1754,7 +1755,7 @@ export function DreamBoardSection({
                   zoomedIndex !== null ? Math.floor(zoomedIndex / 6) : 0;
                 return (
                   <>
-                    <span className="font-hand text-base sm:text-lg font-bold text-[#C86D3B] dark:text-[#F2A96B]">
+                    <span className="font-mono text-xs font-bold tabular-nums text-[#C86D3B] dark:text-[#F2A96B]">
                       Hal {currentPage + 1} / {Math.max(1, totalPages)}
                     </span>
                     <div className="flex items-center gap-1">
@@ -1844,14 +1845,14 @@ export function DreamBoardSection({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="shrink-0 font-hand text-sm font-bold opacity-75">
+                          <span className="shrink-0 font-mono text-[11px] font-bold opacity-75">
                             #{String(st.roll_no).padStart(2, "0")}
                           </span>
-                          <span className="truncate text-xs font-bold">
+                          <span className="truncate font-serif text-xs sm:text-sm font-bold">
                             {st.name}
                           </span>
                         </div>
-                        <p className="truncate font-hand text-base sm:text-lg font-bold leading-tight opacity-90">
+                        <p className="mt-0.5 truncate font-sans text-xs sm:text-sm font-medium leading-snug opacity-90">
                           {st.dream_title}
                         </p>
                       </div>
@@ -1866,11 +1867,11 @@ export function DreamBoardSection({
           </div>
 
           <div className="mt-2.5 border-t border-[#8c6b48]/15 pt-2 text-center dark:border-white/10">
-            <span className="block truncate font-hand text-sm sm:text-base font-bold text-[#C86D3B] dark:text-[#F2A96B]">
+            <span className="block truncate font-sans text-xs sm:text-sm font-semibold text-[#C86D3B] dark:text-[#F2A96B]">
               {hoveredStudent
-                ? `${hoveredStudent.name} ~ ${hoveredStudent.dream_title}`
+                ? `${hoveredStudent.name} · ${hoveredStudent.dream_title}`
                 : zoomedStudent
-                  ? `Sedang membaca lembar catatan: ${zoomedStudent.name} ~ ${zoomedStudent.dream_title}`
+                  ? `Sedang membaca lembar catatan: ${zoomedStudent.name} · ${zoomedStudent.dream_title}`
                   : "Klik kertas catatan di papan 3D atau nama sahabat di atas untuk fokus membaca"}
             </span>
           </div>

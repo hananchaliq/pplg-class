@@ -176,16 +176,16 @@ export function DreamBoardClient({
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="font-hand text-xl font-bold text-[var(--color-accent-warm)]">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--color-accent-warm)]">
                   Lembar Doa &amp; Semangat Sahabat UNO
                 </p>
                 <h2
                   id="dream-cheer-title"
-                  className="mt-0.5 font-serif text-2xl font-bold text-foreground"
+                  className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground"
                 >
                   Untuk {cheerTargetDream.student_name}
                 </h2>
-                <p className="mt-1 font-hand text-xl text-muted-foreground">
+                <p className="mt-1 font-serif text-sm sm:text-base italic text-muted-foreground">
                   Cita-cita: &ldquo;{cheerTargetDream.dream}&rdquo;
                 </p>
               </div>
@@ -208,16 +208,16 @@ export function DreamBoardClient({
                     key={c.id}
                     className="border-b border-dashed border-border pb-2.5 last:border-b-0"
                   >
-                    <p className="font-hand text-2xl leading-snug text-foreground">
+                    <p className="font-sans text-sm sm:text-base leading-relaxed text-foreground">
                       &ldquo;{c.message}&rdquo;
                     </p>
-                    <p className="mt-0.5 text-right font-hand text-lg font-bold text-[var(--color-accent-warm)]">
+                    <p className="mt-0.5 text-right font-serif text-xs sm:text-sm font-bold text-[var(--color-accent-warm)]">
                       ~ {c.author_name}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="py-2 font-hand text-xl text-muted-foreground">
+                <p className="py-2 font-sans text-sm leading-relaxed text-muted-foreground">
                   Belum ada catatan doa di lembar ini. Tuliskan doa pertamamu di bawah!
                 </p>
               )}
@@ -279,7 +279,7 @@ export function DreamBoardClient({
                   value={cheerMessage}
                   onChange={(e) => setCheerMessage(e.target.value)}
                   placeholder="Bismillah, semoga tercapai ya..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-2xl text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                 />
               </div>
 
@@ -336,12 +336,12 @@ export function DreamBoardClient({
           >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
-                <p className="font-hand text-xl font-bold text-[var(--color-accent-warm)]">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--color-accent-warm)]">
                   Lembar Catatan Papan Cita-Cita UNO
                 </p>
                 <h2
                   id="new-dream-title"
-                  className="mt-0.5 font-serif text-2xl font-bold text-foreground"
+                  className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground"
                 >
                   Tulis &amp; Tempel Cita-Cita
                 </h2>
@@ -387,7 +387,7 @@ export function DreamBoardClient({
                   htmlFor="dr-text"
                   className="block text-xs font-semibold text-foreground"
                 >
-                  Cita-Cita Kamu (Ditampilkan dengan Tulisan Tangan)
+                  Cita-Cita Kamu (Ditampilkan di Papan Cita-Cita)
                 </label>
                 <input
                   id="dr-text"
@@ -398,7 +398,7 @@ export function DreamBoardClient({
                   value={dreamText}
                   onChange={(e) => setDreamText(e.target.value)}
                   placeholder="Mis. Menjadi Software Architect & Dosen di NTT"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-2xl font-bold text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm font-semibold text-foreground"
                 />
               </div>
 
@@ -418,7 +418,7 @@ export function DreamBoardClient({
                   value={dreamReason}
                   onChange={(e) => setDreamReason(e.target.value)}
                   placeholder="Ceritakan alasan di balik mimpimu..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-xl text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                 />
               </div>
 

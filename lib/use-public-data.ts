@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { decodeDeepText } from "@/lib/domain-logic";
 import type {
   DreamRow,
   MemoryEntryRow,
@@ -94,7 +95,8 @@ export function useLivePublicData(
 } {
   const [data, setData] = React.useState<Partial<PublicAppDataPayload>>(() => {
     if (initialData) {
-      sharedClientData = { ...sharedClientData, ...initialData };
+      const decodedInit = decodeDeepText(initialData);
+      sharedClientData = { ...sharedClientData, ...decodedInit };
       return sharedClientData;
     }
     return sharedClientData;
@@ -117,49 +119,49 @@ export function useLivePublicData(
     let hasChange = false;
 
     if (initStudents !== undefined && sharedClientData.students !== initStudents) {
-      nextPatch.students = initStudents;
+      nextPatch.students = decodeDeepText(initStudents);
       hasChange = true;
     }
     if (initTeachers !== undefined && sharedClientData.teachers !== initTeachers) {
-      nextPatch.teachers = initTeachers;
+      nextPatch.teachers = decodeDeepText(initTeachers);
       hasChange = true;
     }
     if (initMoments !== undefined && sharedClientData.moments !== initMoments) {
-      nextPatch.moments = initMoments;
+      nextPatch.moments = decodeDeepText(initMoments);
       hasChange = true;
     }
     if (initDreams !== undefined && sharedClientData.dreams !== initDreams) {
-      nextPatch.dreams = initDreams;
+      nextPatch.dreams = decodeDeepText(initDreams);
       hasChange = true;
     }
     if (
       initMemories !== undefined &&
       sharedClientData.memoryEntries !== initMemories
     ) {
-      nextPatch.memoryEntries = initMemories;
+      nextPatch.memoryEntries = decodeDeepText(initMemories);
       hasChange = true;
     }
     if (
       initCapsules !== undefined &&
       sharedClientData.timeCapsules !== initCapsules
     ) {
-      nextPatch.timeCapsules = initCapsules;
+      nextPatch.timeCapsules = decodeDeepText(initCapsules);
       hasChange = true;
     }
     if (initThanks !== undefined && sharedClientData.thanksList !== initThanks) {
-      nextPatch.thanksList = initThanks;
+      nextPatch.thanksList = decodeDeepText(initThanks);
       hasChange = true;
     }
     if (initWorks !== undefined && sharedClientData.works !== initWorks) {
-      nextPatch.works = initWorks;
+      nextPatch.works = decodeDeepText(initWorks);
       hasChange = true;
     }
     if (initPolls !== undefined && sharedClientData.polls !== initPolls) {
-      nextPatch.polls = initPolls;
+      nextPatch.polls = decodeDeepText(initPolls);
       hasChange = true;
     }
     if (initSettings !== undefined && sharedClientData.settings !== initSettings) {
-      nextPatch.settings = initSettings;
+      nextPatch.settings = decodeDeepText(initSettings);
       hasChange = true;
     }
 
@@ -202,8 +204,9 @@ export function useLivePublicData(
 
       const fresh = await inflightRefresh;
       if (fresh && Array.isArray(fresh.students)) {
-        sharedClientData = fresh;
-        setData(fresh);
+        const cleanFresh = decodeDeepText(fresh);
+        sharedClientData = cleanFresh;
+        setData(cleanFresh);
       }
     } catch {
       // Tetap gunakan state terakhir bila jaringan sementara terputus

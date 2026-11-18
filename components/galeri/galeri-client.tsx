@@ -434,12 +434,12 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                               className="size-full object-cover"
                             />
                           </div>
-                          <p className="mt-2.5 line-clamp-2 font-hand text-xl font-bold leading-snug text-foreground">
+                          <p className="mt-2.5 line-clamp-2 font-serif text-sm sm:text-[15px] font-bold leading-snug text-foreground">
                             {m.caption}
                           </p>
-                          <div className="mt-1 flex items-center justify-between font-hand text-sm font-bold text-muted-foreground">
-                            <span>~ {m.category}</span>
-                            <span>{m.taken_at}</span>
+                          <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] sm:text-[11px] font-semibold text-muted-foreground">
+                            <span className="truncate">{m.category}</span>
+                            <span className="shrink-0 tabular-nums">{m.taken_at}</span>
                           </div>
                         </motion.button>
                       );
@@ -474,16 +474,16 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         className="h-16 w-20 shrink-0 rounded-md border border-[#cbb799] object-cover shadow-xs"
                       />
                       <div>
-                        <div className="flex flex-wrap items-center gap-2 font-hand text-base sm:text-lg font-bold text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] sm:text-xs font-semibold text-muted-foreground">
                           <span>Fase Kelas {selected3DMoment.phase}</span>
                           <span aria-hidden="true">·</span>
                           <span>{selected3DMoment.category}</span>
                           <span aria-hidden="true">·</span>
-                          <span>{selected3DMoment.taken_at}</span>
+                          <span className="tabular-nums">{selected3DMoment.taken_at}</span>
                           <span aria-hidden="true">·</span>
-                          <span>Ditulis oleh {selected3DMoment.uploader_name}</span>
+                          <span>Oleh {selected3DMoment.uploader_name}</span>
                         </div>
-                        <p className="mt-0.5 font-hand text-xl sm:text-3xl font-bold text-foreground">
+                        <p className="mt-1 font-serif text-base sm:text-lg font-bold leading-snug text-foreground">
                           &ldquo;{selected3DMoment.caption}&rdquo;
                         </p>
                       </div>
@@ -498,7 +498,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                         );
                         if (idx >= 0) setLightboxIndex(idx);
                       }}
-                      className="min-h-[40px] w-full sm:w-auto rounded-lg border border-border bg-background px-3.5 py-2 font-hand text-lg font-bold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
+                      className="min-h-[40px] w-full sm:w-auto rounded-lg border border-border bg-background px-3.5 py-2 font-sans text-xs font-semibold text-foreground hover:bg-muted whitespace-nowrap shrink-0"
                     >
                       Buka Mode Baca Pop-Up Penuh →
                     </motion.button>
@@ -522,7 +522,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                 ? `Seluruh Koleksi Lembar Foto (${listSourceMoments.length} Momen)`
                 : `Album Kertas Foto Kelas ${activePhase} (${listSourceMoments.length} Momen)`}
             </h2>
-            <p className="font-hand text-base sm:text-lg text-muted-foreground">
+            <p className="mt-0.5 font-sans text-xs sm:text-sm text-muted-foreground">
               Menampilkan {MOMENTS_PER_PAGE} lembar kertas foto per halaman — ketuk foto untuk membuka pop-up foto dan cerita lengkap.
             </p>
           </div>
@@ -534,7 +534,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
               setShowAllGrid((prev) => !prev);
               setMomentPage(1);
             }}
-            className="font-hand text-lg sm:text-xl font-bold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
+            className="font-sans text-xs sm:text-sm font-semibold text-[var(--color-accent-warm)] hover:underline whitespace-nowrap"
           >
             {showAllGrid
               ? `← Filter Hanya Kelas ${activePhase}`
@@ -573,17 +573,17 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                       className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
-                  {/* Tulisan Tangan Spidol di Dagu Kertas Polaroid */}
-                  <p className="mt-2 sm:mt-3.5 line-clamp-2 font-hand text-lg sm:text-2xl font-bold leading-snug text-foreground">
+                  {/* Judul & Caption Foto di Dagu Kertas Polaroid */}
+                  <p className="mt-2 sm:mt-3 line-clamp-2 font-serif text-sm sm:text-base font-bold leading-snug text-foreground">
                     {m.caption}
                   </p>
                 </div>
 
-                <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-dashed border-[#cbb799]/70 pt-1.5 sm:pt-2 font-hand text-xs sm:text-base font-bold text-muted-foreground dark:border-[#544030]">
+                <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-dashed border-[#cbb799]/70 pt-1.5 sm:pt-2 font-mono text-[10px] sm:text-xs font-semibold text-muted-foreground dark:border-[#544030]">
                   <span className="truncate">
-                    ~ {m.phase} · {m.category}
+                    {m.phase} · {m.category}
                   </span>
-                  <span className="shrink-0">{m.taken_at}</span>
+                  <span className="shrink-0 tabular-nums">{m.taken_at}</span>
                 </div>
               </motion.button>
             );
@@ -617,14 +617,14 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
             className="real-photo-paper relative mx-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl p-4 pb-6 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
           >
             <div className="mb-3 flex items-center justify-between gap-3 border-b border-dashed border-[#cbb799]/80 pb-2.5 dark:border-[#544030]">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-hand text-base sm:text-xl font-bold text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-mono text-xs sm:text-sm font-semibold text-muted-foreground">
                 <span className="rounded-md bg-[var(--color-accent-warm)]/15 px-2.5 py-0.5 text-foreground">
                   Fase Kelas {currentLightboxMoment.phase}
                 </span>
                 <span aria-hidden="true">·</span>
                 <span>{currentLightboxMoment.category}</span>
                 <span aria-hidden="true">·</span>
-                <span>{currentLightboxMoment.taken_at}</span>
+                <span className="tabular-nums">{currentLightboxMoment.taken_at}</span>
               </div>
               <motion.button
                 type="button"
@@ -649,14 +649,14 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
             </div>
 
             {/* Area Teks Cerita & Keterangan yang Jelas Terbaca */}
-            <div className="mt-3.5 sm:mt-4 rounded-xl border border-[#cbb799]/80 bg-background/75 p-3.5 sm:p-4 shadow-2xs dark:border-[#544030]">
-              <p className="font-hand text-xl sm:text-3xl font-bold leading-snug text-foreground break-words">
+            <div className="mt-3.5 sm:mt-4 rounded-xl border border-[#cbb799]/80 bg-background/85 p-3.5 sm:p-4 shadow-2xs dark:border-[#544030]">
+              <p className="font-serif text-base sm:text-xl font-bold leading-relaxed text-foreground break-words">
                 &ldquo;{currentLightboxMoment.caption}&rdquo;
               </p>
               <div className="mt-2.5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2.5 sm:gap-3 border-t border-dashed border-border pt-2.5">
-                <p className="font-hand text-base sm:text-lg font-bold text-muted-foreground">
-                  ~ Diabadikan oleh {currentLightboxMoment.uploader_name} · Foto{" "}
-                  {lightboxIndex + 1}/{filteredMoments.length} ~
+                <p className="font-mono text-xs font-semibold text-muted-foreground">
+                  Diabadikan oleh {currentLightboxMoment.uploader_name} · Foto{" "}
+                  {lightboxIndex + 1}/{filteredMoments.length}
                 </p>
 
                 <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
@@ -871,7 +871,7 @@ export function GaleriClient({ initialMoments }: { initialMoments: MomentRow[] }
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="Tuliskan cerita di balik foto ini..."
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-hand text-lg text-foreground"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-sans text-sm leading-relaxed text-foreground"
                 />
               </div>
 

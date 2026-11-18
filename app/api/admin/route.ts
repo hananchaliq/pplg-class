@@ -15,6 +15,7 @@ import {
   upsertTeacherAdmin,
   type ModeratableTable,
 } from "@/lib/db";
+import { decodeDeepText } from "@/lib/domain-logic";
 import type { ContentStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
     );
   }
-  const data = await getAdminDashboardData();
+  const data = decodeDeepText(await getAdminDashboardData());
   return NextResponse.json(
     { ok: true, authenticated: true, data },
     { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
