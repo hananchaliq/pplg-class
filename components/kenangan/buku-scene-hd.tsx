@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import * as THREE from "three";
+import { gsap } from "@/lib/gsap-utils";
+import { BOOK_FLIP_CONFIG } from "@/lib/book-flip-config";
+import { prefersReducedMotion } from "@/lib/motion-tokens";
 import { SceneShell } from "@/components/three/scene-shell";
 import {
   createBookCoverTextures,
@@ -26,11 +29,22 @@ interface BukuKenanganSceneHDProps {
   onChangeSpread: (nextIndex: number) => void;
 }
 
-const PAGE_W = 2.18;
-const PAGE_H = 2.82;
+const {
+  pageWidth: PAGE_W,
+  pageHeight: PAGE_H,
+  segmentsX: SEG_X,
+  segmentsZ: SEG_Z,
+  restArchHeight: REST_ARCH,
+  gutterDip: GUTTER_DIP,
+  maxStackHeight: MAX_STACK_H,
+  minStackHeight: MIN_STACK_H,
+  leafPoolSize: LEAF_POOL_SIZE,
+  leafHalfGap: LEAF_HALF_GAP,
+  stackLayerStep: STACK_LAYER_STEP,
+} = BOOK_FLIP_CONFIG.geometry;
 
 /**
- * Tekstur tepi tumpukan kertas buku nyata (lapisan lembaran tipis berwarna krem-gading)
+ * Tekstur tepi tumpukan kertas buku nyata (lapisan lembaran tipis berwarna krem-gading).
  */
 function createPageEdgeTexture(renderer: THREE.WebGLRenderer) {
   const canvas = document.createElement("canvas");
@@ -42,12 +56,13 @@ function createPageEdgeTexture(renderer: THREE.WebGLRenderer) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   for (let y = 0; y < canvas.height; y += 3) {
-    const tone = y % 6 === 0 ? "rgba(110, 96, 76, 0.16)" : "rgba(255, 252, 245, 0.35)";
-    ctx.fillStyle = tone;
+    ctx.fillStyle =
+      y % 6 === 0
+        ? "rgba(110, 96, 76, 0.16)"
+        : "rgba(255, 252, 245, 0.35)";
     ctx.fillRect(0, y, canvas.width, 1);
   }
 
-  // Sedikit bayangan lembut ke arah punggung buku
   const shade = ctx.createLinearGradient(0, 0, canvas.width, 0);
   shade.addColorStop(0, "rgba(70, 58, 42, 0.14)");
   shade.addColorStop(0.5, "rgba(70, 58, 42, 0)");
@@ -59,18 +74,20 @@ function createPageEdgeTexture(renderer: THREE.WebGLRenderer) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   tex.needsUpdate = true;
   return tex;
 }
 
 /**
- * Buat geometri lembaran halaman statis yang memiliki lengkungan buku nyata
- * (mengalir turun di lembah punggung buku & melengkung lembut di tengah)
- * Pivot berada tepat di punggung buku (x = 0).
+ * Geometri lembaran halaman statis kiri/kanan dengan lengkungan lembah punggung buku.
  */
-function createCurvedSpreadPageGeometry(side: "left" | "right"): THREE.PlaneGeometry {
-  const geo = new THREE.PlaneGeometry(PAGE_W, PAGE_H, 42, 16);
+function createCurvedSpreadPageGeometry(
+  side: "left" | "right"
+): THREE.PlaneGeometry {
+  const geo = new THREE.PlaneGeometry(PAGE_W, PAGE_H, SEG_X, SEG_Z);
   geo.rotateX(-Math.PI / 2);
   geo.translate(side === "right" ? PAGE_W / 2 : -PAGE_W / 2, 0, 0);
 
@@ -78,10 +95,9 @@ function createCurvedSpreadPageGeometry(side: "left" | "right"): THREE.PlaneGeom
   for (let i = 0; i < pos.count; i++) {
     const lx = pos.getX(i);
     const t = THREE.MathUtils.clamp(Math.abs(lx) / PAGE_W, 0, 1);
-    // Lengkungan S-curve kertas buku: turun rapi di lipatan tengah, membusur lembut di bagian baca
     const archY =
-      Math.sin(Math.pow(t, 0.72) * Math.PI) * 0.088 -
-      Math.pow(1 - t, 3) * 0.022;
+      Math.sin(Math.pow(t, 0.72) * Math.PI) * REST_ARCH -
+      Math.pow(1 - t, 3) * GUTTER_DIP;
     pos.setY(i, archY);
   }
   pos.needsUpdate = true;
@@ -90,34 +106,40 @@ function createCurvedSpreadPageGeometry(side: "left" | "right"): THREE.PlaneGeom
 }
 
 /**
- * Buat geometri sisi depan (+Y saat progress=0) atau belakang (-Y saat progress=0, +Y saat progress=1)
- * untuk lembar halaman yang membalik ala `shiarauzo/book-flip` tanpa membalik teks.
+ * Pasangan bidang depan/belakang untuk lembar yang dibalik.
+ * Sisi belakang membalik koordinat U secara matematis agar tulisan tangan terbaca benar setelah dibalik!
  */
-function createFlipLeafSideGeometry(face: "front" | "back"): THREE.PlaneGeometry {
-  const geo = new THREE.PlaneGeometry(PAGE_W, PAGE_H, 44, 18);
+function createFlipLeafSideGeometry(
+  face: "front" | "back"
+): THREE.PlaneGeometry {
+  const geo = new THREE.PlaneGeometry(PAGE_W, PAGE_H, SEG_X, SEG_Z);
   geo.rotateX(-Math.PI / 2);
   if (face === "back") {
+    // rotateZ(Math.PI) membalik normal ke -Y sekaligus menukar sisi X↔U sehingga
+    // saat lembar berputar +180° ke tumpukan kiri, tepi luar (x=-PAGE_W) ber-u=0 dan punggung (x=0) ber-u=1 (terbaca benar).
     geo.rotateZ(Math.PI);
-    geo.translate(PAGE_W / 2, -0.0012, 0);
+    geo.translate(PAGE_W / 2, -LEAF_HALF_GAP, 0);
   } else {
-    geo.translate(PAGE_W / 2, 0.0012, 0);
+    geo.translate(PAGE_W / 2, LEAF_HALF_GAP, 0);
   }
   geo.computeVertexNormals();
   return geo;
 }
 
 interface FlipUniforms {
-  uFlipProgress: { value: number };
+  uProgress: { value: number };
   uBend: { value: number };
+  uStackStartY: { value: number };
+  uStackEndY: { value: number };
   uLeafLift: { value: number };
 }
 
 /**
- * Suntikkan deformasi vertex & normal melengkung 3D ala shiarauzo/book-flip
- * ke MeshStandardMaterial: mendukung kurva sudut-bawah lebih dulu, belly udara reaktif kecepatan,
- * pemisahan lapisan kertas saat multi-flip beruntun, dan bayangan lipatan punggung buku (gutter AO).
+ * Menempelkan deformasi kertas vertex-shader ala book-flip ke MeshStandardMaterial
+ * via onBeforeCompile: mengubah posisi & normal vertex saja sehingga pencahayaan PBR,
+ * bayangan jatuh, dan offset tumpukan kiri/kanan bekerja akurat tanpa z-fighting.
  */
-function createCurvedFlipMaterial(
+function createBookFlipShaderMaterial(
   face: "front" | "back",
   uniforms: FlipUniforms
 ): THREE.MeshStandardMaterial {
@@ -127,33 +149,51 @@ function createCurvedFlipMaterial(
     metalness: 0.0,
     emissive: 0x161410,
     emissiveIntensity: 0.14,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
 
-  mat.customProgramCacheKey = () => `kenangan-book-flip-${face}-v3`;
+  mat.customProgramCacheKey = () => `kenangan-book-flip-pbr-${face}-v4`;
 
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uFlipProgress = uniforms.uFlipProgress;
+    shader.uniforms.uProgress = uniforms.uProgress;
     shader.uniforms.uBend = uniforms.uBend;
+    shader.uniforms.uStackStartY = uniforms.uStackStartY;
+    shader.uniforms.uStackEndY = uniforms.uStackEndY;
     shader.uniforms.uLeafLift = uniforms.uLeafLift;
     shader.uniforms.uPageW = { value: PAGE_W };
     shader.uniforms.uPageH = { value: PAGE_H };
+    shader.uniforms.uRestArch = { value: REST_ARCH };
+    shader.uniforms.uGutterDip = { value: GUTTER_DIP };
+    shader.uniforms.uCornerLead = { value: BOOK_FLIP_CONFIG.shader.cornerLeadWeight };
+    shader.uniforms.uEdgeLag = { value: BOOK_FLIP_CONFIG.shader.edgeLagWeight };
+    shader.uniforms.uBellyBase = { value: BOOK_FLIP_CONFIG.shader.midAirBellyBase };
+    shader.uniforms.uBellyBend = { value: BOOK_FLIP_CONFIG.shader.midAirBellyBend };
 
     const vertHeader = `
-      uniform float uFlipProgress;
+      uniform float uProgress;
       uniform float uBend;
+      uniform float uStackStartY;
+      uniform float uStackEndY;
       uniform float uLeafLift;
       uniform float uPageW;
       uniform float uPageH;
+      uniform float uRestArch;
+      uniform float uGutterDip;
+      uniform float uCornerLead;
+      uniform float uEdgeLag;
+      uniform float uBellyBase;
+      uniform float uBellyBend;
       varying float vGutterShade;
 
       float computeLeafAngle(float rx, float rz) {
         float r = clamp(abs(rx) / uPageW, 0.0, 1.0);
         float zNorm = clamp((rz / (uPageH * 0.5)) * 0.5 + 0.5, 0.0, 1.0);
-        float sinP = sin(uFlipProgress * 3.14159265);
-        // Sudut kanan-bawah bergerak lebih dulu + kelenturan tepi luar reaktif kecepatan balik
-        float bendAmp = mix(0.65, 1.35, clamp(uBend, 0.0, 1.0));
-        float leadLag = sinP * bendAmp * (0.145 * r * (0.32 + 0.68 * zNorm) - 0.155 * pow(r, 1.32));
-        float eff = clamp(uFlipProgress + leadLag, 0.0, 1.0);
+        float sinP = sin(clamp(uProgress, 0.0, 1.0) * 3.14159265);
+        float bendAmp = mix(0.62, 1.38, clamp(uBend, 0.0, 1.3));
+        float leadLag = sinP * bendAmp * (uCornerLead * r * (0.34 + 0.66 * zNorm) - uEdgeLag * pow(r, 1.32));
+        float eff = clamp(uProgress + leadLag, 0.0, 1.0);
         return eff * 3.14159265;
       }
     `;
@@ -168,7 +208,8 @@ function createCurvedFlipMaterial(
       float nCos = cos(nAngle);
       float nSin = sin(nAngle);
       float nr = clamp(abs(position.x) / uPageW, 0.0, 1.0);
-      float slopeTilt = cos(nr * 3.14159265) * 0.16 * (1.0 - sin(uFlipProgress * 3.14159265) * 0.45);
+      float nSinTurn = sin(clamp(uProgress, 0.0, 1.0) * 3.14159265);
+      float slopeTilt = cos(nr * 3.14159265) * 0.165 * (1.0 - nSinTurn * 0.42);
       vec3 bentNorm = normalize(vec3(objectNormal.x - slopeTilt, objectNormal.y, objectNormal.z));
       objectNormal = vec3(
         bentNorm.x * nCos - bentNorm.y * nSin,
@@ -183,23 +224,26 @@ function createCurvedFlipMaterial(
       `
       #include <begin_vertex>
       float rDist = clamp(abs(position.x) / uPageW, 0.0, 1.0);
-      vGutterShade = mix(0.8, 1.0, smoothstep(0.0, 0.24, rDist));
+      vGutterShade = mix(0.80, 1.0, smoothstep(0.0, 0.24, rDist));
+
+      float clampedP = clamp(uProgress, 0.0, 1.0);
       float flipAng = computeLeafAngle(position.x, position.z);
       float cAng = cos(flipAng);
       float sAng = sin(flipAng);
-      float sinTurn = sin(uFlipProgress * 3.14159265);
+      float sinTurn = sin(clampedP * 3.14159265);
 
-      float restArch = sin(pow(rDist, 0.72) * 3.14159265) * 0.088 - pow(1.0 - rDist, 3.0) * 0.022;
-      float midAirBelly = sinTurn * sin(rDist * 3.14159265) * (0.21 + 0.09 * clamp(uBend, 0.0, 1.0));
+      float restArch = sin(pow(rDist, 0.72) * 3.14159265) * uRestArch - pow(1.0 - rDist, 3.0) * uGutterDip;
+      float midAirBelly = sinTurn * sin(rDist * 3.14159265) * (uBellyBase + uBellyBend * clamp(uBend, 0.0, 1.3));
+      // Offset tumpukan dihitung langsung di shader agar lembar mendarat tepat DI ATAS tumpukan tujuan
+      float stackY = mix(uStackStartY, uStackEndY, smoothstep(0.0, 1.0, clampedP));
 
       float sSpine = position.x;
       float ny = position.y;
       float rxPos = sSpine * cAng - ny * sAng;
       float ryPos = sSpine * sAng + ny * cAng;
 
-      // Tambahkan lengkungan lembah buku, belly tengah di udara, dan lift antar-lembar
-      ryPos += restArch * (1.0 - 0.35 * sinTurn) + midAirBelly + sinTurn * uLeafLift;
-      rxPos += (-sAng) * (sinTurn * sin(rDist * 3.14159265) * 0.078);
+      ryPos += stackY + restArch * (1.0 - 0.34 * sinTurn) + midAirBelly + sinTurn * uLeafLift;
+      rxPos += (-sAng) * (sinTurn * sin(rDist * 3.14159265) * 0.075);
 
       transformed = vec3(rxPos, ryPos, position.z);
       `
@@ -219,21 +263,17 @@ function createCurvedFlipMaterial(
   return mat;
 }
 
-const LEAF_POOL_SIZE = 6;
-
 interface FlipLeafSlot {
   group: THREE.Group;
   frontMat: THREE.MeshStandardMaterial;
   backMat: THREE.MeshStandardMaterial;
   uniforms: FlipUniforms;
   active: boolean;
+  isDragSlot: boolean;
   dir: 1 | -1;
   fromSpread: number;
   toSpread: number;
-  progress: number;
-  delayRemaining: number;
-  speedMultiplier: number;
-  layerOrder: number;
+  tween: gsap.core.Tween | null;
 }
 
 export function BukuKenanganSceneHD({
@@ -277,18 +317,34 @@ export function BukuKenanganSceneHD({
   const triggerFlipRef = React.useRef<
     ((fromIdx: number, toIdx: number) => void) | null
   >(null);
-  const applyRestingSpreadRef = React.useRef<((idx: number) => void) | null>(null);
+  const animateCoverRef = React.useRef<((open: boolean) => void) | null>(null);
+  const applyRestingSpreadRef = React.useRef<((idx: number) => void) | null>(
+    null
+  );
+  const suppressNextEffectFlipRef = React.useRef(false);
   const prevSpreadIndexRef = React.useRef(activeSpreadIndex);
+  const prevOpenStateRef = React.useRef(isBookOpen);
 
   React.useEffect(() => {
     const prev = prevSpreadIndexRef.current;
     if (prev !== activeSpreadIndex) {
       prevSpreadIndexRef.current = activeSpreadIndex;
+      if (suppressNextEffectFlipRef.current) {
+        suppressNextEffectFlipRef.current = false;
+        return;
+      }
       triggerFlipRef.current?.(prev, activeSpreadIndex);
     } else {
       applyRestingSpreadRef.current?.(activeSpreadIndex);
     }
   }, [activeSpreadIndex, spreads]);
+
+  React.useEffect(() => {
+    if (prevOpenStateRef.current !== isBookOpen) {
+      prevOpenStateRef.current = isBookOpen;
+      animateCoverRef.current?.(isBookOpen);
+    }
+  }, [isBookOpen]);
 
   React.useEffect(() => {
     syncCoverTextureRef.current?.(coverPhotoUrl, coverCaption);
@@ -299,11 +355,24 @@ export function BukuKenanganSceneHD({
       scene,
       camera,
       renderer,
+      requestRender,
     }: {
       scene: THREE.Scene;
       camera: THREE.PerspectiveCamera;
       renderer: THREE.WebGLRenderer;
+      requestRender: () => void;
     }) => {
+      renderer.setPixelRatio(
+        Math.min(
+          window.devicePixelRatio || 1,
+          BOOK_FLIP_CONFIG.performance.maxPixelRatio
+        )
+      );
+      camera.near = BOOK_FLIP_CONFIG.camera.near;
+      camera.far = BOOK_FLIP_CONFIG.camera.far;
+      camera.fov = BOOK_FLIP_CONFIG.camera.fov;
+      camera.updateProjectionMatrix();
+
       const wood = createWoodTextures(renderer, "warm");
       const darkWood = createWoodTextures(renderer, "dark");
       const pageEdgeTex = createPageEdgeTexture(renderer);
@@ -313,8 +382,15 @@ export function BukuKenanganSceneHD({
         coverCaptionRef.current
       );
 
-      // Pencahayaan studio reading desk yang hangat & nyata (diperkuat dari sisi atas-depan)
-      const readingKeySpot = new THREE.SpotLight(0xfff1d6, 2.8, 18, Math.PI * 0.28, 0.55, 1.2);
+      // Pencahayaan studio reading desk hangat & nyata
+      const readingKeySpot = new THREE.SpotLight(
+        0xfff1d6,
+        2.75,
+        18,
+        Math.PI * 0.28,
+        0.55,
+        1.2
+      );
       readingKeySpot.position.set(1.8, 5.2, 3.6);
       readingKeySpot.target.position.set(0, 0, 0);
       scene.add(readingKeySpot, readingKeySpot.target);
@@ -334,15 +410,13 @@ export function BukuKenanganSceneHD({
       deskMesh.receiveShadow = true;
       scene.add(deskMesh);
 
-      const deskMat = new THREE.MeshStandardMaterial({
-        color: 0x26231f,
-        roughness: 0.88,
-        metalness: 0.02,
-      });
-      // Alas meja kulit (Leather Desk Blotter) memberi kontras nyata di bawah buku
       const deskBlotter = new THREE.Mesh(
         new THREE.BoxGeometry(6.2, 0.016, 3.9),
-        deskMat
+        new THREE.MeshStandardMaterial({
+          color: 0x26231f,
+          roughness: 0.88,
+          metalness: 0.02,
+        })
       );
       deskBlotter.position.set(0, -0.012, 0.04);
       deskBlotter.receiveShadow = true;
@@ -359,21 +433,25 @@ export function BukuKenanganSceneHD({
       deskFrame.position.set(0, -0.18, 0);
       scene.add(deskFrame);
 
-      // Bayangan kontak buku di atas alas meja
+      // Bayangan kontak lembut buku di atas alas meja
       const bookShadow = new THREE.Mesh(
         new THREE.PlaneGeometry(5.2, 3.45),
         new THREE.MeshBasicMaterial({
           color: 0x0f0e0c,
           transparent: true,
-          opacity: 0.48,
+          opacity: 0.46,
           depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: 2,
+          polygonOffsetUnits: 2,
         })
       );
       bookShadow.rotation.x = -Math.PI / 2;
-      bookShadow.position.set(0, -0.002, 0.05);
+      bookShadow.position.set(0, -0.001, 0.05);
+      bookShadow.renderOrder = 0;
       scene.add(bookShadow);
 
-      // Properti Meja Belajar: Cangkir Keramik, Pulpen Klasik, & Lampu Pijar Hangat
+      // Properti meja: cangkir & pulpen klasik
       const mugGroup = new THREE.Group();
       mugGroup.position.set(-3.12, 0.0, -1.12);
       const coasterMesh = new THREE.Mesh(
@@ -382,7 +460,11 @@ export function BukuKenanganSceneHD({
       );
       const mugCup = new THREE.Mesh(
         new THREE.CylinderGeometry(0.3, 0.25, 0.34, 24),
-        new THREE.MeshStandardMaterial({ color: 0xeee9dd, roughness: 0.26, metalness: 0.04 })
+        new THREE.MeshStandardMaterial({
+          color: 0xeee9dd,
+          roughness: 0.26,
+          metalness: 0.04,
+        })
       );
       mugCup.position.y = 0.17;
       mugCup.castShadow = true;
@@ -406,27 +488,38 @@ export function BukuKenanganSceneHD({
       penGroup.rotation.y = 0.18;
       const penBody = new THREE.Mesh(
         new THREE.CylinderGeometry(0.03, 0.026, 1.55, 16),
-        new THREE.MeshStandardMaterial({ color: 0x1e2022, roughness: 0.32, metalness: 0.32 })
+        new THREE.MeshStandardMaterial({
+          color: 0x1e2022,
+          roughness: 0.32,
+          metalness: 0.32,
+        })
       );
       penBody.rotation.x = Math.PI / 2;
       penBody.castShadow = true;
       const penTip = new THREE.Mesh(
         new THREE.ConeGeometry(0.026, 0.15, 16),
-        new THREE.MeshStandardMaterial({ color: 0xd6b572, roughness: 0.22, metalness: 0.88 })
+        new THREE.MeshStandardMaterial({
+          color: 0xd6b572,
+          roughness: 0.22,
+          metalness: 0.88,
+        })
       );
       penTip.rotation.x = -Math.PI / 2;
       penTip.position.z = -0.84;
       const penClip = new THREE.Mesh(
         new THREE.BoxGeometry(0.015, 0.022, 0.38),
-        new THREE.MeshStandardMaterial({ color: 0xd6b572, roughness: 0.22, metalness: 0.88 })
+        new THREE.MeshStandardMaterial({
+          color: 0xd6b572,
+          roughness: 0.22,
+          metalness: 0.88,
+        })
       );
       penClip.position.set(0, 0.028, 0.42);
       penGroup.add(penBody, penTip, penClip);
       scene.add(penGroup);
 
-      // Untaian Lampu Pijar Hangat di bagian belakang meja
+      // Untaian lampu pijar hangat statis (tidak membakar GPU saat buku diam)
       const fairyGroup = new THREE.Group();
-      const fairyBulbs: THREE.Mesh[] = [];
       const bulbPositions: [number, number, number][] = [
         [-3.0, 0.035, -1.78],
         [-2.05, 0.035, -1.88],
@@ -447,14 +540,13 @@ export function BukuKenanganSceneHD({
         );
         bulb.position.set(bx, by, bz);
         fairyGroup.add(bulb);
-        fairyBulbs.push(bulb);
 
         const halo = new THREE.Mesh(
           haloGeo,
           new THREE.MeshBasicMaterial({
             color: 0xd9a441,
             transparent: true,
-            opacity: 0.18,
+            opacity: 0.16,
             depthWrite: false,
           })
         );
@@ -464,7 +556,7 @@ export function BukuKenanganSceneHD({
       scene.add(fairyGroup);
 
       // ================================================================
-      // 2. GRUP BUKU FISIK 3D REALISTIS (ALA SHIARAUZO/BOOK-FLIP)
+      // 2. BUKU FISIK 3D REALISTIS
       // ================================================================
       const bookRoot = new THREE.Group();
       bookRoot.position.set(0, 0.004, 0);
@@ -475,33 +567,28 @@ export function BukuKenanganSceneHD({
         roughness: 0.72,
         metalness: 0.08,
       });
-
       const leatherSpineMat = new THREE.MeshStandardMaterial({
         color: 0x1b1a18,
         roughness: 0.54,
         metalness: 0.14,
       });
-
       const brassMat = new THREE.MeshStandardMaterial({
         color: 0xcab07a,
         roughness: 0.28,
         metalness: 0.78,
       });
-
       const pageBlockMat = new THREE.MeshStandardMaterial({
         color: 0xf0ebe0,
         map: pageEdgeTex,
         roughness: 0.85,
         metalness: 0.02,
       });
-
       const ribbonMat = new THREE.MeshStandardMaterial({
         color: 0x8f2929,
         roughness: 0.62,
         metalness: 0.04,
       });
 
-      // Sampul Kanan & Kiri
       const rightHardcover = new THREE.Mesh(
         new THREE.BoxGeometry(PAGE_W + 0.16, 0.045, PAGE_H + 0.18),
         clothCoverMat
@@ -520,7 +607,6 @@ export function BukuKenanganSceneHD({
       leftHardcover.receiveShadow = true;
       bookRoot.add(leftHardcover);
 
-      // Pelindung Sudut Kuningan Nyata
       const cornerProtectorsGroup = new THREE.Group();
       const cornerGeo = new THREE.BoxGeometry(0.18, 0.052, 0.18);
       const outerX = PAGE_W + 0.065;
@@ -537,10 +623,19 @@ export function BukuKenanganSceneHD({
       });
       bookRoot.add(cornerProtectorsGroup);
 
-      // Punggung Buku Tengah Lengkung (Spine Saddle + 5 Raised Binding Ribs)
+      // Punggung Buku
       const spineGroup = new THREE.Group();
       const spineCenter = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.08, PAGE_H + 0.18, 18, 1, false, 0, Math.PI),
+        new THREE.CylinderGeometry(
+          0.08,
+          0.08,
+          PAGE_H + 0.18,
+          18,
+          1,
+          false,
+          0,
+          Math.PI
+        ),
         leatherSpineMat
       );
       spineCenter.rotation.x = Math.PI / 2;
@@ -569,10 +664,8 @@ export function BukuKenanganSceneHD({
       const bottomBand = new THREE.Mesh(headbandGeo, ribbonMat);
       bottomBand.position.set(0, 0.068, PAGE_H / 2 - 0.01);
       spineGroup.add(topBand, bottomBand);
-
       bookRoot.add(spineGroup);
 
-      // Pita Pembatas Halaman Satin (Ribbon Bookmark) keluar di bagian bawah buku
       const ribbonTail = new THREE.Mesh(
         new THREE.BoxGeometry(0.052, 0.008, 0.68),
         ribbonMat
@@ -581,7 +674,7 @@ export function BukuKenanganSceneHD({
       ribbonTail.rotation.y = 0.09;
       bookRoot.add(ribbonTail);
 
-      // Blok Ketebalan Kertas Dinamis (Kiri & Kanan menyesuaikan halaman aktif secara halus!)
+      // Blok Ketebalan Halaman Kiri & Kanan
       const leftBlockMesh = new THREE.Mesh(
         new THREE.BoxGeometry(PAGE_W, 0.12, PAGE_H),
         pageBlockMat
@@ -598,7 +691,7 @@ export function BukuKenanganSceneHD({
       rightBlockMesh.receiveShadow = true;
       bookRoot.add(rightBlockMesh);
 
-      // Lembaran Kertas Statis Kiri & Kanan (Melengkung 3D realistis)
+      // Lembar Statis Kiri & Kanan
       const leftPageGeo = createCurvedSpreadPageGeometry("left");
       const rightPageGeo = createCurvedSpreadPageGeometry("right");
 
@@ -619,13 +712,14 @@ export function BukuKenanganSceneHD({
 
       const leftPageMesh = new THREE.Mesh(leftPageGeo, leftPageMat);
       leftPageMesh.receiveShadow = true;
+      leftPageMesh.renderOrder = 1;
       bookRoot.add(leftPageMesh);
 
       const rightPageMesh = new THREE.Mesh(rightPageGeo, rightPageMat);
       rightPageMesh.receiveShadow = true;
+      rightPageMesh.renderOrder = 1;
       bookRoot.add(rightPageMesh);
 
-      // Bayangan Lembah Lipatan Tengah (Center Gutter Valley Shadow)
       const spineShadowStrip = new THREE.Mesh(
         new THREE.PlaneGeometry(0.24, PAGE_H - 0.02),
         new THREE.MeshBasicMaterial({
@@ -637,10 +731,11 @@ export function BukuKenanganSceneHD({
       );
       spineShadowStrip.rotation.x = -Math.PI / 2;
       spineShadowStrip.position.set(0, 0.156, 0);
+      spineShadowStrip.renderOrder = 2;
       bookRoot.add(spineShadowStrip);
 
       // ================================================================
-      // 3. POOL MULTI-LEMBAR PEMBALIK HALAMAN BERUNTUN (BOOK-FLIP CASCADE)
+      // 3. POOL LEMBARAN BERBASIS VERTEX SHADER + GSAP + DRAG-TO-FLIP
       // ================================================================
       const sharedFlipFrontGeo = createFlipLeafSideGeometry("front");
       const sharedFlipBackGeo = createFlipLeafSideGeometry("back");
@@ -651,17 +746,21 @@ export function BukuKenanganSceneHD({
         { length: LEAF_POOL_SIZE },
         (_, i) => {
           const uniforms: FlipUniforms = {
-            uFlipProgress: { value: 0 },
-            uBend: { value: 0.8 },
-            uLeafLift: { value: i * 0.012 },
+            uProgress: { value: 0 },
+            uBend: { value: BOOK_FLIP_CONFIG.shader.baseBend },
+            uStackStartY: { value: 0.16 },
+            uStackEndY: { value: 0.16 },
+            uLeafLift: { value: i * 0.014 },
           };
-          const frontMat = createCurvedFlipMaterial("front", uniforms);
-          const backMat = createCurvedFlipMaterial("back", uniforms);
+          const frontMat = createBookFlipShaderMaterial("front", uniforms);
+          const backMat = createBookFlipShaderMaterial("back", uniforms);
           const group = new THREE.Group();
           const frontMesh = new THREE.Mesh(sharedFlipFrontGeo, frontMat);
           const backMesh = new THREE.Mesh(sharedFlipBackGeo, backMat);
           frontMesh.castShadow = true;
           backMesh.castShadow = true;
+          frontMesh.renderOrder = 3 + i;
+          backMesh.renderOrder = 3 + i;
           group.add(frontMesh, backMesh);
           group.visible = false;
           flipPoolGroup.add(group);
@@ -671,19 +770,17 @@ export function BukuKenanganSceneHD({
             backMat,
             uniforms,
             active: false,
+            isDragSlot: false,
             dir: 1,
             fromSpread: 0,
             toSpread: 0,
-            progress: 0,
-            delayRemaining: 0,
-            speedMultiplier: 1,
-            layerOrder: 0,
+            tween: null,
           };
         }
       );
 
       // ================================================================
-      // 4. SAMPUL DEPAN BERENGSEL (SAAT BUKU TERTUTUP -> TERBUKA MULUS)
+      // 4. SAMPUL KERAS BERENGSEL (WEIGHTED OVERSHOOT + SETTLE)
       // ================================================================
       const closedCoverHinge = new THREE.Group();
       closedCoverHinge.position.set(0, 0.21, 0);
@@ -696,7 +793,10 @@ export function BukuKenanganSceneHD({
       closedCoverBoard.castShadow = true;
       closedCoverHinge.add(closedCoverBoard);
 
-      const closedFrontCoverGeo = new THREE.PlaneGeometry(PAGE_W + 0.1, PAGE_H + 0.12);
+      const closedFrontCoverGeo = new THREE.PlaneGeometry(
+        PAGE_W + 0.1,
+        PAGE_H + 0.12
+      );
       closedFrontCoverGeo.rotateX(-Math.PI / 2);
       closedFrontCoverGeo.translate((PAGE_W + 0.12) / 2, 0, 0);
       const closedFrontCoverMat = new THREE.MeshStandardMaterial({
@@ -713,7 +813,10 @@ export function BukuKenanganSceneHD({
       closedFrontCoverMesh.position.y = 0.0015;
       closedCoverHinge.add(closedFrontCoverMesh);
 
-      const innerCoverGeo = new THREE.PlaneGeometry(PAGE_W + 0.1, PAGE_H + 0.12);
+      const innerCoverGeo = new THREE.PlaneGeometry(
+        PAGE_W + 0.1,
+        PAGE_H + 0.12
+      );
       innerCoverGeo.rotateX(Math.PI / 2);
       innerCoverGeo.translate((PAGE_W + 0.12) / 2, 0, 0);
       const innerCoverMesh = new THREE.Mesh(
@@ -722,11 +825,10 @@ export function BukuKenanganSceneHD({
       );
       innerCoverMesh.position.y = -0.047;
       closedCoverHinge.add(innerCoverMesh);
-
       bookRoot.add(closedCoverHinge);
 
-      // Hit-proxy datar tak terlihat untuk raycast klik kiri / kanan yang akurat 100%
-      const hitProxyGeo = new THREE.PlaneGeometry(PAGE_W * 2.05, PAGE_H * 1.04);
+      // Bidang backdrop datar tak terlihat untuk hit-test stabil (bebas distorsi vertex shader GPU)
+      const hitProxyGeo = new THREE.PlaneGeometry(PAGE_W * 2.15, PAGE_H * 1.08);
       hitProxyGeo.rotateX(-Math.PI / 2);
       const hitProxyMesh = new THREE.Mesh(
         hitProxyGeo,
@@ -735,20 +837,21 @@ export function BukuKenanganSceneHD({
       hitProxyMesh.position.set(0, 0.16, 0);
       bookRoot.add(hitProxyMesh);
 
-      syncCoverTextureRef.current = (photoUrl?: string, caption?: string) => {
-        const nextCover = createBookCoverTextures(renderer, photoUrl, caption);
-        if (closedFrontCoverMat.map) {
-          closedFrontCoverMat.map.dispose();
-        }
-        closedFrontCoverMat.map = nextCover.map;
-        closedFrontCoverMat.needsUpdate = true;
-      };
-
-      // Cache Tekstur Spread lebih lebar (window 8 halaman) agar flip beruntun tanpa jeda
+      // ================================================================
+      // 5. LAZY TEXTURE CACHE DENGAN MIPMAPS & ANISOTROPY MAKSIMAL
+      // ================================================================
       const textureCache = new Map<
         number,
         { left: THREE.CanvasTexture; right: THREE.CanvasTexture }
       >();
+
+      const enhancePageTexture = (tex: THREE.CanvasTexture) => {
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        tex.needsUpdate = true;
+        return tex;
+      };
 
       const getSpreadTextures = (idx: number) => {
         const list = spreadsRef.current;
@@ -757,21 +860,184 @@ export function BukuKenanganSceneHD({
         if (!textureCache.has(safeIdx)) {
           const sp = list[safeIdx]!;
           textureCache.set(safeIdx, {
-            left: createBookPageTexture(sp.leftPage, renderer),
-            right: createBookPageTexture(sp.rightPage, renderer),
+            left: enhancePageTexture(createBookPageTexture(sp.leftPage, renderer)),
+            right: enhancePageTexture(
+              createBookPageTexture(sp.rightPage, renderer)
+            ),
           });
         }
         return textureCache.get(safeIdx)!;
       };
 
       const pruneTextureCache = (centerIdx: number) => {
+        const radius = BOOK_FLIP_CONFIG.performance.textureCacheRadius;
         for (const [k, texPair] of textureCache.entries()) {
-          if (Math.abs(k - centerIdx) > 8) {
+          if (Math.abs(k - centerIdx) > radius) {
             texPair.left.dispose();
             texPair.right.dispose();
             textureCache.delete(k);
           }
         }
+      };
+
+      // State fisik buku & kamera yang dikendalikan GSAP (render on-demand!)
+      const rigState: {
+        coverOpen: number;
+        readSpread: number;
+        camX: number;
+        camY: number;
+        camZ: number;
+        lookY: number;
+        lookZ: number;
+        parallaxX: number;
+        parallaxY: number;
+        idleSwayStrength: number;
+      } = {
+        coverOpen: isOpenRef.current ? 1 : 0,
+        readSpread: activeSpreadRef.current,
+        camX: BOOK_FLIP_CONFIG.camera.closedPos.x,
+        camY: isOpenRef.current
+          ? BOOK_FLIP_CONFIG.camera.openPos.y
+          : BOOK_FLIP_CONFIG.camera.closedPos.y,
+        camZ: isOpenRef.current
+          ? BOOK_FLIP_CONFIG.camera.openPos.z
+          : BOOK_FLIP_CONFIG.camera.closedPos.z,
+        lookY: isOpenRef.current
+          ? BOOK_FLIP_CONFIG.camera.lookAtOpen.y
+          : BOOK_FLIP_CONFIG.camera.lookAtClosed.y,
+        lookZ: isOpenRef.current
+          ? BOOK_FLIP_CONFIG.camera.lookAtOpen.z
+          : BOOK_FLIP_CONFIG.camera.lookAtClosed.z,
+        parallaxX: 0,
+        parallaxY: 0,
+        idleSwayStrength: isOpenRef.current ? 0 : 1,
+      };
+
+      let viewportAspect =
+        (renderer.domElement.clientWidth || 800) /
+        Math.max(1, renderer.domElement.clientHeight || 560);
+      let idleSwayPhase = 0;
+
+      const getStackHeights = (spreadVal: number, openVal: number) => {
+        const totalSpreads = Math.max(1, spreadsRef.current.length - 1);
+        const readRatio = THREE.MathUtils.clamp(
+          spreadVal / totalSpreads,
+          0.05,
+          0.95
+        );
+        const leftH =
+          Math.max(MIN_STACK_H, MAX_STACK_H * readRatio) *
+          THREE.MathUtils.clamp(openVal, 0, 1);
+        const rightH =
+          openVal > 0.12
+            ? Math.max(MIN_STACK_H, MAX_STACK_H * (1 - readRatio))
+            : MAX_STACK_H;
+        const leftTopY = 0.046 + leftH;
+        const rightTopY = 0.046 + rightH;
+        return { leftH, rightH, leftTopY, rightTopY };
+      };
+
+      const computeCameraTargets = (open: boolean) => {
+        const cfg = BOOK_FLIP_CONFIG.camera;
+        const base = open ? cfg.openPos : cfg.closedPos;
+        const look = open ? cfg.lookAtOpen : cfg.lookAtClosed;
+        // Portrait aspect ratio reframe agar seluruh spread buku selalu terbaca utuh tanpa terpotong
+        const portraitFactor =
+          viewportAspect < 1.12
+            ? THREE.MathUtils.clamp((1.12 - viewportAspect) / 0.62, 0, 1.35)
+            : 0;
+        return {
+          y: base.y + portraitFactor * cfg.portraitExtraHeight,
+          z: base.z + portraitFactor * cfg.portraitExtraDistance,
+          lookY: look.y,
+          lookZ: look.z,
+        };
+      };
+
+      const syncBookPose = () => {
+        const openVal = rigState.coverOpen;
+        const clampedOpen = THREE.MathUtils.clamp(openVal, 0, 1);
+        const isMostlyOpen = clampedOpen > 0.16;
+
+        const { leftH, rightH, leftTopY, rightTopY } = getStackHeights(
+          rigState.readSpread,
+          clampedOpen
+        );
+        const midTopY = Math.max(leftTopY, rightTopY) + 0.004;
+
+        leftBlockMesh.visible = isMostlyOpen;
+        leftBlockMesh.scale.y = Math.max(0.15, leftH / 0.12);
+        leftBlockMesh.position.set(-(PAGE_W / 2 + 0.01), 0.045 + leftH / 2, 0);
+
+        rightBlockMesh.scale.y = Math.max(0.15, rightH / 0.12);
+        rightBlockMesh.position.set(PAGE_W / 2 + 0.01, 0.045 + rightH / 2, 0);
+
+        leftPageMesh.visible = clampedOpen > 0.28;
+        leftPageMesh.position.set(-0.01, leftTopY, 0);
+
+        rightPageMesh.visible = isMostlyOpen;
+        rightPageMesh.position.set(0.01, rightTopY, 0);
+
+        spineShadowStrip.visible = isMostlyOpen;
+        spineShadowStrip.position.y = midTopY - 0.001;
+
+        leftHardcover.visible = isMostlyOpen;
+        cornerProtectorsGroup.visible = isMostlyOpen;
+
+        // Engsel sampul keras mendukung sedikit overshoot saat membuka agar terasa berbobot
+        closedCoverHinge.visible = clampedOpen < 0.992;
+        closedCoverHinge.position.y = 0.048 + rightH + 0.022;
+        closedCoverHinge.rotation.z =
+          THREE.MathUtils.clamp(openVal, 0, 1.03) *
+          BOOK_FLIP_CONFIG.cover.openAngleRad;
+
+        bookRoot.position.x = THREE.MathUtils.lerp(
+          -PAGE_W * 0.5,
+          0,
+          clampedOpen
+        );
+        leftHardcover.rotation.z = THREE.MathUtils.lerp(0, -0.015, clampedOpen);
+        rightHardcover.rotation.z = THREE.MathUtils.lerp(0, 0.015, clampedOpen);
+
+        // Idle sway lembut saat tertutup dan memudar habis saat buku dibuka
+        const swayX =
+          Math.sin(idleSwayPhase) *
+          BOOK_FLIP_CONFIG.camera.idleSwayAmpX *
+          rigState.idleSwayStrength;
+        const swayY =
+          Math.cos(idleSwayPhase * 0.72) *
+          BOOK_FLIP_CONFIG.camera.idleSwayAmpY *
+          rigState.idleSwayStrength;
+
+        camera.position.set(
+          rigState.camX + rigState.parallaxX + swayX,
+          rigState.camY + rigState.parallaxY + swayY,
+          rigState.camZ
+        );
+        camera.lookAt(0, rigState.lookY, rigState.lookZ);
+      };
+
+      const initialCam = computeCameraTargets(isOpenRef.current);
+      rigState.camY = initialCam.y;
+      rigState.camZ = initialCam.z;
+      rigState.lookY = initialCam.lookY;
+      rigState.lookZ = initialCam.lookZ;
+      syncBookPose();
+
+      syncCoverTextureRef.current = (photoUrl?: string, caption?: string) => {
+        const nextCover = createBookCoverTextures(renderer, photoUrl, caption);
+        if (closedFrontCoverMat.map) closedFrontCoverMat.map.dispose();
+        closedFrontCoverMat.map = nextCover.map;
+        closedFrontCoverMat.needsUpdate = true;
+        requestRender();
+      };
+
+      const releaseSlot = (slot: FlipLeafSlot) => {
+        slot.tween?.kill();
+        slot.tween = null;
+        slot.active = false;
+        slot.isDragSlot = false;
+        slot.group.visible = false;
       };
 
       const applyRestingSpread = (idx: number) => {
@@ -789,35 +1055,198 @@ export function BukuKenanganSceneHD({
           rightPageMat.needsUpdate = true;
         }
         for (const slot of leafPool) {
-          slot.active = false;
-          slot.group.visible = false;
+          releaseSlot(slot);
         }
+        rigState.readSpread = safeIdx;
+        syncBookPose();
+        requestRender();
       };
-
       applyRestingSpreadRef.current = applyRestingSpread;
 
-      let nextLayerOrder = 1;
+      let coverTween: gsap.core.Tween | null = null;
+      let camTween: gsap.core.Tween | null = null;
+      let spreadStackTween: gsap.core.Tween | null = null;
+      let parallaxTween: gsap.core.Tween | null = null;
 
-      triggerFlipRef.current = (fromIdx: number, toIdx: number) => {
+      const animateCover = (open: boolean) => {
+        const reduced = prefersReducedMotion();
+        const camTargets = computeCameraTargets(open);
+        coverTween?.kill();
+        camTween?.kill();
+
+        if (reduced) {
+          rigState.coverOpen = open ? 1 : 0;
+          rigState.idleSwayStrength = 0;
+          rigState.camY = camTargets.y;
+          rigState.camZ = camTargets.z;
+          rigState.lookY = camTargets.lookY;
+          rigState.lookZ = camTargets.lookZ;
+          syncBookPose();
+          requestRender();
+          return;
+        }
+
+        coverTween = gsap.to(rigState, {
+          coverOpen: open ? 1 : 0,
+          idleSwayStrength: open ? 0 : 1,
+          duration: open
+            ? BOOK_FLIP_CONFIG.cover.openDurationSec
+            : BOOK_FLIP_CONFIG.cover.closeDurationSec,
+          ease: open
+            ? BOOK_FLIP_CONFIG.cover.openEase
+            : BOOK_FLIP_CONFIG.cover.closeEase,
+          onUpdate: () => {
+            syncBookPose();
+            requestRender();
+          },
+          onComplete: () => {
+            rigState.coverOpen = open ? 1 : 0;
+            syncBookPose();
+            requestRender();
+          },
+        });
+
+        camTween = gsap.to(rigState, {
+          camY: camTargets.y,
+          camZ: camTargets.z,
+          lookY: camTargets.lookY,
+          lookZ: camTargets.lookZ,
+          duration: BOOK_FLIP_CONFIG.camera.reframeDurationSec,
+          ease: BOOK_FLIP_CONFIG.camera.reframeEase,
+          onUpdate: () => {
+            syncBookPose();
+            requestRender();
+          },
+        });
+      };
+      animateCoverRef.current = animateCover;
+
+      const allocateLeafSlot = (dir: 1 | -1) => {
+        let slot = leafPool.find((s) => !s.active);
+        if (!slot) {
+          slot = [...leafPool].sort((a, b) =>
+            dir === 1
+              ? b.uniforms.uProgress.value - a.uniforms.uProgress.value
+              : a.uniforms.uProgress.value - b.uniforms.uProgress.value
+          )[0]!;
+          releaseSlot(slot);
+        }
+        return slot;
+      };
+
+      const configureLeafForTurn = (
+        slot: FlipLeafSlot,
+        fromIdx: number,
+        toIdx: number,
+        dir: 1 | -1,
+        layerOffsetIdx: number
+      ) => {
+        const fromTex = getSpreadTextures(fromIdx);
+        const toTex = getSpreadTextures(toIdx);
+        if (!fromTex || !toTex) return false;
+
+        const { leftTopY: startLeftY, rightTopY: startRightY } =
+          getStackHeights(fromIdx, 1);
+        const { leftTopY: endLeftY, rightTopY: endRightY } = getStackHeights(
+          toIdx,
+          1
+        );
+
+        slot.active = true;
+        slot.dir = dir;
+        slot.fromSpread = fromIdx;
+        slot.toSpread = toIdx;
+
+        // Offset tumpukan dihitung di shader (uStackStartY -> uStackEndY) agar selalu mendarat DI ATAS tumpukan tujuan
+        const layerBump = (layerOffsetIdx + 1) * STACK_LAYER_STEP;
+        slot.uniforms.uStackStartY.value = startRightY + layerBump;
+        slot.uniforms.uStackEndY.value = endLeftY + layerBump;
+        slot.uniforms.uLeafLift.value = (layerOffsetIdx % 4) * 0.02;
+
+        if (dir === 1) {
+          rightPageMat.map = toTex.right;
+          rightPageMat.needsUpdate = true;
+          slot.frontMat.map = fromTex.right;
+          slot.frontMat.needsUpdate = true;
+          slot.backMat.map = toTex.left;
+          slot.backMat.needsUpdate = true;
+          slot.uniforms.uProgress.value = 0;
+        } else {
+          leftPageMat.map = toTex.left;
+          leftPageMat.needsUpdate = true;
+          slot.frontMat.map = toTex.right;
+          slot.frontMat.needsUpdate = true;
+          slot.backMat.map = fromTex.left;
+          slot.backMat.needsUpdate = true;
+          slot.uniforms.uProgress.value = 1;
+          // Untuk arah balik (kiri ke kanan), ujung kanan = endRightY
+          slot.uniforms.uStackStartY.value = endRightY + layerBump;
+          slot.uniforms.uStackEndY.value = startLeftY + layerBump;
+        }
+
+        slot.uniforms.uBend.value = BOOK_FLIP_CONFIG.shader.baseBend;
+        slot.group.visible = true;
+        return true;
+      };
+
+      const finishLeafSettle = (slot: FlipLeafSlot, committed: boolean) => {
+        const settledSpread = committed ? slot.toSpread : slot.fromSpread;
+        const settledTex = getSpreadTextures(settledSpread);
+        releaseSlot(slot);
+
+        const anyStillActive = leafPool.some((s) => s.active);
+        if (settledTex) {
+          if (committed) {
+            if (slot.dir === 1) {
+              leftPageMat.map = settledTex.left;
+              leftPageMat.needsUpdate = true;
+            } else {
+              rightPageMat.map = settledTex.right;
+              rightPageMat.needsUpdate = true;
+            }
+          } else {
+            // Dibatalkan (snap back): pulihkan halaman statis asal
+            leftPageMat.map = settledTex.left;
+            leftPageMat.needsUpdate = true;
+            rightPageMat.map = settledTex.right;
+            rightPageMat.needsUpdate = true;
+          }
+        }
+
+        if (!anyStillActive) {
+          const finalTex = getSpreadTextures(activeSpreadRef.current);
+          if (finalTex) {
+            leftPageMat.map = finalTex.left;
+            leftPageMat.needsUpdate = true;
+            rightPageMat.map = finalTex.right;
+            rightPageMat.needsUpdate = true;
+          }
+        }
+        syncBookPose();
+        requestRender();
+      };
+
+      const triggerFlip = (fromIdx: number, toIdx: number) => {
         const list = spreadsRef.current;
         if (!list.length) return;
         const safeFrom = Math.max(0, Math.min(list.length - 1, fromIdx));
         const safeTo = Math.max(0, Math.min(list.length - 1, toIdx));
         if (safeFrom === safeTo) return;
 
-        const dir: 1 | -1 = safeTo > safeFrom ? 1 : -1;
-        const diff = Math.abs(safeTo - safeFrom);
-
-        // Jika berbalik arah di tengah jalan, percepat penyelesaian lembar lawan arah agar tetap rapi
-        for (const slot of leafPool) {
-          if (slot.active && slot.dir !== dir) {
-            slot.speedMultiplier = 2.6;
-          }
+        // Reduced motion: snap instan tanpa animasi lipatan panjang
+        if (prefersReducedMotion() || !isOpenRef.current) {
+          applyRestingSpread(safeTo);
+          return;
         }
 
-        // Siapkan urutan halaman kaskade (maksimal 4 lembar serentak agar mulus ala book-flip)
-        const stepCount = Math.min(4, diff);
+        const dir: 1 | -1 = safeTo > safeFrom ? 1 : -1;
+        const diff = Math.abs(safeTo - safeFrom);
+        const stepCount = Math.min(
+          BOOK_FLIP_CONFIG.flip.maxCascadeLeaves,
+          diff
+        );
         const stepPairs: Array<[number, number]> = [];
+
         for (let i = 0; i < stepCount; i++) {
           const a =
             i === 0
@@ -826,397 +1255,418 @@ export function BukuKenanganSceneHD({
           const b =
             i === stepCount - 1
               ? safeTo
-              : Math.round(safeFrom + ((safeTo - safeFrom) * (i + 1)) / stepCount);
-          if (a !== b) {
-            stepPairs.push([a, b]);
-          }
+              : Math.round(
+                  safeFrom + ((safeTo - safeFrom) * (i + 1)) / stepCount
+                );
+          if (a !== b) stepPairs.push([a, b]);
         }
-        if (stepPairs.length === 0) {
-          stepPairs.push([safeFrom, safeTo]);
-        }
+        if (stepPairs.length === 0) stepPairs.push([safeFrom, safeTo]);
+
+        spreadStackTween?.kill();
+        spreadStackTween = gsap.to(rigState, {
+          readSpread: safeTo,
+          duration: BOOK_FLIP_CONFIG.flip.durationSec,
+          ease: "power2.out",
+          onUpdate: () => {
+            syncBookPose();
+            requestRender();
+          },
+        });
 
         stepPairs.forEach(([fIdx, tIdx], stepIdx) => {
-          const fromTex = getSpreadTextures(fIdx);
-          const toTex = getSpreadTextures(tIdx);
-          if (!fromTex || !toTex) return;
+          const slot = allocateLeafSlot(dir);
+          const ok = configureLeafForTurn(slot, fIdx, tIdx, dir, stepIdx);
+          if (!ok) return;
 
-          let slot = leafPool.find((s) => !s.active);
-          if (!slot) {
-            // Reclaim lembar yang paling hampir selesai
-            slot = [...leafPool].sort((a, b) =>
-              dir === 1 ? b.progress - a.progress : a.progress - b.progress
-            )[0]!;
-            slot.active = false;
-            slot.group.visible = false;
-          }
+          const targetProgress = dir === 1 ? 1 : 0;
+          const duration =
+            stepPairs.length > 1
+              ? BOOK_FLIP_CONFIG.flip.cascadeDurationSec
+              : BOOK_FLIP_CONFIG.flip.durationSec;
 
-          slot.active = true;
-          slot.dir = dir;
-          slot.fromSpread = fIdx;
-          slot.toSpread = tIdx;
-          slot.delayRemaining = stepIdx * 0.095;
-          slot.speedMultiplier = stepCount > 1 ? 1.32 : 1.0;
-          slot.layerOrder = nextLayerOrder++;
-
-          if (dir === 1) {
-            // Lembar kanan terangkat membalik ke kiri; tumpukan kanan langsung tampilkan halaman di bawahnya
-            rightPageMat.map = toTex.right;
-            rightPageMat.needsUpdate = true;
-
-            slot.frontMat.map = fromTex.right;
-            slot.frontMat.needsUpdate = true;
-            slot.backMat.map = toTex.left;
-            slot.backMat.needsUpdate = true;
-            slot.progress = 0;
-            slot.uniforms.uFlipProgress.value = 0;
-            slot.uniforms.uBend.value = 0.95;
-          } else {
-            // Lembar kiri terangkat membalik ke kanan; tumpukan kiri langsung tampilkan halaman di bawahnya
-            leftPageMat.map = toTex.left;
-            leftPageMat.needsUpdate = true;
-
-            slot.frontMat.map = toTex.right;
-            slot.frontMat.needsUpdate = true;
-            slot.backMat.map = fromTex.left;
-            slot.backMat.needsUpdate = true;
-            slot.progress = 1;
-            slot.uniforms.uFlipProgress.value = 1;
-            slot.uniforms.uBend.value = 0.95;
-          }
-
-          // Naikkan sedikit offset Y tiap tumpukan lembar aktif agar bebas Z-fighting
-          slot.group.position.y = (stepIdx % LEAF_POOL_SIZE) * 0.0022;
-          slot.uniforms.uLeafLift.value = (stepIdx % 4) * 0.022;
-          slot.group.visible = slot.delayRemaining <= 0;
+          slot.tween = gsap.to(slot.uniforms.uProgress, {
+            value: targetProgress,
+            duration,
+            delay: stepIdx * BOOK_FLIP_CONFIG.flip.cascadeStaggerSec,
+            ease: BOOK_FLIP_CONFIG.flip.ease,
+            onStart: () => {
+              slot.group.visible = true;
+              requestRender();
+            },
+            onUpdate: () => {
+              const p = slot.uniforms.uProgress.value;
+              slot.uniforms.uBend.value =
+                0.55 + Math.sin(p * Math.PI) * 0.65;
+              requestRender();
+            },
+            onComplete: () => {
+              finishLeafSettle(slot, true);
+            },
+          });
         });
 
         pruneTextureCache(safeTo);
-        // Preload tetangga dekat di background frame idle
         getSpreadTextures(safeTo - 1);
         getSpreadTextures(safeTo + 1);
       };
+      triggerFlipRef.current = triggerFlip;
 
       applyRestingSpread(activeSpreadRef.current);
 
-      // Interaksi Klik Kiri/Kanan, Swipe, & Parallax 3/4 Ringan
+      // ================================================================
+      // 6. REAL-TIME DRAG-TO-FLIP + MOMENTUM SNAP + BACKDROP HIT-TEST
+      // ================================================================
       const raycaster = new THREE.Raycaster();
-      const pointer = new THREE.Vector2();
+      const pointerNdc = new THREE.Vector2();
       const _localHitPt = new THREE.Vector3();
+
+      let pointerIdActive: number | null = null;
       let dragStartX = 0;
-      let isDragging = false;
-      let targetParallaxX = 0;
-      let targetParallaxY = 0;
-      let curParallaxX = 0;
-      let curParallaxY = 0;
+      let lastMoveX = 0;
+      let lastMoveTime = 0;
+      let velocityPxPerMs = 0;
+      let activeDragSlot: FlipLeafSlot | null = null;
+      let dragDirection: 1 | -1 | 0 = 0;
+      let hasDraggedPastThreshold = false;
+
+      const startDragLeaf = (dir: 1 | -1) => {
+        const curIdx = activeSpreadRef.current;
+        const maxIdx = spreadsRef.current.length - 1;
+        const targetIdx = dir === 1 ? curIdx + 1 : curIdx - 1;
+        if (targetIdx < 0 || targetIdx > maxIdx) return null;
+
+        const slot = allocateLeafSlot(dir);
+        const ok = configureLeafForTurn(slot, curIdx, targetIdx, dir, 0);
+        if (!ok) return null;
+        slot.isDragSlot = true;
+        return slot;
+      };
 
       const onPointerDown = (ev: PointerEvent) => {
+        if (pointerIdActive !== null) return;
+        pointerIdActive = ev.pointerId;
         dragStartX = ev.clientX;
-        isDragging = true;
+        lastMoveX = ev.clientX;
+        lastMoveTime = performance.now();
+        velocityPxPerMs = 0;
+        hasDraggedPastThreshold = false;
+        activeDragSlot = null;
+        dragDirection = 0;
+        try {
+          renderer.domElement.setPointerCapture(ev.pointerId);
+        } catch {
+          // Ignore capture errors on synthetic events
+        }
       };
 
       const onPointerMove = (ev: PointerEvent) => {
         const rect = renderer.domElement.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return;
-        const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-        const ny = ((ev.clientY - rect.top) / rect.height) * 2 - 1;
-        targetParallaxX = THREE.MathUtils.clamp(nx, -1, 1) * 0.18;
-        targetParallaxY = THREE.MathUtils.clamp(ny, -1, 1) * 0.09;
+
+        // Parallax super halus hanya saat pointer desktop bergerak (di-tween on-demand)
+        if (ev.pointerType === "mouse" && !prefersReducedMotion()) {
+          const nx = THREE.MathUtils.clamp(
+            ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+            -1,
+            1
+          );
+          const ny = THREE.MathUtils.clamp(
+            ((ev.clientY - rect.top) / rect.height) * 2 - 1,
+            -1,
+            1
+          );
+          parallaxTween?.kill();
+          parallaxTween = gsap.to(rigState, {
+            parallaxX: nx * BOOK_FLIP_CONFIG.camera.pointerParallaxX,
+            parallaxY: ny * BOOK_FLIP_CONFIG.camera.pointerParallaxY,
+            duration: 0.45,
+            ease: "power2.out",
+            onUpdate: () => {
+              syncBookPose();
+              requestRender();
+            },
+          });
+        }
+
+        if (pointerIdActive !== ev.pointerId || !isOpenRef.current) return;
+
+        const now = performance.now();
+        const dtMs = Math.max(4, now - lastMoveTime);
+        velocityPxPerMs = (ev.clientX - lastMoveX) / dtMs;
+        lastMoveX = ev.clientX;
+        lastMoveTime = now;
+
+        const totalDx = ev.clientX - dragStartX;
+        if (
+          !hasDraggedPastThreshold &&
+          Math.abs(totalDx) >= BOOK_FLIP_CONFIG.flip.minDragActivationPx
+        ) {
+          hasDraggedPastThreshold = true;
+          dragDirection = totalDx < 0 ? 1 : -1;
+          activeDragSlot = startDragLeaf(dragDirection);
+        }
+
+        if (activeDragSlot && dragDirection !== 0) {
+          const spanPx = Math.max(
+            180,
+            rect.width * BOOK_FLIP_CONFIG.flip.dragHorizontalSensitivity
+          );
+          const rawDelta = Math.abs(totalDx) / spanPx;
+          // Jika user menyeret ke arah berlawanan dari arah awal, jaga progress di batas awal
+          const aligned =
+            (dragDirection === 1 && totalDx <= 0) ||
+            (dragDirection === -1 && totalDx >= 0);
+          const progress =
+            dragDirection === 1
+              ? aligned
+                ? THREE.MathUtils.clamp(rawDelta, 0.005, 0.995)
+                : 0.005
+              : aligned
+                ? THREE.MathUtils.clamp(1 - rawDelta, 0.005, 0.995)
+                : 0.995;
+
+          activeDragSlot.uniforms.uProgress.value = progress;
+          const velBoost = Math.min(
+            BOOK_FLIP_CONFIG.shader.dragBendBoost,
+            Math.abs(velocityPxPerMs) * 0.35
+          );
+          activeDragSlot.uniforms.uBend.value =
+            BOOK_FLIP_CONFIG.shader.baseBend + velBoost;
+          requestRender();
+        }
       };
 
-      const onPointerLeave = () => {
-        targetParallaxX = 0;
-        targetParallaxY = 0;
-      };
-
-      const onPointerUp = (ev: PointerEvent) => {
-        if (!isDragging) return;
-        isDragging = false;
-        const dx = ev.clientX - dragStartX;
+      const finishPointerInteraction = (ev: PointerEvent, cancelled: boolean) => {
+        if (pointerIdActive !== ev.pointerId) return;
+        pointerIdActive = null;
+        try {
+          renderer.domElement.releasePointerCapture(ev.pointerId);
+        } catch {
+          // Ignore
+        }
 
         if (!isOpenRef.current) {
-          onOpenRef.current();
+          if (!cancelled) onOpenRef.current();
           return;
         }
 
-        if (Math.abs(dx) > 36) {
-          const next =
-            dx < 0
-              ? Math.min(spreadsRef.current.length - 1, activeSpreadRef.current + 1)
-              : Math.max(0, activeSpreadRef.current - 1);
-          if (next !== activeSpreadRef.current) {
-            onChangeSpreadRef.current(next);
+        if (activeDragSlot && dragDirection !== 0) {
+          const slot = activeDragSlot;
+          const dir = dragDirection;
+          activeDragSlot = null;
+          dragDirection = 0;
+
+          const curP = slot.uniforms.uProgress.value;
+          const turnAmount = dir === 1 ? curP : 1 - curP;
+          const velAligned = dir === 1 ? -velocityPxPerMs : velocityPxPerMs;
+          const shouldCommit =
+            !cancelled &&
+            (turnAmount >= BOOK_FLIP_CONFIG.flip.dragCommitProgress ||
+              velAligned >= BOOK_FLIP_CONFIG.flip.dragVelocityThresholdPxPerMs);
+
+          const snapTarget = shouldCommit
+            ? dir === 1
+              ? 1
+              : 0
+            : dir === 1
+              ? 0
+              : 1;
+          const remaining = Math.abs(snapTarget - curP);
+          const snapDur = prefersReducedMotion()
+            ? 0.01
+            : THREE.MathUtils.clamp(remaining * 0.56, 0.16, 0.52);
+
+          if (shouldCommit) {
+            suppressNextEffectFlipRef.current = true;
+            prevSpreadIndexRef.current = slot.toSpread;
+            onChangeSpreadRef.current(slot.toSpread);
+
+            spreadStackTween?.kill();
+            spreadStackTween = gsap.to(rigState, {
+              readSpread: slot.toSpread,
+              duration: snapDur,
+              ease: BOOK_FLIP_CONFIG.flip.snapEase,
+              onUpdate: () => {
+                syncBookPose();
+                requestRender();
+              },
+            });
           }
+
+          slot.tween = gsap.to(slot.uniforms.uProgress, {
+            value: snapTarget,
+            duration: snapDur,
+            ease: BOOK_FLIP_CONFIG.flip.snapEase,
+            onUpdate: () => {
+              const p = slot.uniforms.uProgress.value;
+              slot.uniforms.uBend.value =
+                0.5 + Math.sin(p * Math.PI) * 0.55;
+              requestRender();
+            },
+            onComplete: () => {
+              finishLeafSettle(slot, shouldCommit);
+            },
+          });
           return;
         }
 
-        const rect = renderer.domElement.getBoundingClientRect();
-        pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-        pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
-        raycaster.setFromCamera(pointer, camera);
+        // Klik cepat (tanpa drag): gunakan backdrop tak terlihat / separuh layar
+        if (!cancelled && !hasDraggedPastThreshold) {
+          const rect = renderer.domElement.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
 
-        const hits = raycaster.intersectObject(hitProxyMesh, false);
-        if (hits.length > 0) {
-          _localHitPt.copy(hits[0]!.point);
-          bookRoot.worldToLocal(_localHitPt);
+          pointerNdc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+          pointerNdc.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointerNdc, camera);
+          const hits = raycaster.intersectObject(hitProxyMesh, false);
+
+          let sideIsRight = pointerNdc.x >= 0;
+          if (hits.length > 0) {
+            _localHitPt.copy(hits[0]!.point);
+            bookRoot.worldToLocal(_localHitPt);
+            sideIsRight = _localHitPt.x >= 0;
+          }
+
           if (
-            _localHitPt.x >= 0 &&
+            sideIsRight &&
             activeSpreadRef.current < spreadsRef.current.length - 1
           ) {
             onChangeSpreadRef.current(activeSpreadRef.current + 1);
-          } else if (_localHitPt.x < 0 && activeSpreadRef.current > 0) {
+          } else if (!sideIsRight && activeSpreadRef.current > 0) {
             onChangeSpreadRef.current(activeSpreadRef.current - 1);
           }
         }
       };
 
+      const onPointerUp = (ev: PointerEvent) => finishPointerInteraction(ev, false);
+      const onPointerCancel = (ev: PointerEvent) =>
+        finishPointerInteraction(ev, true);
+
+      const onPointerLeave = () => {
+        if (pointerIdActive !== null) return;
+        parallaxTween?.kill();
+        parallaxTween = gsap.to(rigState, {
+          parallaxX: 0,
+          parallaxY: 0,
+          duration: 0.5,
+          ease: "power2.out",
+          onUpdate: () => {
+            syncBookPose();
+            requestRender();
+          },
+        });
+      };
+
+      renderer.domElement.style.touchAction = "pan-y";
       renderer.domElement.addEventListener("pointerdown", onPointerDown);
       renderer.domElement.addEventListener("pointermove", onPointerMove);
-      renderer.domElement.addEventListener("pointerleave", onPointerLeave);
       renderer.domElement.addEventListener("pointerup", onPointerUp);
+      renderer.domElement.addEventListener("pointercancel", onPointerCancel);
+      renderer.domElement.addEventListener("pointerleave", onPointerLeave);
 
-      // Posisi Awal Kamera Sudut 3/4 Nyaman (ala book-flip)
-      camera.position.set(0, 3.25, 3.35);
-      camera.lookAt(0, 0.08, 0.08);
+      // Ayunan idle super lembut HANYA ketika buku tertutup & tab terlihat (berhenti total saat buku dibuka!)
+      let idleRafId = 0;
+      let lastIdleTime = performance.now();
+      const tickClosedIdleSway = (now: number) => {
+        if (
+          prefersReducedMotion() ||
+          rigState.idleSwayStrength <= 0.01 ||
+          document.hidden
+        ) {
+          idleRafId = 0;
+          return;
+        }
+        const dt = Math.min(0.05, (now - lastIdleTime) / 1000);
+        lastIdleTime = now;
+        idleSwayPhase += dt * BOOK_FLIP_CONFIG.camera.idleSwaySpeed;
+        syncBookPose();
+        requestRender();
+        idleRafId = window.requestAnimationFrame(tickClosedIdleSway);
+      };
 
-      let elapsed = 0;
-      let coverOpenProg = isOpenRef.current ? 1 : 0;
-      let smoothReadSpread = activeSpreadRef.current;
+      const startClosedIdleSway = () => {
+        if (
+          !idleRafId &&
+          !prefersReducedMotion() &&
+          rigState.idleSwayStrength > 0.01 &&
+          !document.hidden
+        ) {
+          lastIdleTime = performance.now();
+          idleRafId = window.requestAnimationFrame(tickClosedIdleSway);
+        }
+      };
+      startClosedIdleSway();
 
-      const easeInOutCubic = (x: number) =>
-        x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+      const onVisChange = () => {
+        if (!document.hidden && !isOpenRef.current) {
+          startClosedIdleSway();
+        }
+      };
+      document.addEventListener("visibilitychange", onVisChange);
+
+      // Pastikan idle sway menyala lagi jika sampul ditutup kembali
+      const origAnimateCover = animateCoverRef.current;
+      animateCoverRef.current = (open: boolean) => {
+        origAnimateCover?.(open);
+        if (!open) {
+          window.setTimeout(startClosedIdleSway, 120);
+        }
+      };
 
       return {
-        onTick: (dt: number) => {
-          const clampedDt = Math.min(0.05, dt);
-          elapsed += clampedDt;
-
-          // Transisi halus sampul buku dibuka / ditutup
-          const targetOpen = isOpenRef.current ? 1 : 0;
-          coverOpenProg = THREE.MathUtils.damp(
-            coverOpenProg,
-            targetOpen,
-            5.4,
-            clampedDt
-          );
-          if (Math.abs(coverOpenProg - targetOpen) < 0.002) {
-            coverOpenProg = targetOpen;
-          }
-          const isMostlyOpen = coverOpenProg > 0.18;
-
-          // Ketebalan tumpukan kertas kiri & kanan berubah sangat halus mengikuti halaman aktif
-          smoothReadSpread = THREE.MathUtils.damp(
-            smoothReadSpread,
-            activeSpreadRef.current,
-            6.5,
-            clampedDt
-          );
-          const totalSpreads = Math.max(1, spreadsRef.current.length - 1);
-          const readRatio = THREE.MathUtils.clamp(
-            smoothReadSpread / totalSpreads,
-            0.05,
-            0.95
-          );
-          const maxStackH = 0.165;
-          const leftH = Math.max(0.022, maxStackH * readRatio) * coverOpenProg;
-          const rightH = isOpenRef.current
-            ? Math.max(0.022, maxStackH * (1 - readRatio))
-            : maxStackH;
-
-          leftBlockMesh.visible = isMostlyOpen;
-          leftBlockMesh.scale.y = Math.max(0.15, leftH / 0.12);
-          leftBlockMesh.position.set(-(PAGE_W / 2 + 0.01), 0.045 + leftH / 2, 0);
-
-          rightBlockMesh.scale.y = Math.max(0.15, rightH / 0.12);
-          rightBlockMesh.position.set(PAGE_W / 2 + 0.01, 0.045 + rightH / 2, 0);
-
-          const leftTopY = 0.046 + leftH;
-          const rightTopY = 0.046 + rightH;
-          const midTopY = Math.max(leftTopY, rightTopY) + 0.005;
-
-          leftPageMesh.visible = coverOpenProg > 0.32;
-          leftPageMesh.position.set(-0.01, leftTopY, 0);
-
-          rightPageMesh.visible = isMostlyOpen;
-          rightPageMesh.position.set(0.01, rightTopY, 0);
-
-          spineShadowStrip.visible = isMostlyOpen;
-          spineShadowStrip.position.y = midTopY - 0.002;
-
-          flipPoolGroup.position.set(0, midTopY + 0.004, 0);
-
-          // Update seluruh lembar kaskade aktif di flipPool
-          let activeFlipCount = 0;
-          const baseTurnDuration = 0.68;
-
-          for (const slot of leafPool) {
-            if (!slot.active) continue;
-
-            if (!isMostlyOpen) {
-              slot.active = false;
-              slot.group.visible = false;
-              continue;
-            }
-
-            if (slot.delayRemaining > 0) {
-              slot.delayRemaining -= clampedDt;
-              if (slot.delayRemaining > 0) {
-                activeFlipCount++;
-                continue;
-              }
-            }
-
-            slot.group.visible = true;
-            const stepDelta = (clampedDt / baseTurnDuration) * slot.speedMultiplier;
-            slot.progress += slot.dir === 1 ? stepDelta : -stepDelta;
-
-            if (slot.dir === 1 && slot.progress >= 1) {
-              slot.progress = 1;
-              slot.active = false;
-              slot.group.visible = false;
-              const settledTex = getSpreadTextures(slot.toSpread);
-              if (settledTex) {
-                leftPageMat.map = settledTex.left;
-                leftPageMat.needsUpdate = true;
-              }
-              continue;
-            }
-
-            if (slot.dir === -1 && slot.progress <= 0) {
-              slot.progress = 0;
-              slot.active = false;
-              slot.group.visible = false;
-              const settledTex = getSpreadTextures(slot.toSpread);
-              if (settledTex) {
-                rightPageMat.map = settledTex.right;
-                rightPageMat.needsUpdate = true;
-              }
-              continue;
-            }
-
-            activeFlipCount++;
-            const eased = easeInOutCubic(
-              THREE.MathUtils.clamp(slot.progress, 0, 1)
-            );
-            slot.uniforms.uFlipProgress.value = eased;
-            // Lengkungan kertas terasa hidup saat kecepatan sudut tertinggi di pertengahan ayunan
-            const airVel = Math.sin(eased * Math.PI);
-            slot.uniforms.uBend.value = 0.55 + airVel * 0.65;
-          }
-
-          // Pastikan jika seluruh lembar selesai membalik, kedua halaman sinkron 100% dengan activeSpreadRef
-          if (activeFlipCount === 0 && isMostlyOpen) {
-            const finalTex = getSpreadTextures(activeSpreadRef.current);
-            if (finalTex) {
-              if (leftPageMat.map !== finalTex.left) {
-                leftPageMat.map = finalTex.left;
-                leftPageMat.needsUpdate = true;
-              }
-              if (rightPageMat.map !== finalTex.right) {
-                rightPageMat.map = finalTex.right;
-                rightPageMat.needsUpdate = true;
-              }
-            }
-          }
-
-          leftHardcover.visible = isMostlyOpen;
-          cornerProtectorsGroup.visible = isMostlyOpen;
-          ribbonTail.visible = true;
-
-          // Pita pembatas satin berayun sangat lembut mengikuti angin balik halaman
-          ribbonTail.rotation.y =
-            0.09 + Math.sin(elapsed * 1.4) * 0.018 + Math.min(0.08, activeFlipCount * 0.03) * Math.sin(elapsed * 5.2);
-
-          // Sampul Depan saat ditutup vs dibuka berengsel mulus
-          closedCoverHinge.visible = coverOpenProg < 0.985;
-          closedCoverHinge.position.y = 0.048 + rightH + 0.022;
-          closedCoverHinge.rotation.z =
-            easeInOutCubic(THREE.MathUtils.clamp(coverOpenProg, 0, 1)) *
-            Math.PI *
-            0.992;
-
-          // Geser buku agar simetris saat tertutup maupun terbuka lebar
-          const targetBookX = THREE.MathUtils.lerp(-PAGE_W * 0.52, 0, coverOpenProg);
-          bookRoot.position.x = THREE.MathUtils.damp(
-            bookRoot.position.x,
-            targetBookX,
-            6.5,
-            clampedDt
-          );
-
-          // Kemiringan lembut papan sampul saat terbaring terbuka
-          leftHardcover.rotation.z = THREE.MathUtils.lerp(0, -0.016, coverOpenProg);
-          rightHardcover.rotation.z = THREE.MathUtils.lerp(0, 0.016, coverOpenProg);
-
-          // Kedipan halus lampu pijar hangat di belakang meja
-          fairyBulbs.forEach((b, i) => {
-            const s = 0.92 + Math.sin(elapsed * 2.2 + i * 0.85) * 0.1;
-            b.scale.setScalar(s);
-          });
-
-          // Kamera sudut baca 3/4 yang elegan dengan parallax kursor super lembut
-          curParallaxX = THREE.MathUtils.damp(
-            curParallaxX,
-            targetParallaxX,
-            4.5,
-            clampedDt
-          );
-          curParallaxY = THREE.MathUtils.damp(
-            curParallaxY,
-            targetParallaxY,
-            4.5,
-            clampedDt
-          );
-
-          const baseCamY = THREE.MathUtils.lerp(3.25, 3.05, coverOpenProg);
-          const baseCamZ = THREE.MathUtils.lerp(3.15, 3.32, coverOpenProg);
-
-          camera.position.x = THREE.MathUtils.damp(
-            camera.position.x,
-            curParallaxX,
-            6,
-            clampedDt
-          );
-          camera.position.y = THREE.MathUtils.damp(
-            camera.position.y,
-            baseCamY + curParallaxY,
-            6,
-            clampedDt
-          );
-          camera.position.z = THREE.MathUtils.damp(
-            camera.position.z,
-            baseCamZ,
-            6,
-            clampedDt
-          );
-          camera.lookAt(0, 0.06, 0.12);
+        onTick: () => {
+          syncBookPose();
+        },
+        onResize: (w: number, h: number) => {
+          viewportAspect = w / Math.max(1, h);
+          const camTargets = computeCameraTargets(isOpenRef.current);
+          rigState.camY = camTargets.y;
+          rigState.camZ = camTargets.z;
+          rigState.lookY = camTargets.lookY;
+          rigState.lookZ = camTargets.lookZ;
+          syncBookPose();
+          requestRender();
         },
         onDispose: () => {
+          if (idleRafId) window.cancelAnimationFrame(idleRafId);
+          document.removeEventListener("visibilitychange", onVisChange);
+          coverTween?.kill();
+          camTween?.kill();
+          spreadStackTween?.kill();
+          parallaxTween?.kill();
+          for (const slot of leafPool) {
+            slot.tween?.kill();
+            slot.frontMat.dispose();
+            slot.backMat.dispose();
+          }
           renderer.domElement.removeEventListener("pointerdown", onPointerDown);
           renderer.domElement.removeEventListener("pointermove", onPointerMove);
-          renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
           renderer.domElement.removeEventListener("pointerup", onPointerUp);
+          renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
+          renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
           leftPageGeo.dispose();
           rightPageGeo.dispose();
           sharedFlipFrontGeo.dispose();
           sharedFlipBackGeo.dispose();
-          for (const slot of leafPool) {
-            slot.frontMat.dispose();
-            slot.backMat.dispose();
-          }
           closedFrontCoverGeo.dispose();
           innerCoverGeo.dispose();
           hitProxyGeo.dispose();
-          cornerGeo.dispose();
-          ribGeo.dispose();
-          headbandGeo.dispose();
-          bulbGeo.dispose();
-          haloGeo.dispose();
+          wood.map.dispose();
+          wood.bumpMap.dispose();
+          darkWood.map.dispose();
+          darkWood.bumpMap.dispose();
           pageEdgeTex.dispose();
+          coverTex.map.dispose();
+          if (closedFrontCoverMat.map) closedFrontCoverMat.map.dispose();
           for (const pair of textureCache.values()) {
             pair.left.dispose();
             pair.right.dispose();
           }
           textureCache.clear();
+          syncCoverTextureRef.current = null;
+          triggerFlipRef.current = null;
+          animateCoverRef.current = null;
+          applyRestingSpreadRef.current = null;
         },
       };
     },
@@ -1226,11 +1676,22 @@ export function BukuKenanganSceneHD({
   return (
     <SceneShell
       onSetup={handleSetup}
-      cameraPosition={[0, 3.25, 3.35]}
-      cameraFov={38}
-      continuous={true}
-      ariaLabel="Buku Kenangan Scrapbook 3D Sudut Baca 3/4"
-      className="relative w-full h-[430px] sm:h-[650px]"
-    />
+      cameraPosition={[
+        BOOK_FLIP_CONFIG.camera.closedPos.x,
+        BOOK_FLIP_CONFIG.camera.closedPos.y,
+        BOOK_FLIP_CONFIG.camera.closedPos.z,
+      ]}
+      cameraFov={BOOK_FLIP_CONFIG.camera.fov}
+      continuous={false}
+      clearColor="#161614"
+      ariaLabel="Buku Kenangan 3D interaktif XII PPLG 1 dengan efek lipatan halaman book-flip"
+      className="relative h-[500px] sm:h-[580px] lg:h-[650px] w-full cursor-grab active:cursor-grabbing select-none"
+    >
+      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/50 bg-background/85 px-3.5 py-1.5 font-mono text-[10px] sm:text-xs text-foreground shadow-sm">
+        {!isBookOpen
+          ? "Ketuk sampul atau tekan Spasi / Panah Kanan untuk membuka"
+          : "Seret halaman, klik kiri/kanan, atau pakai tombol ← → / PgUp / PgDn"}
+      </div>
+    </SceneShell>
   );
 }

@@ -21,6 +21,9 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
+import { MOTION_EASE, MOTION_DURATION } from "@/lib/motion-tokens";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { StudentRow } from "@/lib/types";
 
 type StudentFilter = "family" | "all" | "L" | "P" | "moved";
@@ -41,9 +44,19 @@ export function AnggotaClient({
   const [selectedMobileMember, setSelectedMobileMember] =
     React.useState<LanyardMember | null>(null);
 
+  const { toast } = useEditorialToast();
   const [modalStudent, setModalStudent] = React.useState<LanyardMember | null>(
     null
   );
+
+  React.useEffect(() => {
+    if (!modalStudent) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModalStudent(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalStudent]);
   const [authorName, setAuthorName] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [classCode, setClassCode] = React.useState("XIIPPLG1");
@@ -138,26 +151,23 @@ export function AnggotaClient({
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        setFeedback({
-          ok: false,
-          text: json.error || "Gagal mengirim pesan kenangan.",
-        });
+        const errText = json.error || "Gagal mengirim pesan kenangan.";
+        setFeedback({ ok: false, text: errText });
+        toast({ title: "Gagal mengirim", description: errText, variant: "error" });
       } else {
-        setFeedback({
-          ok: true,
-          text:
-            json.message ||
-            "Pesan berhasil dikirim dan menunggu persetujuan admin.",
-        });
+        const okText =
+          json.message ||
+          "Pesan berhasil dikirim dan menunggu persetujuan admin.";
+        setFeedback({ ok: true, text: okText });
+        toast({ title: "Pesan terkirim", description: okText, variant: "success" });
         setMessage("");
         notifyPublicDataUpdated();
         void refresh();
       }
     } catch {
-      setFeedback({
-        ok: false,
-        text: "Jaringan sedang sibuk, silakan coba sesaat lagi.",
-      });
+      const netText = "Jaringan sedang sibuk, silakan coba sesaat lagi.";
+      setFeedback({ ok: false, text: netText });
+      toast({ title: "Koneksi terputus", description: netText, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -176,9 +186,9 @@ export function AnggotaClient({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: MOTION_DURATION.medium, ease: MOTION_EASE.editorial }}
       className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
     >
       {/* Header Halaman Anggota */}
@@ -186,9 +196,12 @@ export function AnggotaClient({
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Keluarga Besar XII PPLG 1 · MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
-          {activeStudents.length} Siswa Aktif &amp; {movedStudents.length} Sahabat Istimewa
-        </h1>
+        <SplitLineHeading
+          as="h1"
+          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+        >
+          {`${activeStudents.length} Siswa Aktif & ${movedStudents.length} Sahabat Istimewa`}
+        </SplitLineHeading>
         <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
           Klik kartu untuk membalik profil, tarik untuk efek pegas, atau tulis pesan ke buku kenangannya.
         </p>
@@ -249,7 +262,7 @@ export function AnggotaClient({
               {active && (
                 <motion.span
                   layoutId="anggota-filter-pill"
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  transition={MOTION_EASE.springNav}
                   className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
                   aria-hidden="true"
                 />

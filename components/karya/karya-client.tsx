@@ -30,6 +30,9 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
+import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { StudentRow, WorkRow } from "@/lib/types";
 
 /**
@@ -197,7 +200,11 @@ function TiltWorkCard({
       ref={cardRef}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, delay: (index % 6) * 0.05 }}
+      transition={{
+        duration: MOTION_DURATION.medium,
+        delay: (index % 6) * 0.045,
+        ease: MOTION_EASE.editorial,
+      }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-foreground/50"
@@ -332,6 +339,7 @@ export function KaryaClient({
   const works = liveData?.works ?? initialWorks;
   const students = liveData?.students ?? initialStudents;
 
+  const { toast } = useEditorialToast();
   const { tier } = useVisualTier();
   const [selectedSkill, setSelectedSkill] = React.useState<string | null>(null);
   const [hoveredSkill, setHoveredSkill] = React.useState<string | null>(null);
@@ -367,6 +375,18 @@ export function KaryaClient({
   const [classCode, setClassCode] = React.useState("XIIPPLG1");
   const [submitting, setSubmitting] = React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!modalOpen && !previewWork) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (previewWork) setPreviewWork(null);
+        else if (modalOpen) setModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalOpen, previewWork]);
 
   const liveFormScreenshotUrl = React.useMemo(
     () => getAutoDemoScreenshotUrl(demoUrl, workImageDataUrl || undefined),
@@ -440,9 +460,15 @@ export function KaryaClient({
         }),
       });
       const json = await res.json();
-      setFeedback(
-        json.ok ? json.message : json.error || "Gagal mengirim data karya."
-      );
+      const msg = json.ok
+        ? json.message
+        : json.error || "Gagal mengirim data karya.";
+      setFeedback(msg);
+      toast({
+        title: json.ok ? "Karya didaftarkan" : "Gagal mengirim",
+        description: msg,
+        variant: json.ok ? "success" : "error",
+      });
       if (json.ok) {
         setTitle("");
         setDescription("");
@@ -452,7 +478,9 @@ export function KaryaClient({
         void refresh();
       }
     } catch {
-      setFeedback("Gagal menghubungi server.");
+      const errMsg = "Gagal menghubungi server.";
+      setFeedback(errMsg);
+      toast({ title: "Koneksi terputus", description: errMsg, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -481,9 +509,12 @@ export function KaryaClient({
           <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Etalase Projek Akhir · 1 Siswa 1 Karya Pilihan
           </p>
-          <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          <SplitLineHeading
+            as="h1"
+            className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+          >
             Karya Siswa &amp; Skill Map XII PPLG 1
-          </h1>
+          </SplitLineHeading>
           <p className="mt-1.5 max-w-xl text-xs sm:text-sm text-muted-foreground">
             Koleksi proyek aplikasi web, mobile, UI/UX, dan gim karya siswa MAKN Ende.
           </p>
@@ -539,7 +570,7 @@ export function KaryaClient({
               {visualMode === "constellation" && (
                 <motion.span
                   layoutId="karya-mode-pill"
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  transition={MOTION_EASE.springNav}
                   className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
                   aria-hidden="true"
                 />
@@ -563,7 +594,7 @@ export function KaryaClient({
               {visualMode === "radar" && (
                 <motion.span
                   layoutId="karya-mode-pill"
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  transition={MOTION_EASE.springNav}
                   className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
                   aria-hidden="true"
                 />

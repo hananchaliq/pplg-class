@@ -15,6 +15,8 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
+import { MOTION_EASE } from "@/lib/motion-tokens";
+import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { DreamRow, StudentRow } from "@/lib/types";
 
 export function DreamBoardClient({
@@ -35,6 +37,8 @@ export function DreamBoardClient({
     () => mapToExtendedStudentRecords(students, dreams),
     [students, dreams]
   );
+
+  const { toast } = useEditorialToast();
 
   // State Modal Kirim Semangat (Cheer)
   const [cheerTargetDream, setCheerTargetDream] =
@@ -58,6 +62,18 @@ export function DreamBoardClient({
   const [dreamCode, setDreamCode] = React.useState("XIIPPLG1");
   const [dreamSubmitting, setDreamSubmitting] = React.useState(false);
   const [dreamFeedback, setDreamFeedback] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!cheerTargetDream && !newDreamOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCheerTargetDream(null);
+        setNewDreamOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cheerTargetDream, newDreamOpen]);
 
   const handleOpenCheerForStudent = React.useCallback(
     (st: ExtendedStudentRecord) => {
@@ -92,18 +108,24 @@ export function DreamBoardClient({
         }),
       });
       const json = await res.json();
-      setCheerFeedback(
-        json.ok
-          ? json.message
-          : json.error || "Gagal mengirim pesan semangat."
-      );
+      const msg = json.ok
+        ? json.message
+        : json.error || "Gagal mengirim pesan semangat.";
+      setCheerFeedback(msg);
+      toast({
+        title: json.ok ? "Doa ditempel" : "Gagal mengirim",
+        description: msg,
+        variant: json.ok ? "success" : "error",
+      });
       if (json.ok) {
         setCheerMessage("");
         notifyPublicDataUpdated();
         void refresh();
       }
     } catch {
-      setCheerFeedback("Gagal menghubungi server.");
+      const errMsg = "Gagal menghubungi server.";
+      setCheerFeedback(errMsg);
+      toast({ title: "Koneksi terputus", description: errMsg, variant: "error" });
     } finally {
       setCheerSubmitting(false);
     }
@@ -128,11 +150,15 @@ export function DreamBoardClient({
         }),
       });
       const json = await res.json();
-      setDreamFeedback(
-        json.ok
-          ? json.message
-          : json.error || "Gagal mengirim catatan cita-cita."
-      );
+      const msg = json.ok
+        ? json.message
+        : json.error || "Gagal mengirim catatan cita-cita.";
+      setDreamFeedback(msg);
+      toast({
+        title: json.ok ? "Cita-cita terkirim" : "Gagal mengirim",
+        description: msg,
+        variant: json.ok ? "success" : "error",
+      });
       if (json.ok) {
         setDreamText("");
         setDreamReason("");
@@ -140,7 +166,9 @@ export function DreamBoardClient({
         void refresh();
       }
     } catch {
-      setDreamFeedback("Gagal menghubungi server.");
+      const errMsg = "Gagal menghubungi server.";
+      setDreamFeedback(errMsg);
+      toast({ title: "Koneksi terputus", description: errMsg, variant: "error" });
     } finally {
       setDreamSubmitting(false);
     }
@@ -176,7 +204,7 @@ export function DreamBoardClient({
               initial={{ opacity: 0, y: 22, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 340, damping: 26 }}
+              transition={MOTION_EASE.springSheet}
               style={{
                 borderTopColor: cheerTargetDream.paper_color || "#5C5A54",
               }}
@@ -349,7 +377,7 @@ export function DreamBoardClient({
               initial={{ opacity: 0, y: 22, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 340, damping: 26 }}
+              transition={MOTION_EASE.springSheet}
               style={{ borderTopColor: dreamColor }}
               className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
             >

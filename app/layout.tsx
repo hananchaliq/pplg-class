@@ -16,6 +16,11 @@ import { Footer } from "@/components/layout/footer";
 import { AmbientParticles } from "@/components/layout/ambient-particles";
 import { FilmEffectsOverlay } from "@/components/layout/film-effects-overlay";
 import { VanishingPageTransition } from "@/components/layout/vanishing-page-transition";
+import { EditorialToastProvider } from "@/components/ui/editorial-toast";
+import {
+  ReadingProgressBar,
+  ViewfinderCursor,
+} from "@/components/layout/editorial-chrome";
 
 const oldStandardTT = Old_Standard_TT({
   subsets: ["latin"],
@@ -97,13 +102,17 @@ export default function RootLayout({
             <SadAudioProvider>
               <PageFlipAudioProvider>
                 <LoadingProvider>
-                  <FilmEffectsOverlay />
-                  <AmbientParticles />
-                  <Navbar />
-                  <main className="flex-1">
-                    <VanishingPageTransition>{children}</VanishingPageTransition>
-                  </main>
-                  <Footer />
+                  <EditorialToastProvider>
+                    <ReadingProgressBar />
+                    <ViewfinderCursor />
+                    <FilmEffectsOverlay />
+                    <AmbientParticles />
+                    <Navbar />
+                    <main className="flex-1">
+                      <VanishingPageTransition>{children}</VanishingPageTransition>
+                    </main>
+                    <Footer />
+                  </EditorialToastProvider>
                 </LoadingProvider>
               </PageFlipAudioProvider>
             </SadAudioProvider>

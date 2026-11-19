@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen,
   ChevronLeft,
@@ -18,9 +18,13 @@ import {
   Coffee,
   Terminal,
   Camera,
+  Box,
 } from "lucide-react";
-import { Adaptive } from "@/components/three/adaptive";
+import { useVisualTier } from "@/lib/visual-tier";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { useEditorialToast } from "@/components/ui/editorial-toast";
+import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
 import { FAREWELL_MEME_STICKERS } from "@/lib/procedural-textures";
 import { studentToLanyardMember } from "@/lib/domain-logic";
 import { usePageFlipSound } from "@/lib/page-flip-audio";
@@ -128,10 +132,36 @@ export function KenanganClient({
   const moments = liveData?.moments ?? initialMoments;
 
   const { playPageFlip } = usePageFlipSound();
+  const { tier, webglSupported, setManualTier, isClientReady } = useVisualTier();
+  const { pushToast } = useEditorialToast();
   const [activeTab, setActiveTab] = React.useState<KenanganTab>("buku");
   // Buku Kenangan dimulai dalam keadaan TERTUTUP (sampul depan XII PPLG 1 + 1 Foto Bersama) baik 3D maupun 2D
   const [isBookOpen, setIsBookOpen] = React.useState(false);
   const [spreadIndex, setSpreadIndex] = React.useState(0);
+  const [flipDirection, setFlipDirection] = React.useState<1 | -1>(1);
+  // Override lokal agar pengguna mobile (default 2D ringan) dapat menekan "Aktifkan 3D" langsung di buku
+  const [bookForce3D, setBookForce3D] = React.useState<boolean | null>(null);
+  const touchSwipeStartRef = React.useRef<number | null>(null);
+
+  const is3DBookActive = React.useMemo(() => {
+    if (!isClientReady || !webglSupported) return false;
+    if (bookForce3D !== null) return bookForce3D;
+    return tier === "hd";
+  }, [isClientReady, webglSupported, bookForce3D, tier]);
+
+  const navigateSpread = React.useCallback(
+    (nextIndex: number) => {
+      setSpreadIndex((prev) => {
+        const clamped = Math.max(0, Math.min(Math.max(0, students.length + 2), nextIndex));
+        if (clamped !== prev) {
+          setFlipDirection(clamped > prev ? 1 : -1);
+          playPageFlip();
+        }
+        return clamped;
+      });
+    },
+    [playPageFlip, students.length]
+  );
 
   // State Paginasi (Prev / Next Icon) agar tidak capek scroll
   const [tocPage, setTocPage] = React.useState(1);
@@ -172,24 +202,31 @@ export function KenanganClient({
   const [thFeedback, setThFeedback] = React.useState<string | null>(null);
   const [thSubmitting, setThSubmitting] = React.useState(false);
 
-  // 1 Foto Bersama untuk Sampul Depan Buku Kenangan (Prioritas: Kategori "Foto Sampul Buku" -> "Foto Bersama Kelas" -> Foto Upload Asli non-Hero)
+  // 1 Foto Bersama untuk Sampul Depan Buku Kenangan (Prioritas: Kategori "Foto Sampul Buku" -> "Foto Bersama Kelas" -> Foto Upload Asli non-Hero/non-ID Card)
   const coverPhotoMoment = React.useMemo(() => {
+    const isIdCardPortrait = (cat: string) =>
+      cat === "ID Card Siswa" || cat === "ID Card Sahabat Istimewa";
     return (
       moments.find((m) => m.category === "Foto Sampul Buku") ||
       moments.find((m) => m.category === "Foto Bersama Kelas") ||
       moments.find(
         (m) =>
           m.category !== "Foto Hero 3D" &&
+          !isIdCardPortrait(m.category) &&
           m.image_url &&
           !m.image_url.startsWith("/api/moment-illustration")
       ) ||
-      moments.find((m) => m.category !== "Foto Hero 3D") ||
+      moments.find(
+        (m) => m.category !== "Foto Hero 3D" && !isIdCardPortrait(m.category)
+      ) ||
       moments[0]
     );
   }, [moments]);
 
   // Koleksi Foto Bersama untuk 2 Spread (4 Halaman) pertama setelah sampul dibuka, sebelum Daftar Isi
   const groupPhotoPagesData = React.useMemo(() => {
+    const isIdCardPortrait = (cat: string) =>
+      cat === "ID Card Siswa" || cat === "ID Card Sahabat Istimewa";
     const prioritized = [
       ...moments.filter((m) => m.category === "Foto Bersama Kelas"),
       ...moments.filter((m) => m.category === "Foto Sampul Buku"),
@@ -198,6 +235,7 @@ export function KenanganClient({
           m.category !== "Foto Bersama Kelas" &&
           m.category !== "Foto Sampul Buku" &&
           m.category !== "Foto Hero 3D" &&
+          !isIdCardPortrait(m.category) &&
           m.image_url &&
           !m.image_url.startsWith("/api/moment-illustration")
       ),
@@ -206,6 +244,7 @@ export function KenanganClient({
           m.category !== "Foto Bersama Kelas" &&
           m.category !== "Foto Sampul Buku" &&
           m.category !== "Foto Hero 3D" &&
+          !isIdCardPortrait(m.category) &&
           (!m.image_url || m.image_url.startsWith("/api/moment-illustration"))
       ),
     ];
@@ -401,27 +440,52 @@ export function KenanganClient({
 
   const currentSpread = spreads[spreadIndex] ?? spreads[0]!;
 
-  // Navigasi Keyboard untuk Buku Kenangan
+  // Navigasi Keyboard Penuh untuk Buku Kenangan (ArrowLeft/Right, Space, PageUp/Down, Home/End)
   React.useEffect(() => {
     if (activeTab !== "buku") return;
     const onKey = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
       ) {
         return;
       }
-      if (e.key === "ArrowRight") {
-        if (!isBookOpen) setIsBookOpen(true);
-        else setSpreadIndex((p) => Math.min(spreads.length - 1, p + 1));
-      } else if (e.key === "ArrowLeft") {
-        setSpreadIndex((p) => Math.max(0, p - 1));
+      if (e.key === "ArrowRight" || e.key === "PageDown") {
+        e.preventDefault();
+        if (!isBookOpen) {
+          playPageFlip();
+          setIsBookOpen(true);
+        } else {
+          navigateSpread(Math.min(spreads.length - 1, spreadIndex + 1));
+        }
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        if (isBookOpen) {
+          navigateSpread(Math.max(0, spreadIndex - 1));
+        }
+      } else if (e.key === " ") {
+        e.preventDefault();
+        if (!isBookOpen) {
+          playPageFlip();
+          setIsBookOpen(true);
+        } else {
+          navigateSpread(Math.min(spreads.length - 1, spreadIndex + 1));
+        }
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        setIsBookOpen(true);
+        navigateSpread(0);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        setIsBookOpen(true);
+        navigateSpread(spreads.length - 1);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeTab, isBookOpen, spreads.length]);
+  }, [activeTab, isBookOpen, spreads.length, spreadIndex, navigateSpread, playPageFlip]);
 
   const submitMemoryForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -441,11 +505,11 @@ export function KenanganClient({
         }),
       });
       const json = await res.json();
-      setMemFeedback(
-        json.ok
-          ? json.message
-          : json.error || "Gagal mengirim catatan Buku Kenangan."
-      );
+      const feedbackMsg = json.ok
+        ? json.message
+        : json.error || "Gagal mengirim catatan Buku Kenangan.";
+      setMemFeedback(feedbackMsg);
+      pushToast(feedbackMsg, json.ok ? "success" : "error");
       if (json.ok) {
         setMemMessage("");
         notifyPublicDataUpdated();
@@ -453,6 +517,7 @@ export function KenanganClient({
       }
     } catch {
       setMemFeedback("Gagal menghubungi server.");
+      pushToast("Gagal menghubungi server.", "error");
     } finally {
       setMemSubmitting(false);
     }
@@ -477,9 +542,11 @@ export function KenanganClient({
         }),
       });
       const json = await res.json();
-      setCapFeedback(
-        json.ok ? json.message : json.error || "Gagal menyegel kapsul waktu."
-      );
+      const feedbackMsg = json.ok
+        ? json.message
+        : json.error || "Gagal menyegel kapsul waktu.";
+      setCapFeedback(feedbackMsg);
+      pushToast(feedbackMsg, json.ok ? "success" : "error");
       if (json.ok) {
         setCapMessage("");
         notifyPublicDataUpdated();
@@ -487,6 +554,7 @@ export function KenanganClient({
       }
     } catch {
       setCapFeedback("Gagal menghubungi server.");
+      pushToast("Gagal menghubungi server.", "error");
     } finally {
       setCapSubmitting(false);
     }
@@ -510,9 +578,11 @@ export function KenanganClient({
         }),
       });
       const json = await res.json();
-      setThFeedback(
-        json.ok ? json.message : json.error || "Gagal mengirim ucapan."
-      );
+      const feedbackMsg = json.ok
+        ? json.message
+        : json.error || "Gagal mengirim ucapan.";
+      setThFeedback(feedbackMsg);
+      pushToast(feedbackMsg, json.ok ? "success" : "error");
       if (json.ok) {
         setThMessage("");
         notifyPublicDataUpdated();
@@ -520,6 +590,7 @@ export function KenanganClient({
       }
     } catch {
       setThFeedback("Gagal menghubungi server.");
+      pushToast("Gagal menghubungi server.", "error");
     } finally {
       setThSubmitting(false);
     }
@@ -532,9 +603,12 @@ export function KenanganClient({
         <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Ruang Memori &amp; Surat Masa Depan · UNO XII PPLG 1
         </p>
-        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+        <SplitLineHeading
+          as="h1"
+          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+        >
           Buku Kenangan, Kapsul Waktu &amp; Apresiasi
-        </h1>
+        </SplitLineHeading>
         <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
           Album foto bersama, catatan tulisan tangan tiap siswa, dan surat masa depan.
         </p>
@@ -697,7 +771,7 @@ export function KenanganClient({
                 whileTap={{ scale: 0.96 }}
                 onClick={() => {
                   setIsBookOpen(true);
-                  setSpreadIndex(TOC_SPREAD_INDEX);
+                  navigateSpread(TOC_SPREAD_INDEX);
                 }}
                 className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 text-xs font-semibold whitespace-nowrap ${
                   isBookOpen && spreadIndex === TOC_SPREAD_INDEX
@@ -708,6 +782,28 @@ export function KenanganClient({
                 <List className="size-4 text-foreground" />
                 <span>Daftar Isi (Hal. 5–6)</span>
               </motion.button>
+
+              {webglSupported && (
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    const next3D = !is3DBookActive;
+                    setBookForce3D(next3D);
+                    setManualTier(next3D ? "hd" : "simple");
+                  }}
+                  aria-pressed={is3DBookActive}
+                  className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 font-mono text-xs font-semibold whitespace-nowrap transition-colors ${
+                    is3DBookActive
+                      ? "border-foreground/50 bg-secondary text-foreground hover:bg-muted"
+                      : "border-border bg-background text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <Box className="size-3.5 text-foreground" />
+                  <span>{is3DBookActive ? "Mode 2D Ringan" : "Aktifkan 3D"}</span>
+                </motion.button>
+              )}
             </div>
 
             <div className="flex w-full items-center gap-1.5 sm:gap-2 lg:w-auto">
@@ -739,11 +835,11 @@ export function KenanganClient({
                 aria-label="Halaman sebelumnya"
                 disabled={isBookOpen && spreadIndex <= 0}
                 onClick={() => {
-                  playPageFlip();
                   if (!isBookOpen) {
+                    playPageFlip();
                     setIsBookOpen(true);
                   } else {
-                    setSpreadIndex((p) => Math.max(0, p - 1));
+                    navigateSpread(Math.max(0, spreadIndex - 1));
                   }
                 }}
                 className="inline-flex min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
@@ -761,11 +857,11 @@ export function KenanganClient({
                 aria-label="Halaman berikutnya"
                 disabled={isBookOpen && spreadIndex >= spreads.length - 1}
                 onClick={() => {
-                  playPageFlip();
                   if (!isBookOpen) {
+                    playPageFlip();
                     setIsBookOpen(true);
                   } else {
-                    setSpreadIndex((p) => Math.min(spreads.length - 1, p + 1));
+                    navigateSpread(Math.min(spreads.length - 1, spreadIndex + 1));
                   }
                 }}
                 className="inline-flex min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
@@ -775,13 +871,65 @@ export function KenanganClient({
             </div>
           </div>
 
-          {/* Adaptive Buku Kenangan: 3D Melengkung di Desktop HD, Buku 2D Scrapbook dengan Kotak Teks Acak & Stiker Meme di Mode Ringan */}
-          <Adaptive
-            simple={
-              <div className="overflow-hidden rounded-2xl border-2 border-[#C9C4B8] bg-[#ECE9E1] text-[#1B1B1A] shadow-lg">
+          {/* Buku Kenangan: 3D Vertex-Shader Book-Flip di Desktop/Opt-In, atau 2D Lipatan Kertas Lengkung Halus di Mobile */}
+          {is3DBookActive ? (
+            <BukuKenanganSceneHD
+              spreads={spreads}
+              isBookOpen={isBookOpen}
+              activeSpreadIndex={spreadIndex}
+              coverPhotoUrl={coverPhotoMoment?.image_url}
+              coverCaption={
+                coverPhotoMoment?.caption ||
+                "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"
+              }
+              onOpenBook={() => {
+                playPageFlip();
+                setIsBookOpen(true);
+              }}
+              onChangeSpread={(next) => {
+                navigateSpread(next);
+              }}
+            />
+          ) : (
+            <div
+              onTouchStart={(e) => {
+                touchSwipeStartRef.current = e.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(e) => {
+                const startX = touchSwipeStartRef.current;
+                touchSwipeStartRef.current = null;
+                if (startX === null) return;
+                const endX = e.changedTouches[0]?.clientX ?? startX;
+                const dx = endX - startX;
+                if (Math.abs(dx) < 44) return;
+                if (!isBookOpen) {
+                  playPageFlip();
+                  setIsBookOpen(true);
+                  return;
+                }
+                if (dx < 0 && spreadIndex < spreads.length - 1) {
+                  navigateSpread(spreadIndex + 1);
+                } else if (dx > 0 && spreadIndex > 0) {
+                  navigateSpread(spreadIndex - 1);
+                }
+              }}
+              style={{ perspective: "1800px" }}
+              className="relative overflow-hidden rounded-2xl border-2 border-[#C9C4B8] bg-[#ECE9E1] text-[#1B1B1A] shadow-lg"
+            >
+              <AnimatePresence mode="wait" initial={false}>
                 {!isBookOpen ? (
                   /* Sampul Buku 2D Tertutup dengan 1 Foto Bersama XII PPLG 1 */
-                  <div className="flex flex-col items-center justify-center bg-gradient-to-br from-[#3D3124] via-[#2D241C] to-[#241C15] px-4 py-8 sm:px-6 sm:py-12 text-center text-[#EFE5CE]">
+                  <motion.div
+                    key="book-2d-cover"
+                    initial={{ opacity: 0, rotateY: -12, scale: 0.98 }}
+                    animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotateY: -22, x: -24 }}
+                    transition={{
+                      duration: MOTION_DURATION.medium,
+                      ease: MOTION_EASE.editorial,
+                    }}
+                    className="flex flex-col items-center justify-center bg-gradient-to-br from-[#3D3124] via-[#2D241C] to-[#241C15] px-4 py-8 sm:px-6 sm:py-12 text-center text-[#EFE5CE]"
+                  >
                     <div className="w-full max-w-lg rounded-2xl border-2 border-[#C9B794] bg-[#2D241C]/85 p-4 sm:p-8 shadow-inner">
                       <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-[#D8C7A6]">
                         Album Memori Madrasah · UNO
@@ -830,17 +978,50 @@ export function KenanganClient({
                         type="button"
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => setIsBookOpen(true)}
+                        onClick={() => {
+                          playPageFlip();
+                          setIsBookOpen(true);
+                        }}
                         className="mt-7 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#E8E5DC] px-6 py-2.5 text-xs font-bold text-[#1B1B1A] shadow-md"
                       >
                         <BookOpen className="size-4" />
                         <span>Buka Sampul Buku Kenangan</span>
                       </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
                 ) : (
-                  /* Lembar Buku 2D Terbuka dengan Lipatan Tengah, Halaman Foto Bersama, Daftar Isi, dan Halaman Siswa */
-                  <div className="relative grid grid-cols-1 divide-y divide-[#C9C4B8] md:grid-cols-2 md:divide-x md:divide-y-0">
+                  /* Lembar Buku 2D Terbuka dengan Animasi Lipatan Kertas & Bayangan Lengkung */
+                  <motion.div
+                    key={`book-2d-spread-${spreadIndex}`}
+                    initial={{
+                      opacity: 0.35,
+                      rotateY: flipDirection === 1 ? 14 : -14,
+                      x: flipDirection === 1 ? 26 : -26,
+                      scale: 0.985,
+                    }}
+                    animate={{ opacity: 1, rotateY: 0, x: 0, scale: 1 }}
+                    exit={{
+                      opacity: 0.25,
+                      rotateY: flipDirection === 1 ? -16 : 16,
+                      x: flipDirection === 1 ? -28 : 28,
+                      scale: 0.985,
+                    }}
+                    transition={{
+                      duration: MOTION_DURATION.medium,
+                      ease: MOTION_EASE.editorial,
+                    }}
+                    style={{ transformOrigin: "50% 50%" }}
+                    className="relative grid grid-cols-1 divide-y divide-[#C9C4B8] md:grid-cols-2 md:divide-x md:divide-y-0"
+                  >
+                    {/* Bayangan lipatan tengah buku (gutter fold shadow) */}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 left-1/2 z-10 hidden w-12 -translate-x-1/2 md:block"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, rgba(24,20,16,0) 0%, rgba(24,20,16,0.12) 48%, rgba(24,20,16,0.16) 50%, rgba(24,20,16,0.09) 55%, rgba(24,20,16,0) 100%)",
+                      }}
+                    />
                     {/* Halaman Kiri */}
                     <div className="relative flex flex-col justify-between p-4 sm:p-8">
                       <div>
@@ -1179,31 +1360,30 @@ export function KenanganClient({
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
-            }
-            hd={
-              <BukuKenanganSceneHD
-                spreads={spreads}
-                isBookOpen={isBookOpen}
-                activeSpreadIndex={spreadIndex}
-                coverPhotoUrl={coverPhotoMoment?.image_url}
-                coverCaption={
-                  coverPhotoMoment?.caption ||
-                  "Keluarga Besar XII PPLG 1 — Satu Kenangan Selamanya"
-                }
-                onOpenBook={() => {
-                  playPageFlip();
-                  setIsBookOpen(true);
-                }}
-                onChangeSpread={(next) => {
-                  playPageFlip();
-                  setSpreadIndex(next);
-                }}
-              />
-            }
-          />
+              </AnimatePresence>
+              {/* Petunjuk geser di mode 2D mobile */}
+              {isBookOpen && (
+                <div className="flex items-center justify-between border-t border-[#C9C4B8] bg-[#E6E2D7] px-4 py-2 font-mono text-[10px] text-[#5C5A54]">
+                  <span>Geser kiri/kanan untuk membalik lembar</span>
+                  {webglSupported && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookForce3D(true);
+                        setManualTier("hd");
+                      }}
+                      className="inline-flex items-center gap-1 font-bold text-[#1B1B1A] underline underline-offset-2"
+                    >
+                      <Box className="size-3" />
+                      <span>Aktifkan 3D</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Strip Koleksi Stiker Meme Perpisahan di Bawah Buku (Tampil di Mode 3D & 2D) */}
           <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-2xs">

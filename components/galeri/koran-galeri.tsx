@@ -11,7 +11,14 @@ import {
   Layers,
   Newspaper,
 } from "lucide-react";
-import type { LeafThroughHandle, PageSource } from "leafthrough/react";
+import type {
+  InteractionOptions,
+  LightingOptions,
+  MotionOptions,
+  PageSource,
+  PaperOptions,
+} from "leafthrough";
+import type { LeafThroughVanillaHandle } from "@/components/galeri/leaf-through-wrapper";
 import { useVisualTier } from "@/lib/visual-tier";
 import { useGsap, gsap } from "@/lib/gsap-utils";
 import {
@@ -23,6 +30,47 @@ import {
   type LoadedImageResult,
 } from "@/lib/newspaper-engine";
 import type { MomentPhase, MomentRow } from "@/lib/types";
+
+const KORAN_PAPER_OPTIONS: PaperOptions = {
+  backColor: "#EFE5CE",
+  roughness: 0.96,
+  metalness: 0.0,
+  inkGloss: 0.0,
+  grain: false,
+  grainStrength: 0,
+  showThrough: 0,
+  wrinkles: 0.18,
+  bulge: 0.52,
+};
+
+const KORAN_LIGHTING_OPTIONS: LightingOptions = {
+  ambient: {
+    sky: "#FFFFFF",
+    ground: "#F8F8F8",
+    intensity: 2.05,
+  },
+  sun: {
+    color: "#FFFFFF",
+    intensity: 1.24,
+    position: [-1.8, 1.4, 4.2],
+  },
+  shadows: true,
+  floorShadow: 0.18,
+};
+
+const KORAN_MOTION_OPTIONS: MotionOptions = {
+  reducedMotion: "auto",
+  speed: 1.05,
+  hoverLift: 0.028,
+};
+
+const KORAN_INTERACTION_OPTIONS: InteractionOptions = {
+  drag: true,
+  click: true,
+  hold: true,
+  hover: true,
+  keyboard: true,
+};
 
 const DynamicLeafThrough = dynamic(
   () => import("@/components/galeri/leaf-through-wrapper"),
@@ -57,7 +105,7 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
     ref
   ) {
     const { tier, reducedMotion, webglSupported } = useVisualTier();
-    const leafRef = React.useRef<LeafThroughHandle | null>(null);
+    const leafRef = React.useRef<LeafThroughVanillaHandle | null>(null);
     const containerRef = React.useRef<HTMLDivElement | null>(null);
     const wingLeftRef = React.useRef<HTMLDivElement | null>(null);
     const wingRightRef = React.useRef<HTMLDivElement | null>(null);
@@ -204,7 +252,8 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
           });
           setRenderedCount(renderedPagesSetRef.current.size);
 
-          timerHandle = window.setTimeout(scheduleNext, 18);
+          const isNearActive = Math.abs(nextIdx - currentPageRef.current) <= 2;
+          timerHandle = window.setTimeout(scheduleNext, isNearActive ? 12 : 42);
         };
 
         const win = window as Window & {
@@ -517,6 +566,7 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
         {/* Panggung Koran LeafThrough Kecreaman */}
         <div
           ref={stageCardRef}
+          data-leafthrough="true"
           className="relative mt-4 rounded-xl border border-[#B29E7C] bg-[#C5B495] shadow-[inset_0_2px_16px_rgba(38,31,24,0.14)] px-2 py-4 sm:px-6 sm:py-6 dark:border-border dark:bg-secondary/55 dark:shadow-none"
         >
           <DynamicLeafThrough
@@ -528,44 +578,14 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
             plain={isPlain}
             bleed={!isPlain}
             preload={4}
-            maxPixelRatio={3}
+            maxPixelRatio={2}
             label="Galeri Kenangan Bersama — Koran XII PPLG 1"
-            paper={{
-              backColor: "#EFE5CE",
-              roughness: 0.96,
-              metalness: 0.0,
-              inkGloss: 0.0,
-              grain: false,
-              grainStrength: 0,
-              showThrough: 0,
-              wrinkles: 0.18,
-              bulge: 0.52,
-            }}
-            lighting={{
-              ambient: {
-                sky: "#FFFFFF",
-                ground: "#F8F8F8",
-                intensity: 2.05,
-              },
-              sun: {
-                color: "#FFFFFF",
-                intensity: 1.24,
-                position: [-1.8, 1.4, 4.2],
-              },
-              shadows: true,
-              floorShadow: 0.18,
-            }}
-            motion={{
-              reducedMotion: "auto",
-              speed: 1.05,
-              hoverLift: 0.028,
-            }}
-            interaction={{
-              drag: true,
-              click: true,
-              hold: true,
-              hover: true,
-              keyboard: true,
+            paper={KORAN_PAPER_OPTIONS}
+            lighting={KORAN_LIGHTING_OPTIONS}
+            motion={KORAN_MOTION_OPTIONS}
+            interaction={KORAN_INTERACTION_OPTIONS}
+            onReady={() => {
+              window.dispatchEvent(new CustomEvent("app:scene-ready"));
             }}
             onPageChange={(detail) => {
               setCurrentPage(detail.page);

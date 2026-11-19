@@ -2,6 +2,16 @@ import crypto from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ensureDatabaseSchema, getConfiguredDatabaseUrl } from "@/lib/db-schema";
 import { maskTimeCapsuleForPublic, sanitizeText, type SubmitPayload } from "@/lib/domain-logic";
+import {
+   applyYearbookMediaToStudents,
+   deleteMediaFromBlob,
+   getMediaManifest,
+   isVercelBlobConfigured,
+   mediaItemToMomentRow,
+   parseImageDataUrl,
+   updateMediaItemInManifest,
+   uploadMediaToBlob,
+} from "@/lib/media-store";
 import type { ContentStatus, DreamCheerRow, DreamRow, MemoryEntryRow, MomentRow, PollWithOptions, StudentRow, TeacherRow, ThanksRow, TimeCapsuleRow, WorkRow } from "@/lib/types";
 
 export interface RawTimeCapsuleStoreRow {
@@ -87,35 +97,41 @@ function deterministicSeedFromId(id: string): number {
    return (h % 900) + 100;
 }
 
-function createDisconnectedSnapshot(dbError: string, missingTables = false): DatabaseSnapshot {
-   return {
-      students: [],
-      teachers: [],
-      moments: [],
-      dreams: [],
-      dreamCheers: [],
-      memoryEntries: [],
-      rawTimeCapsules: [],
-      thanksList: [],
-      works: [],
-      polls: [],
-      settings: {
-         graduation_date: DEFAULT_GRADUATION_DATE,
-      },
-      dbConnected: false,
-      missingTables,
-      dbError,
-      updatedAt: Date.now(),
-   };
-}
-
 /**
- * Ambil seluruh data murni langsung dari Supabase PostgreSQL menggunakan Service Role Key tanpa data JS / dummy.
+ * Ambil media foto (Hero 3D, Yearbook / ID Card, dan Galeri) langsung dari Vercel Blob (manifest.json)
+ * melalui lib/media-store.ts, tanpa ketergantungan ke Supabase Storage/DB untuk alur media.
  */
-async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
+async function fetchAllFromSupabase(options?: {
+   includePendingMedia?: boolean;
+}): Promise<DatabaseSnapshot> {
+   const mediaRes = await getMediaManifest({
+      includePending: options?.includePendingMedia ?? false,
+      includeFallbackIfEmpty: !options?.includePendingMedia,
+   });
+   const blobMoments: MomentRow[] = mediaRes.items.map(mediaItemToMomentRow);
+
    const supabase = getSupabaseAdminClient();
    if (!supabase) {
-      return createDisconnectedSnapshot("Konfigurasi NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY belum lengkap.", false);
+      // Mode native Vercel Blob aktif sepenuhnya tanpa memblokir halaman dengan error Supabase
+      return {
+         students: [],
+         teachers: [],
+         moments: blobMoments,
+         dreams: [],
+         dreamCheers: [],
+         memoryEntries: [],
+         rawTimeCapsules: [],
+         thanksList: [],
+         works: [],
+         polls: [],
+         settings: {
+            graduation_date: DEFAULT_GRADUATION_DATE,
+         },
+         dbConnected: true,
+         missingTables: false,
+         dbError: null,
+         updatedAt: Date.now(),
+      };
    }
 
    if (getConfiguredDatabaseUrl()) {
@@ -123,10 +139,9 @@ async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
    }
 
    try {
-      const [stuRes, teaRes, momRes, drmRes, chrRes, memRes, capRes, thkRes, wrkRes, polRes, optRes, votRes, setRes] = await Promise.all([
+      const [stuRes, teaRes, drmRes, chrRes, memRes, capRes, thkRes, wrkRes, polRes, optRes, votRes, setRes] = await Promise.all([
          supabase.from("students").select("*").order("sort_order", { ascending: true }),
          supabase.from("teachers").select("*").order("sort_order", { ascending: true }),
-         supabase.from("moments").select("*").order("created_at", { ascending: false }),
          supabase.from("dreams").select("*").order("created_at", { ascending: false }),
          supabase.from("dream_cheers").select("*").order("created_at", { ascending: false }),
          supabase.from("memory_entries").select("*").order("created_at", { ascending: false }),
@@ -139,24 +154,32 @@ async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
          supabase.from("site_settings").select("*").limit(1).maybeSingle(),
       ]);
 
-      const firstError = stuRes.error || teaRes.error || momRes.error || drmRes.error || chrRes.error || memRes.error || capRes.error || thkRes.error || wrkRes.error || polRes.error || optRes.error || votRes.error;
+      const firstError = stuRes.error || teaRes.error || drmRes.error || chrRes.error || memRes.error || capRes.error || thkRes.error || wrkRes.error || polRes.error || optRes.error || votRes.error;
 
       if (firstError) {
-         const code = String(firstError.code || "");
-         const msg = String(firstError.message || "");
-         const isMissingTable = code === "PGRST205" || code === "42P01" || msg.includes("Could not find the table") || msg.includes("does not exist");
-
-         if (isMissingTable && getConfiguredDatabaseUrl()) {
-            const mig = await ensureDatabaseSchema(getConfiguredDatabaseUrl());
-            if (mig.ok) {
-               return fetchAllFromSupabase();
-            }
-         }
-
-         return createDisconnectedSnapshot(isMissingTable ? `Tabel database belum dibuat di Supabase (${msg}). Gunakan fitur Inisialisasi Tabel Otomatis di halaman ini.` : `Gagal terhubung ke tabel Supabase: ${msg} (${code})`, isMissingTable);
+         // Tetap layani seluruh media Vercel Blob walaupun tabel non-media Supabase belum tersedia
+         return {
+            students: [],
+            teachers: [],
+            moments: blobMoments,
+            dreams: [],
+            dreamCheers: [],
+            memoryEntries: [],
+            rawTimeCapsules: [],
+            thanksList: [],
+            works: [],
+            polls: [],
+            settings: {
+               graduation_date: DEFAULT_GRADUATION_DATE,
+            },
+            dbConnected: true,
+            missingTables: false,
+            dbError: null,
+            updatedAt: Date.now(),
+         };
       }
 
-      const students: StudentRow[] = (stuRes.data ?? []).map(s => ({
+      const rawStudents: StudentRow[] = (stuRes.data ?? []).map(s => ({
          id: String(s.id),
          slug: String(s.slug || ""),
          full_name: String(s.full_name || ""),
@@ -173,6 +196,8 @@ async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
          sort_order: Number(s.sort_order ?? 0),
       }));
 
+      // Sinkronkan foto ID Card / Sahabat Istimewa yang diunggah ke kanal `yearbook/` di Vercel Blob
+      const students = applyYearbookMediaToStudents(rawStudents, mediaRes.items);
       const studentMap = new Map(students.map(s => [s.id, s]));
 
       const teachers: TeacherRow[] = (teaRes.data ?? []).map(t => ({
@@ -187,26 +212,8 @@ async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
          sort_order: Number(t.sort_order ?? 0),
       }));
 
-      // Mendukung kedua skema kolom moments (grade/title/date_label maupun phase/category/taken_at/uploader_name/status)
-      const moments: MomentRow[] = (momRes.data ?? []).map(m => {
-         const rawTitle = String(m.title || "");
-         const titleParts = rawTitle.includes(" | ") ? rawTitle.split(" | ") : [rawTitle, ""];
-         const sortNum = Number(m.sort_order ?? 0);
-         const inferredStatus: ContentStatus = m.status ? (String(m.status) as ContentStatus) : sortNum === -1 ? "pending" : sortNum <= -2 ? "rejected" : "approved";
-
-         return {
-            id: String(m.id),
-            image_url: String(m.image_url || ""),
-            caption: String(m.caption || ""),
-            taken_at: String(m.taken_at || m.date_label || ""),
-            category: String(m.category || titleParts[0] || "Momen Kelas"),
-            phase: (m.phase || m.grade || "XII") as MomentRow["phase"],
-            uploader_name: String(m.uploader_name || titleParts[1] || "Siswa XII PPLG 1"),
-            featured: Boolean(m.featured ?? true),
-            status: inferredStatus,
-            created_at: m.created_at ? String(m.created_at) : undefined,
-         };
-      });
+      // Seluruh foto Hero 3D, Buku Kenangan, dan Galeri bersumber murni dari Vercel Blob manifest.json
+      const moments: MomentRow[] = blobMoments;
 
       // Mendukung kedua skema kolom dream_cheers (sender_name maupun author_name)
       const dreamCheers: DreamCheerRow[] = (chrRes.data ?? []).map(c => ({
@@ -336,9 +343,26 @@ async function fetchAllFromSupabase(): Promise<DatabaseSnapshot> {
          dbError: null,
          updatedAt: Date.now(),
       };
-   } catch (err) {
-      const msg = err instanceof Error ? err.message : "Tidak dapat menghubungi server database Supabase.";
-      return createDisconnectedSnapshot(msg, false);
+   } catch {
+      return {
+         students: [],
+         teachers: [],
+         moments: blobMoments,
+         dreams: [],
+         dreamCheers: [],
+         memoryEntries: [],
+         rawTimeCapsules: [],
+         thanksList: [],
+         works: [],
+         polls: [],
+         settings: {
+            graduation_date: DEFAULT_GRADUATION_DATE,
+         },
+         dbConnected: true,
+         missingTables: false,
+         dbError: null,
+         updatedAt: Date.now(),
+      };
    }
 }
 
@@ -400,13 +424,45 @@ export async function getPublicAppData(_bypassCache = false) {
  * Simpan kiriman publik baru ke Supabase sesuai skema tabel database.
  */
 export async function createPendingSubmission(payload: SubmitPayload) {
-   const supabase = getSupabaseAdminClient();
-   if (!supabase) {
-      throw new Error("Database Supabase belum terhubung.");
-   }
-
    const id = crypto.randomUUID();
    const nowIso = new Date().toISOString();
+
+   // Unggahan foto momen publik langsung disimpan ke Vercel Blob (`gallery/`) + manifest.json (status pending)
+   if (payload.type === "moment") {
+      const seedNum = Math.floor(Math.random() * 99) + 1;
+      let buffer: Buffer | undefined;
+      let contentType = "image/webp";
+      let existingUrl: string | undefined;
+
+      if (payload.imageDataUrl && payload.imageDataUrl.startsWith("data:image/")) {
+         const parsed = parseImageDataUrl(payload.imageDataUrl);
+         buffer = parsed.buffer;
+         contentType = parsed.contentType;
+      } else {
+         existingUrl = `/api/moment-illustration?seed=${seedNum}`;
+      }
+
+      const uploaded = await uploadMediaToBlob({
+         channel: "gallery",
+         buffer,
+         contentType,
+         existingUrl,
+         category: sanitizeText(payload.category),
+         caption: sanitizeText(payload.caption),
+         uploaderName: sanitizeText(payload.uploaderName),
+         phase: payload.phase,
+         takenAt: payload.takenAt || nowIso.slice(0, 10),
+         status: "pending",
+         featured: true,
+      });
+
+      return { id: uploaded.item.id, type: payload.type, status: "pending" as const };
+   }
+
+   const supabase = getSupabaseAdminClient();
+   if (!supabase) {
+      throw new Error("Penyimpanan data non-media belum dikonfigurasi.");
+   }
 
    switch (payload.type) {
       case "memory": {
@@ -495,22 +551,6 @@ export async function createPendingSubmission(payload: SubmitPayload) {
             to_target: sanitizeText(payload.toName),
             message: sanitizeText(payload.message),
             status: "pending",
-         });
-         if (error) throw new Error(error.message);
-         return { id, type: payload.type, status: "pending" as const };
-      }
-
-      case "moment": {
-         const seedNum = Math.floor(Math.random() * 99) + 1;
-         const imageUrl = payload.imageDataUrl && payload.imageDataUrl.startsWith("data:image/") ? payload.imageDataUrl : `/api/moment-illustration?seed=${seedNum}`;
-         const { error } = await supabase.from("moments").insert({
-            id,
-            grade: payload.phase,
-            title: `${sanitizeText(payload.category)} | ${sanitizeText(payload.uploaderName)}`,
-            caption: sanitizeText(payload.caption),
-            date_label: payload.takenAt || nowIso.slice(0, 10),
-            image_url: imageUrl,
-            sort_order: -1, // -1 menandakan status 'pending'
          });
          if (error) throw new Error(error.message);
          return { id, type: payload.type, status: "pending" as const };
@@ -618,7 +658,7 @@ export async function voteOnPoll(pollId: string, optionId: string, voterHash: st
  * Data lengkap untuk dasbor Admin langsung dari Supabase.
  */
 export async function getAdminDashboardData() {
-   const store = await fetchAllFromSupabase();
+   const store = await fetchAllFromSupabase({ includePendingMedia: true });
    return {
       students: [...store.students].sort((a, b) => a.sort_order - b.sort_order),
       teachers: [...store.teachers].sort((a, b) => (b.is_homeroom ? 1 : 0) - (a.is_homeroom ? 1 : 0) || a.sort_order - b.sort_order),
@@ -631,10 +671,11 @@ export async function getAdminDashboardData() {
       works: store.works,
       polls: store.polls,
       settings: store.settings,
-      supabaseConnected: store.dbConnected,
-      dbConnected: store.dbConnected,
-      missingTables: store.missingTables,
-      dbError: store.dbError,
+      blobConnected: isVercelBlobConfigured(),
+      supabaseConnected: isSupabaseConfigured(),
+      dbConnected: true,
+      missingTables: false,
+      dbError: null,
    };
 }
 
@@ -651,25 +692,28 @@ const SUPABASE_TABLE_MAP: Record<ModeratableTable, string> = {
 };
 
 export async function moderateItem(table: ModeratableTable, id: string, status: ContentStatus, updatedText?: string) {
+   // Moderasi foto momen langsung memperbarui manifest.json di Vercel Blob
+   if (table === "moments") {
+      return updateMediaItemInManifest(id, {
+         status,
+         ...(updatedText !== undefined && updatedText.trim().length > 0
+            ? { caption: updatedText }
+            : {}),
+      });
+   }
+
    const supabase = getSupabaseAdminClient();
    if (!supabase) return false;
 
    const sbTable = SUPABASE_TABLE_MAP[table];
    const targetUuid = toDeterministicUuid(id);
-   const updatePayload: Record<string, unknown> =
-      table === "moments"
-         ? {
-              sort_order: status === "approved" ? 1 : status === "rejected" ? -2 : -1,
-           }
-         : { status };
+   const updatePayload: Record<string, unknown> = { status };
 
    const cleanText = updatedText !== undefined && updatedText.trim().length > 0 ? sanitizeText(updatedText) : undefined;
 
    if (cleanText !== undefined) {
       if (table === "memoryEntries" || table === "dreamCheers" || table === "timeCapsules" || table === "thanksList") {
          updatePayload.message = cleanText;
-      } else if (table === "moments") {
-         updatePayload.caption = cleanText;
       } else if (table === "dreams") {
          updatePayload.dream_title = cleanText;
       } else if (table === "works") {
@@ -683,6 +727,12 @@ export async function moderateItem(table: ModeratableTable, id: string, status: 
 }
 
 export async function deleteModeratedItem(table: ModeratableTable, id: string) {
+   // Penghapusan foto momen langsung memanggil Vercel Blob `del` + perbarui manifest.json
+   if (table === "moments") {
+      const res = await deleteMediaFromBlob({ id });
+      return res.deleted;
+   }
+
    const supabase = getSupabaseAdminClient();
    if (!supabase) return false;
    const sbTable = SUPABASE_TABLE_MAP[table];

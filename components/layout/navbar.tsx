@@ -30,6 +30,11 @@ import { useVisualTier } from "@/lib/visual-tier";
 import { useSadAudio } from "@/lib/sad-audio";
 import { UnoLogo } from "@/components/ui/uno-logo";
 import { navigateWithVanishingPoint } from "@/components/layout/vanishing-page-transition";
+import {
+  MOTION_DURATION,
+  MOTION_EASE,
+  MOTION_STAGGER,
+} from "@/lib/motion-tokens";
 
 const NAV_ITEMS = [
   {
@@ -111,6 +116,15 @@ export function Navbar() {
     setMobileSheetOpen(false);
     setPendingHref(null);
   }, [pathname]);
+
+  React.useEffect(() => {
+    if (!mobileSheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileSheetOpen]);
 
   const handleNavigate = (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -210,7 +224,7 @@ export function Navbar() {
                   {isActive && (
                     <motion.span
                       layoutId="desktop-nav-pill"
-                      transition={{ type: "spring", stiffness: 440, damping: 32 }}
+                      transition={MOTION_EASE.springNav}
                       className="absolute inset-0 rounded-md bg-primary shadow-xs"
                       aria-hidden="true"
                     />
@@ -423,7 +437,7 @@ export function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Drawer Semua Ruang Mobile */}
+      {/* Drawer Semua Ruang Mobile (Drag-to-Dismiss + Staggered Reveal) */}
       <AnimatePresence>
         {mobileSheetOpen && (
           <motion.section
@@ -431,10 +445,18 @@ export function Navbar() {
             role="dialog"
             aria-modal="true"
             aria-label="Semua Ruang Kenangan XII PPLG 1"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+            initial={{ opacity: 0, y: 36, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 32, scale: 0.98 }}
+            transition={MOTION_EASE.springSheet}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.05, bottom: 0.4 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 75 || info.velocity.y > 380) {
+                setMobileSheetOpen(false);
+              }
+            }}
             className="fixed inset-x-0 bottom-[62px] z-50 mx-auto max-h-[75dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl lg:hidden"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
@@ -457,7 +479,7 @@ export function Navbar() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.map((item, idx) => {
                 const Icon = item.icon;
                 const isCurrentPath =
                   item.href === "/"
@@ -467,46 +489,56 @@ export function Navbar() {
                 const isActive = pendingHref ? isPending : isCurrentPath;
 
                 return (
-                  <Link
+                  <motion.div
                     key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    onClick={(e) => handleNavigate(e, item.href)}
-                    aria-current={isActive ? "page" : undefined}
-                    className={`flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border bg-background/80 text-foreground hover:bg-muted/70"
-                    }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: MOTION_DURATION.fast,
+                      delay: idx * MOTION_STAGGER.tight,
+                      ease: MOTION_EASE.editorial,
+                    }}
                   >
-                    <span
-                      className={`mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-lg ${
+                    <Link
+                      href={item.href}
+                      prefetch={false}
+                      onClick={(e) => handleNavigate(e, item.href)}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
                         isActive
-                          ? "bg-primary-foreground/20 text-primary-foreground"
-                          : "bg-muted text-foreground"
+                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                          : "border-border bg-background/80 text-foreground hover:bg-muted/70"
                       }`}
                     >
-                      {isPending ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Icon className="size-3.5" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-sans text-xs font-bold">
-                        {item.label}
-                      </span>
                       <span
-                        className={`block truncate font-sans text-[10px] ${
+                        className={`mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-lg ${
                           isActive
-                            ? "text-primary-foreground/85"
-                            : "text-muted-foreground"
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-foreground"
                         }`}
                       >
-                        {item.shortDesc}
+                        {isPending ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Icon className="size-3.5" />
+                        )}
                       </span>
-                    </span>
-                  </Link>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-sans text-xs font-bold">
+                          {item.label}
+                        </span>
+                        <span
+                          className={`block truncate font-sans text-[10px] ${
+                            isActive
+                              ? "text-primary-foreground/85"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {item.shortDesc}
+                        </span>
+                      </span>
+                    </Link>
+                  </motion.div>
                 );
               })}
             </div>
@@ -545,7 +577,7 @@ export function Navbar() {
                 {isActive && (
                   <motion.span
                     layoutId="mobile-nav-pill"
-                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                    transition={MOTION_EASE.springNav}
                     className="absolute inset-0 rounded-lg bg-primary shadow-xs"
                     aria-hidden="true"
                   />

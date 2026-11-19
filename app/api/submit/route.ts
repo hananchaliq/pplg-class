@@ -126,6 +126,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    revalidatePath("/");
+    revalidatePath("/galeri");
+    revalidatePath("/kenangan");
     revalidatePath("/", "layout");
 
     return NextResponse.json({

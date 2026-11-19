@@ -3,37 +3,28 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { gsap } from "@/lib/gsap-utils";
+import { useLoading } from "@/lib/loading-context";
 import { useVisualTier } from "@/lib/visual-tier";
 import { notifyRouteTransitionStart } from "@/lib/use-public-data";
+import { prefersReducedMotion } from "@/lib/motion-tokens";
 
 export interface VanishingRouterLike {
   push: (href: string) => void;
 }
 
-interface DotNode {
-  x: number;
-  y: number;
-  /** Posisi diagonal ternormalisasi: 0.0 di pojok kiri-atas, 1.0 di pojok kanan-bawah */
-  diag: number;
-  /** Offset harmonik tipis agar kemunculan titik terasa organik dan hidup */
-  jitter: number;
-  /** Skala ukuran titik */
-  scale: number;
-  /** Apakah titik mendapat aksen kilau emas antik tipis */
-  isWarmAccent: boolean;
+type LoaderPhase = "initial" | "entering" | "looping" | "fading" | "idle";
+
+interface DotMatrixController {
+  startRouteTransition: (targetHref: string, onPush: () => void) => void;
 }
 
-interface MicroDotController {
-  playExit: (onReadyToPush: () => void) => void;
-}
-
-let activeController: MicroDotController | null = null;
-let pendingExitPushTimer: number | null = null;
+let activeController: DotMatrixController | null = null;
 
 /**
- * Navigasi SPA dengan transisi matriks titik-titik kecil (Micro-Dot Screen Reveal):
- * Titik-titik menyapu halus dari pojok kiri-atas ke ujung kanan-bawah dan terus
- * melakukan looping sampai halaman tujuan benar-benar siap dibuka.
+ * Navigasi SPA dengan layar penuh matriks titik-titik:
+ * Overlay tetap ber-loop penuh sampai rute baru 100% terpasang,
+ * seluruh placeholder loading hilang, font & gambar utama terdekode,
+ * dan kanvas 3D/Koran benar-benar sudah tergambar — baru memudar perlahan.
  */
 export function navigateWithVanishingPoint(
   targetHref: string,
@@ -56,71 +47,154 @@ export function navigateWithVanishingPoint(
     }
   };
 
-  const prefersReduced = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
-  const isSimple = document.documentElement.dataset.visualTier === "simple";
-
-  if (prefersReduced || !activeController) {
+  if (!activeController) {
     pushRoute();
     return;
   }
 
-  if (isSimple) {
-    const stageEl = document.querySelector(
-      "[data-vanishing-stage]"
-    ) as HTMLElement | null;
-    if (!stageEl) {
-      pushRoute();
-      return;
-    }
-    gsap.killTweensOf(stageEl);
-    gsap.to(stageEl, {
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.in",
-      onComplete: pushRoute,
-    });
-    return;
-  }
-
-  if (pendingExitPushTimer !== null) {
-    window.clearTimeout(pendingExitPushTimer);
-    pendingExitPushTimer = null;
-  }
-
-  activeController.playExit(pushRoute);
+  activeController.startRouteTransition(targetHref, pushRoute);
 }
 
-function buildDotGrid(width: number, height: number): DotNode[] {
-  const pitch = width < 640 ? 22 : 25;
-  const cols = Math.max(8, Math.ceil(width / pitch) + 1);
-  const rows = Math.max(8, Math.ceil(height / pitch) + 1);
-  const maxCol = Math.max(1, cols - 1);
-  const maxRow = Math.max(1, rows - 1);
+/**
+ * Memastikan elemen <img> yang tampak di layar (above-the-fold) telah selesai
+ * dimuat dan didekode ke GPU sebelum overlay matriks titik-titik memudar.
+ */
+async function decodeVisibleImages(maxWaitMs = 4500): Promise<void> {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
 
-  const nodes: DotNode[] = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const nx = c / maxCol;
-      const ny = r / maxRow;
-      // Pojok kiri atas (0,0) -> 0.0; Pojok kanan bawah (1,1) -> 1.0
-      const diag = nx * 0.54 + ny * 0.46;
-      const wave = Math.sin(c * 1.45 + r * 2.15) * 0.028;
-      const pulse = Math.cos(c * 0.85 - r * 1.3) * 0.014;
-      const scale = 0.78 + ((c * 7 + r * 13) % 5) * 0.11;
-      const isWarmAccent = (c * 3 + r * 5) % 7 === 0;
-      nodes.push({
-        x: c * pitch + (r % 2 === 0 ? 0 : pitch * 0.22),
-        y: r * pitch,
-        diag,
-        jitter: wave + pulse,
-        scale,
-        isWarmAccent,
-      });
+  const vw = window.innerWidth || 1280;
+  const vh = window.innerHeight || 800;
+
+  const imgs = Array.from(
+    document.querySelectorAll<HTMLImageElement>("main img")
+  ).filter((img) => {
+    const rect = img.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    return rect.top < vh * 1.15 && rect.bottom > -40 && rect.left < vw * 1.1;
+  });
+
+  if (imgs.length === 0) return;
+
+  const waitOne = (img: HTMLImageElement) =>
+    new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
+      const decodeNow = () => {
+        if (typeof img.decode === "function") {
+          img.decode().then(done).catch(done);
+        } else {
+          done();
+        }
+      };
+
+      if (img.complete) {
+        if (img.naturalWidth > 0) {
+          decodeNow();
+        } else {
+          done();
+        }
+        return;
+      }
+
+      img.addEventListener("load", decodeNow, { once: true });
+      img.addEventListener("error", done, { once: true });
+    });
+
+  await Promise.race([
+    Promise.all(imgs.map(waitOne)),
+    new Promise<void>((resolve) => window.setTimeout(resolve, maxWaitMs)),
+  ]);
+}
+
+/**
+ * Cek sinkron apakah DOM halaman aktif sudah 100% terpasang dan siap terlihat di layar
+ * (tidak kosong polos putih, tidak sedang Suspense loading, tidak sedang dynamic loading).
+ */
+function inspectDomPaintReadiness(
+  expectsSceneReady: boolean,
+  sceneReady: boolean
+): { ready: boolean; reason: string } {
+  if (typeof document === "undefined") {
+    return { ready: false, reason: "Menyiapkan dokumen..." };
+  }
+
+  if (document.readyState !== "complete") {
+    return { ready: false, reason: "Memuat sumber daya halaman..." };
+  }
+
+  // 1. Pastikan Next.js route fallback (app/loading.tsx) sudah benar-benar hilang
+  if (document.querySelector('[data-route-loading="true"]')) {
+    return { ready: false, reason: "Menyiapkan lembaran halaman..." };
+  }
+
+  // 2. Pastikan semua komponen dynamic (Polaroid 3D, Koran LeafThrough, dll.) sudah terpasang
+  if (document.querySelector('main [data-dynamic-loading="true"]')) {
+    return { ready: false, reason: "Memuat panggung visual..." };
+  }
+
+  // 3. Pastikan <main> sudah memiliki konten visual nyata (bukan putih kosong)
+  const mainEl = document.querySelector("main");
+  if (!mainEl) {
+    return { ready: false, reason: "Menyusun tata letak..." };
+  }
+
+  const mainRect = mainEl.getBoundingClientRect();
+  const mainStyle = window.getComputedStyle(mainEl);
+  if (
+    mainRect.height < 120 ||
+    mainStyle.visibility === "hidden" ||
+    Number.parseFloat(mainStyle.opacity || "1") < 0.25
+  ) {
+    return { ready: false, reason: "Menata tampilan layar..." };
+  }
+
+  const hasText = (mainEl.textContent || "").trim().length >= 8;
+  const hasVisualNode = Boolean(
+    mainEl.querySelector("img, canvas, svg, h1, h2, section, article")
+  );
+  if (!hasText && !hasVisualNode) {
+    return { ready: false, reason: "Menampilkan isi halaman..." };
+  }
+
+  // 4. Jika halaman memiliki scene 3D / LeafThrough, pastikan sinyal siap + kanvas tergambar (>0px)
+  const hasInteractiveCanvasStage = Boolean(
+    mainEl.querySelector('[data-testid="scene-shell"]') ||
+      mainEl.querySelector("[data-scene-canvas]") ||
+      mainEl.querySelector("[data-leafthrough]")
+  );
+
+  if (expectsSceneReady || hasInteractiveCanvasStage) {
+    if (!sceneReady) {
+      return { ready: false, reason: "Merender panggung 3D & koran..." };
+    }
+    const canvases = Array.from(
+      mainEl.querySelectorAll<HTMLCanvasElement>(
+        'canvas[data-scene-canvas], [data-testid="scene-shell"] canvas, [data-leafthrough] canvas'
+      )
+    );
+    const hasUnpaintedCanvas = canvases.some((c) => {
+      const r = c.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && (c.width === 0 || c.height === 0);
+    });
+    if (hasUnpaintedCanvas) {
+      return { ready: false, reason: "Menyelesaikan frame pertama..." };
     }
   }
-  return nodes;
+
+  return { ready: true, reason: "Halaman siap ditampilkan" };
+}
+
+function waitTwoAnimationFrames(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
 }
 
 export function VanishingPageTransition({
@@ -130,520 +204,471 @@ export function VanishingPageTransition({
 }) {
   const pathname = usePathname();
   const { tier } = useVisualTier();
-  const stageRef = React.useRef<HTMLDivElement | null>(null);
+  const {
+    isReady: isInitialAppReady,
+    canForceOpen,
+    forceOpenAlbum,
+    markUnmounted,
+  } = useLoading();
+
+  const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  const gridRef = React.useRef<DotNode[]>([]);
-  const viewportRef = React.useRef<{ w: number; h: number; dpr: number }>({
-    w: 0,
-    h: 0,
-    dpr: 1,
-  });
-  const activeTweenRef = React.useRef<gsap.core.Tween | null>(null);
-  const scenePendingRef = React.useRef(false);
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [phase, setPhase] = React.useState<LoaderPhase>("initial");
+  const [statusLabel, setStatusLabel] = React.useState("Memuat halaman...");
+  const [routeCanForceOpen, setRouteCanForceOpen] = React.useState(false);
+
+  const phaseRef = React.useRef<LoaderPhase>("initial");
+  const pendingPushRef = React.useRef<(() => void) | null>(null);
+  const targetPathRef = React.useRef<string | null>(null);
+  const isFirstMountRef = React.useRef(true);
+  const activeFadeTweenRef = React.useRef<gsap.core.Tween | null>(null);
+  const routeEscapeTimerRef = React.useRef<number | null>(null);
+  const sceneReadyFlagRef = React.useRef<boolean>(false);
+  const has3DSceneFlagRef = React.useRef<boolean>(false);
+
+  const setPhaseSynced = React.useCallback((next: LoaderPhase) => {
+    phaseRef.current = next;
+    setPhase(next);
+  }, []);
 
   React.useEffect(() => {
     document.documentElement.dataset.visualTier = tier;
   }, [tier]);
 
-  // Pantau event scene 3D agar loop micro-dot menunggu scene siap jika sedang dimuat
-  React.useEffect(() => {
-    const onLoading = () => {
-      scenePendingRef.current = true;
-    };
-    const onReady = () => {
-      scenePendingRef.current = false;
-    };
-    window.addEventListener("app:scene-loading", onLoading);
-    window.addEventListener("app:scene-ready", onReady);
-    return () => {
-      window.removeEventListener("app:scene-loading", onLoading);
-      window.removeEventListener("app:scene-ready", onReady);
-    };
-  }, []);
-
-  const syncCanvasMetrics = React.useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || typeof window === "undefined") return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    if (
-      viewportRef.current.w !== w ||
-      viewportRef.current.h !== h ||
-      viewportRef.current.dpr !== dpr
-    ) {
-      viewportRef.current = { w, h, dpr };
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      gridRef.current = buildDotGrid(w, h);
+  const clearRouteTimers = React.useCallback(() => {
+    if (routeEscapeTimerRef.current !== null) {
+      window.clearTimeout(routeEscapeTimerRef.current);
+      routeEscapeTimerRef.current = null;
     }
   }, []);
 
-  const drawFrame = React.useCallback(
-    (progress: number, phase: "exit" | "loop" | "enter") => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+  /**
+   * Memudarkan layar matriks titik-titik secara perlahan & lembut
+   * HANYA setelah seluruh elemen halaman 100% tergambar di layar.
+   */
+  const fadeOutSlowly = React.useCallback(
+    (isInitialBoot = false) => {
+      if (phaseRef.current === "fading" || phaseRef.current === "idle") return;
+      clearRouteTimers();
+      setRouteCanForceOpen(false);
+      setPhaseSynced("fading");
 
-      const { w, h, dpr } = viewportRef.current;
-      if (w <= 0 || h <= 0) return;
+      const overlay = overlayRef.current;
+      const stage = stageRef.current;
+      const reduced = prefersReducedMotion();
 
-      const isDark = document.documentElement.classList.contains("dark");
-      const veilRgb = isDark ? "28, 25, 22" : "239, 229, 206";
-      const dotInkRgb = isDark ? "235, 227, 211" : "45, 36, 28";
-      const dotGoldRgb = isDark ? "216, 180, 103" : "172, 124, 52";
+      activeFadeTweenRef.current?.kill();
 
-      ctx.save();
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-
-      const bandWidth = 0.26;
-
-      // 1. Selubung kertas kecreaman/sepia (hampir pekat agar konten transisi/loading di bawah tidak tembus)
-      if (phase === "loop") {
-        ctx.fillStyle = `rgba(${veilRgb}, 0.985)`;
-        ctx.fillRect(0, 0, w, h);
-      } else if (phase === "enter") {
-        // Sapuan pembuka terakhir dari kiri-atas ke kanan-bawah
-        const frontPos = progress;
-        const grad = ctx.createLinearGradient(0, 0, w, h);
-        const startStop = Math.max(0, Math.min(1, frontPos - bandWidth * 0.55));
-        const endStop = Math.max(
-          startStop,
-          Math.min(1, frontPos + bandWidth * 0.45)
-        );
-        const veilAlpha = Math.max(0, Math.min(0.985, 1.18 - progress * 0.92));
-
-        if (endStop > 0 && veilAlpha > 0.01) {
-          grad.addColorStop(0, `rgba(${veilRgb}, 0)`);
-          if (startStop > 0) {
-            grad.addColorStop(startStop, `rgba(${veilRgb}, 0)`);
-          }
-          grad.addColorStop(endStop, `rgba(${veilRgb}, ${veilAlpha})`);
-          if (endStop < 1) {
-            grad.addColorStop(1, `rgba(${veilRgb}, ${veilAlpha})`);
-          }
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, w, h);
-        }
-      } else {
-        // Phase "exit": selubung menyapu masuk dari kiri-atas ke kanan-bawah
-        const frontPos = progress;
-        const grad = ctx.createLinearGradient(0, 0, w, h);
-        const startStop = Math.max(0, Math.min(1, frontPos - bandWidth * 0.7));
-        const endStop = Math.max(
-          startStop,
-          Math.min(1, frontPos + bandWidth * 0.2)
-        );
-        const maxAlpha = Math.min(0.985, 0.55 + progress * 0.46);
-
-        grad.addColorStop(0, `rgba(${veilRgb}, ${maxAlpha})`);
-        if (startStop > 0) {
-          grad.addColorStop(startStop, `rgba(${veilRgb}, ${maxAlpha})`);
-        }
-        grad.addColorStop(endStop, `rgba(${veilRgb}, 0.06)`);
-        if (endStop < 1) {
-          grad.addColorStop(1, `rgba(${veilRgb}, 0)`);
-        }
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      // 2. Matriks titik-titik kecil
-      const nodes = gridRef.current;
-      const spread = 0.28;
-      const maxRadius = w < 640 ? 2.45 : 2.9;
-
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        const triggerAt = node.diag + node.jitter;
-
-        let localT = 0;
-        if (phase === "loop") {
-          // Gelombang looping mulus tanpa henti dari kiri-atas (0) ke kanan-bawah (1)
-          const cycle = ((progress - triggerAt * 0.72) % 1 + 1) % 1;
-          // Gelombang aktif pada 42% fase siklus lalu meluruh, memberi efek ombak titik terus mengalir
-          localT = cycle < 0.44 ? cycle / 0.44 : -1;
-        } else {
-          localT = (progress - triggerAt) / spread;
-        }
-
-        if (localT <= 0 || localT >= 1.15) continue;
-
-        const clampedT = Math.min(1, Math.max(0, localT));
-        const easeBloom =
-          clampedT < 0.38
-            ? Math.sin((clampedT / 0.38) * (Math.PI * 0.5))
-            : Math.cos(((clampedT - 0.38) / 0.62) * (Math.PI * 0.5));
-
-        const tailSpark =
-          phase === "exit"
-            ? Math.max(0.24, easeBloom)
-            : Math.pow(Math.max(0, easeBloom), 0.85);
-
-        const radius =
-          Math.max(0.4, maxRadius * node.scale * tailSpark) *
-          (0.92 + 0.08 * Math.sin(clampedT * Math.PI * 3));
-
-        const alpha =
-          phase === "exit"
-            ? Math.min(0.9, 0.3 + easeBloom * 0.6)
-            : Math.min(0.92, tailSpark * 0.88);
-
-        if (alpha <= 0.02) continue;
-
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${
-          node.isWarmAccent ? dotGoldRgb : dotInkRgb
-        }, ${alpha})`;
-        ctx.fill();
-
-        if (clampedT > 0.16 && clampedT < 0.64 && node.isWarmAccent) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, radius * 2.1, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${dotGoldRgb}, ${alpha * 0.22})`;
-          ctx.fill();
-        }
-      }
-
-      // Garis kilau diagonal lembut saat gelombang berjalan
-      const waveHead = phase === "loop" ? progress % 1 : progress;
-      if (waveHead > 0 && waveHead < 1.05) {
-        const cx = waveHead * w;
-        const cy = waveHead * h;
-        const glow = ctx.createRadialGradient(
-          cx,
-          cy,
-          10,
-          cx,
-          cy,
-          Math.max(w, h) * 0.34
-        );
-        glow.addColorStop(0, `rgba(${dotGoldRgb}, 0.1)`);
-        glow.addColorStop(1, `rgba(${dotGoldRgb}, 0)`);
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      ctx.restore();
-    },
-    []
-  );
-
-  const runLoopingLoadAndReveal = React.useCallback(() => {
-    const canvas = canvasRef.current;
-    const stageEl = stageRef.current;
-    if (!canvas || !stageEl) return () => {};
-
-    syncCanvasMetrics();
-
-    if (activeTweenRef.current) {
-      activeTweenRef.current.kill();
-      activeTweenRef.current = null;
-    }
-
-    let cancelled = false;
-    canvas.style.display = "block";
-    canvas.style.opacity = "1";
-
-    // Loop tak berhenti selama halaman & aset utama masih bersiap
-    const loopState = { phase: 0 };
-    drawFrame(0, "loop");
-
-    gsap.killTweensOf(stageEl);
-    gsap.set(stageEl, { opacity: 0.96, scale: 0.995 });
-
-    activeTweenRef.current = gsap.to(loopState, {
-      phase: 1,
-      duration: 0.95,
-      repeat: -1,
-      ease: "none",
-      onUpdate: () => {
-        if (!cancelled) {
-          drawFrame(loopState.phase, "loop");
-        }
-      },
-    });
-
-    const triggerFinalReveal = () => {
-      if (cancelled) return;
-      if (activeTweenRef.current) {
-        activeTweenRef.current.kill();
-        activeTweenRef.current = null;
-      }
-
-      const revealState = { progress: -0.05 };
-      drawFrame(revealState.progress, "enter");
-
-      gsap.to(stageEl, {
-        opacity: 1,
-        scale: 1,
-        duration: 0.9,
-        ease: "power2.out",
-        clearProps: "transform,opacity",
-      });
-
-      gsap.to(canvas, {
-        opacity: 0,
-        duration: 0.85,
-        delay: 0.35,
-        ease: "power2.inOut",
-      });
-
-      activeTweenRef.current = gsap.to(revealState, {
-        progress: 1.35,
-        duration: 1.15,
-        ease: "power2.inOut",
-        onUpdate: () => {
-          if (!cancelled) {
-            drawFrame(revealState.progress, "enter");
-          }
-        },
-        onComplete: () => {
-          activeTweenRef.current = null;
-          if (!cancelled) {
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-            canvas.style.opacity = "1";
-            canvas.style.display = "none";
-          }
-        },
-      });
-    };
-
-    // Tunggu halaman benar-benar siap: tanpa route/dynamic loading, font + gambar + scene 3D + jeda tenang
-    const startTime = performance.now();
-    const minLoopMs = 760;
-    const maxWaitMs = 4500;
-
-    const checkReadiness = async () => {
-      // 1. Tunggu Suspense route (`app/loading.tsx`) dan dynamic import selesai digantikan halaman nyata
-      while (
-        !cancelled &&
-        document.querySelector('[data-route-loading="true"], [data-dynamic-loading="true"]') &&
-        performance.now() - startTime < maxWaitMs
-      ) {
-        await new Promise((r) => window.setTimeout(r, 60));
-      }
-
-      try {
-        if ("fonts" in document) {
-          await Promise.race([
-            document.fonts.ready,
-            new Promise((r) => window.setTimeout(r, 950)),
-          ]);
-        }
-      } catch {
-        // Abaikan error font api
-      }
-
-      await new Promise<void>((r) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => r()))
-      );
-
-      // Tunggu gambar terlihat pertama di atas lipatan layar (maks 1200ms)
-      const visibleImgs = Array.from(document.querySelectorAll("img")).slice(
-        0,
-        6
-      );
-      if (visibleImgs.length > 0) {
-        await Promise.race([
-          Promise.all(
-            visibleImgs.map(
-              (img) =>
-                new Promise<void>((res) => {
-                  if (img.complete) {
-                    res();
-                  } else {
-                    img.addEventListener("load", () => res(), { once: true });
-                    img.addEventListener("error", () => res(), { once: true });
-                  }
-                })
-            )
-          ),
-          new Promise<void>((r) => window.setTimeout(r, 1200)),
-        ]);
-      }
-
-      // Tunggu jika masih ada ruang 3D yang aktif membangun model
-      while (
-        !cancelled &&
-        scenePendingRef.current &&
-        performance.now() - startTime < maxWaitMs
-      ) {
-        await new Promise((r) => window.setTimeout(r, 70));
-      }
-
-      const elapsed = performance.now() - startTime;
-      const remainingMin = Math.max(0, minLoopMs - elapsed);
-      if (remainingMin > 0 && !cancelled) {
-        await new Promise((r) => window.setTimeout(r, remainingMin));
-      }
-
-      // Beri jeda sejenak yang tenang sebelum layar load pudar perlahan
-      if (!cancelled) {
-        await new Promise((r) => window.setTimeout(r, 340));
-      }
-
-      if (!cancelled) {
-        triggerFinalReveal();
-      }
-    };
-
-    void checkReadiness();
-
-    const hardSafetyTimer = window.setTimeout(() => {
-      if (!cancelled) triggerFinalReveal();
-    }, 5200);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(hardSafetyTimer);
-      gsap.killTweensOf(canvas);
-      if (activeTweenRef.current) {
-        activeTweenRef.current.kill();
-        activeTweenRef.current = null;
-      }
-    };
-  }, [drawFrame, syncCanvasMetrics]);
-
-  const runExitSweep = React.useCallback(
-    (onReadyToPush: () => void) => {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        onReadyToPush();
-        return;
-      }
-
-      syncCanvasMetrics();
-
-      if (activeTweenRef.current) {
-        activeTweenRef.current.kill();
-        activeTweenRef.current = null;
-      }
-
-      canvas.style.display = "block";
-      canvas.style.opacity = "1";
-
-      const animState = { progress: 0 };
-      drawFrame(animState.progress, "exit");
-
-      let pushed = false;
-      const safePush = () => {
-        if (pushed) return;
-        pushed = true;
-        onReadyToPush();
-      };
-
-      activeTweenRef.current = gsap.to(animState, {
-        progress: 1.15,
-        duration: 0.34,
-        ease: "power2.inOut",
-        onUpdate: () => {
-          drawFrame(animState.progress, "exit");
-        },
-        onComplete: () => {
-          safePush();
-          // Langsung lanjutkan loop micro-dot tanpa jeda beku saat menunggu route tujuan tiba
-          const waitLoop = { phase: 0 };
-          drawFrame(0, "loop");
-          activeTweenRef.current = gsap.to(waitLoop, {
-            phase: 1,
-            duration: 0.95,
-            repeat: -1,
-            ease: "none",
-            onUpdate: () => {
-              drawFrame(waitLoop.phase, "loop");
-            },
-          });
-        },
-      });
-
-      pendingExitPushTimer = window.setTimeout(safePush, 420);
-    },
-    [drawFrame, syncCanvasMetrics]
-  );
-
-  // Daftarkan pengendali global untuk tombol navbar/link SPA
-  React.useEffect(() => {
-    activeController = {
-      playExit: runExitSweep,
-    };
-
-    const onResize = () => {
-      syncCanvasMetrics();
-    };
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (activeController?.playExit === runExitSweep) {
-        activeController = null;
-      }
-      if (activeTweenRef.current) {
-        activeTweenRef.current.kill();
-        activeTweenRef.current = null;
-      }
-      if (pendingExitPushTimer !== null) {
-        window.clearTimeout(pendingExitPushTimer);
-        pendingExitPushTimer = null;
-      }
-    };
-  }, [runExitSweep, syncCanvasMetrics]);
-
-  React.useLayoutEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    if (prefersReduced) {
-      gsap.set(el, { clearProps: "all", opacity: 1 });
-      if (canvasRef.current) canvasRef.current.style.display = "none";
-      return;
-    }
-
-    if (tier === "simple") {
-      if (canvasRef.current) canvasRef.current.style.display = "none";
-      const ctx = gsap.context(() => {
+      if (stage && !reduced) {
         gsap.fromTo(
-          el,
-          { opacity: 0 },
+          stage,
+          { opacity: 0.94 },
           {
             opacity: 1,
-            duration: 0.32,
+            duration: 0.55,
             ease: "power2.out",
             clearProps: "opacity",
           }
         );
-      }, stageRef);
-      return () => ctx.revert();
+      }
+
+      if (!overlay) {
+        setPhaseSynced("idle");
+        if (isInitialBoot) markUnmounted();
+        return;
+      }
+
+      activeFadeTweenRef.current = gsap.to(overlay, {
+        opacity: 0,
+        duration: reduced ? 0.2 : 0.72,
+        ease: "power2.inOut",
+        onComplete: () => {
+          setPhaseSynced("idle");
+          if (isInitialBoot) {
+            markUnmounted();
+          }
+        },
+      });
+    },
+    [clearRouteTimers, markUnmounted, setPhaseSynced]
+  );
+
+  /**
+   * Menunggu 100% kesiapan tampilan aktual halaman (DOM, font, gambar above-the-fold,
+   * bebas route/dynamic skeleton, dan scene 3D/Koran selesai render) dengan MutationObserver + poll.
+   */
+  const waitUntilPageFullyPainted = React.useCallback(
+    (
+      isInitialBoot: boolean,
+      signal: { cancelled: boolean }
+    ) => {
+      let resolving = false;
+
+      const checkNow = async () => {
+        if (signal.cancelled || resolving) return;
+        if (phaseRef.current === "fading" || phaseRef.current === "idle") return;
+
+        const status = inspectDomPaintReadiness(
+          has3DSceneFlagRef.current,
+          sceneReadyFlagRef.current
+        );
+        if (!status.ready) {
+          setStatusLabel(status.reason);
+          return;
+        }
+
+        resolving = true;
+        try {
+          if (typeof document !== "undefined" && "fonts" in document) {
+            await Promise.race([
+              document.fonts.ready,
+              new Promise<void>((r) => window.setTimeout(r, 1500)),
+            ]).catch(() => {});
+          }
+          if (signal.cancelled) return;
+
+          setStatusLabel("Menyelesaikan pemuatan foto...");
+          await decodeVisibleImages(4500);
+          if (signal.cancelled) return;
+
+          // Tunggu 2 frame komposit GPU + verifikasi ulang tidak ada placeholder baru yang muncul
+          await waitTwoAnimationFrames();
+          await new Promise<void>((r) => window.setTimeout(r, 90));
+          if (signal.cancelled) return;
+
+          const recheck = inspectDomPaintReadiness(
+            has3DSceneFlagRef.current,
+            sceneReadyFlagRef.current
+          );
+          if (!recheck.ready) {
+            setStatusLabel(recheck.reason);
+            resolving = false;
+            return;
+          }
+
+          await waitTwoAnimationFrames();
+          if (signal.cancelled) return;
+
+          fadeOutSlowly(isInitialBoot);
+        } finally {
+          const currentPhase = phaseRef.current as LoaderPhase;
+          if (!signal.cancelled && currentPhase !== "fading" && currentPhase !== "idle") {
+            resolving = false;
+          }
+        }
+      };
+
+      const observer = new MutationObserver(() => {
+        void checkNow();
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-route-loading", "data-dynamic-loading", "class"],
+      });
+
+      const pollId = window.setInterval(() => {
+        void checkNow();
+      }, 110);
+
+      void checkNow();
+
+      return () => {
+        observer.disconnect();
+        window.clearInterval(pollId);
+      };
+    },
+    [fadeOutSlowly]
+  );
+
+  // 1. Pantau sinyal scene 3D / Koran sepanjang hidup aplikasi
+  React.useEffect(() => {
+    const onSceneLoading = (ev: Event) => {
+      has3DSceneFlagRef.current = true;
+      sceneReadyFlagRef.current = false;
+      const detail = (ev as CustomEvent<{ label?: string }>).detail;
+      if (detail?.label) {
+        setStatusLabel(detail.label);
+      }
+    };
+
+    const onSceneReady = () => {
+      sceneReadyFlagRef.current = true;
+    };
+
+    window.addEventListener("app:scene-loading", onSceneLoading);
+    window.addEventListener("app:scene-ready", onSceneReady);
+    return () => {
+      window.removeEventListener("app:scene-loading", onSceneLoading);
+      window.removeEventListener("app:scene-ready", onSceneReady);
+    };
+  }, []);
+
+  // 2. Siklus Awal Buka / Refresh Situs:
+  //    Tetap loop titik-titik hingga LoadingContext siap DAN seluruh halaman 100% tergambar!
+  React.useEffect(() => {
+    if (phase !== "initial") return;
+    if (!isInitialAppReady) return;
+
+    const signal = { cancelled: false };
+    const cleanup = waitUntilPageFullyPainted(true, signal);
+    return () => {
+      signal.cancelled = true;
+      cleanup();
+    };
+  }, [phase, isInitialAppReady, waitUntilPageFullyPainted]);
+
+  // 3. Daftarkan controller navigasi SPA untuk transisi antar menu
+  React.useEffect(() => {
+    activeController = {
+      startRouteTransition: (targetHref: string, onPush: () => void) => {
+        clearRouteTimers();
+        activeFadeTweenRef.current?.kill();
+
+        has3DSceneFlagRef.current = false;
+        sceneReadyFlagRef.current = false;
+        targetPathRef.current = targetHref.split("?")[0] || targetHref;
+        pendingPushRef.current = onPush;
+        setRouteCanForceOpen(false);
+        setStatusLabel("Membuka lembaran...");
+        setPhaseSynced("entering");
+
+        // Jangan paksa hilang saat halaman masih kosong!
+        // Setelah 12 detik baru tampilkan tombol manual bila jaringan sangat lambat.
+        routeEscapeTimerRef.current = window.setTimeout(() => {
+          if (
+            phaseRef.current === "entering" ||
+            phaseRef.current === "looping"
+          ) {
+            setRouteCanForceOpen(true);
+          }
+        }, 12000);
+      },
+    };
+
+    return () => {
+      activeController = null;
+      clearRouteTimers();
+      activeFadeTweenRef.current?.kill();
+    };
+  }, [clearRouteTimers, setPhaseSynced]);
+
+  // 4. Jalankan fade-in halus saat overlay baru terpasang pada fase "entering", lalu push rute
+  React.useEffect(() => {
+    if (phase !== "entering") return;
+    const overlay = overlayRef.current;
+    const pushNow = () => {
+      const fn = pendingPushRef.current;
+      pendingPushRef.current = null;
+      setPhaseSynced("looping");
+      fn?.();
+    };
+
+    const reduced = prefersReducedMotion();
+    if (!overlay || reduced) {
+      if (overlay) gsap.set(overlay, { opacity: 1 });
+      pushNow();
+      return;
     }
 
-    return runLoopingLoadAndReveal();
-  }, [pathname, tier, runLoopingLoadAndReveal]);
+    activeFadeTweenRef.current?.kill();
+    gsap.set(overlay, { opacity: 0 });
+    activeFadeTweenRef.current = gsap.to(overlay, {
+      opacity: 1,
+      duration: 0.2,
+      ease: "power2.out",
+      onComplete: pushNow,
+    });
+  }, [phase, setPhaseSynced]);
+
+  // 5. Saat pathname sudah benar-benar berpindah ke rute tujuan:
+  //    Tunggu sampai 100% DOM, font, gambar, & scene 3D/Koran tergambar penuh — BARU pudar perlahan!
+  React.useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+
+    if (phaseRef.current === "idle") return;
+
+    // Jika rute tujuan belum cocok (misal navigasi masih streaming), tetap looping
+    if (targetPathRef.current && pathname !== targetPathRef.current) {
+      return;
+    }
+    targetPathRef.current = null;
+
+    const signal = { cancelled: false };
+    let cleanupObserver: (() => void) | null = null;
+
+    // Beri 2 frame awal agar halaman rute baru sempat memasang komponen dynamic / app:scene-loading
+    const startTimer = window.setTimeout(() => {
+      if (signal.cancelled) return;
+      cleanupObserver = waitUntilPageFullyPainted(false, signal);
+    }, 60);
+
+    return () => {
+      signal.cancelled = true;
+      window.clearTimeout(startTimer);
+      cleanupObserver?.();
+    };
+  }, [pathname, phase, waitUntilPageFullyPainted]);
+
+  // 6. Loop Canvas Matriks Titik-Titik Ringan (60fps, Single Canvas, berhenti total saat phase === "idle")
+  const isOverlayActive = phase !== "idle";
+
+  React.useEffect(() => {
+    if (!isOverlayActive) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const reduced = prefersReducedMotion();
+    let rafId = 0;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let isDark = document.documentElement.classList.contains("dark");
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(width * dpr));
+      canvas.height = Math.max(1, Math.round(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      isDark = document.documentElement.classList.contains("dark");
+    };
+    resize();
+
+    const startTime = performance.now();
+
+    const drawDotMatrix = (now: number) => {
+      if (document.hidden) {
+        rafId = window.requestAnimationFrame(drawDotMatrix);
+        return;
+      }
+
+      const t = reduced ? 0 : (now - startTime) * 0.001;
+      ctx.clearRect(0, 0, width, height);
+
+      const spacing = width < 640 ? 22 : 26;
+      const cols = Math.ceil(width / spacing) + 1;
+      const rows = Math.ceil(height / spacing) + 1;
+      const offsetX = (width - (cols - 1) * spacing) * 0.5;
+      const offsetY = (height - (rows - 1) * spacing) * 0.5;
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const maxDist = Math.hypot(cx, cy) || 1;
+
+      const dotRgb = isDark ? "235, 227, 211" : "35, 31, 26";
+
+      for (let r = 0; r < rows; r++) {
+        const y = offsetY + r * spacing;
+        const dy = y - cy;
+        for (let c = 0; c < cols; c++) {
+          const x = offsetX + c * spacing;
+          const dx = x - cx;
+          const dist = Math.hypot(dx, dy);
+          const normDist = dist / maxDist;
+
+          const wave = reduced
+            ? 0.5
+            : 0.5 + 0.5 * Math.sin(dist * 0.022 - t * 3.6);
+          const radialFade = 1 - normDist * 0.35;
+          const radius = 1.05 + wave * 1.45;
+          const alpha = (0.14 + wave * 0.42) * radialFade;
+
+          ctx.fillStyle = `rgba(${dotRgb}, ${alpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      if (!reduced) {
+        rafId = window.requestAnimationFrame(drawDotMatrix);
+      }
+    };
+
+    rafId = window.requestAnimationFrame(drawDotMatrix);
+    window.addEventListener("resize", resize);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", resize);
+    };
+  }, [isOverlayActive]);
+
+  const showForceOpenButton =
+    (phase === "initial" && canForceOpen) ||
+    ((phase === "looping" || phase === "entering") && routeCanForceOpen);
 
   return (
     <div className="relative w-full">
-      <canvas
-        ref={canvasRef}
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[75] hidden"
-      />
-      <div
-        ref={stageRef}
-        data-vanishing-stage
-        className="w-full will-change-transform"
-      >
+      {/* Layar Penuh Matriks Titik-Titik Lama (Loop sampai 100% elemen halaman siap dilihat -> Pudar Perlahan) */}
+      {isOverlayActive && (
+        <div
+          ref={overlayRef}
+          role="status"
+          aria-live="polite"
+          aria-label="Memuat halaman UNO XII PPLG 1"
+          data-dot-matrix-loader="true"
+          className="fixed inset-0 z-[95] flex flex-col items-center justify-center bg-background text-foreground will-change-[opacity]"
+          style={{
+            pointerEvents: phase === "fading" ? "none" : "auto",
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          />
+
+          <div className="relative z-10 flex flex-col items-center gap-3 rounded-2xl border border-border/70 bg-background/88 px-7 py-5 text-center shadow-sm backdrop-blur-[2px]">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              <span className="inline-block size-1.5 rounded-full bg-foreground animate-pulse" />
+              <span>UNO · XII PPLG 1</span>
+              <span className="inline-block size-1.5 rounded-full bg-foreground animate-pulse" />
+            </div>
+
+            <p className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              Ruang Kenangan MAKN Ende
+            </p>
+
+            <div className="flex items-center gap-2 pt-0.5" aria-hidden="true">
+              <span className="size-1.5 rounded-full bg-foreground/75 animate-bounce [animation-delay:0ms] [animation-duration:1.1s]" />
+              <span className="size-1.5 rounded-full bg-foreground/75 animate-bounce [animation-delay:180ms] [animation-duration:1.1s]" />
+              <span className="size-1.5 rounded-full bg-foreground/75 animate-bounce [animation-delay:360ms] [animation-duration:1.1s]" />
+            </div>
+
+            <p className="font-mono text-[11px] tracking-wider text-muted-foreground">
+              {statusLabel}
+            </p>
+
+            {showForceOpenButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (phase === "initial") {
+                    forceOpenAlbum();
+                  }
+                  fadeOutSlowly(phase === "initial");
+                }}
+                className="mt-1 rounded-lg border border-border bg-card px-3.5 py-1.5 font-sans text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+              >
+                Buka halaman sekarang
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Panggung Konten Halaman */}
+      <div ref={stageRef} data-vanishing-stage className="w-full">
         {children}
       </div>
     </div>

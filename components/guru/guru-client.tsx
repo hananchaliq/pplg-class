@@ -9,6 +9,11 @@ import { Adaptive } from "@/components/three/adaptive";
 import { teacherToLanyardMember } from "@/lib/domain-logic";
 import { SITE_CONTENT } from "@/lib/content";
 import { useLivePublicData } from "@/lib/use-public-data";
+import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
+import {
+  SplitLineHeading,
+  DrawnHairlineRule,
+} from "@/components/ui/motion-primitives";
 import type { TeacherGroup, TeacherRow } from "@/lib/types";
 
 export function GuruClient({
@@ -75,9 +80,9 @@ export function GuruClient({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: MOTION_DURATION.medium, ease: MOTION_EASE.editorial }}
       className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
     >
       {/* Header Halaman Guru */}
@@ -85,20 +90,29 @@ export function GuruClient({
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Penghormatan &amp; Terima Kasih · {teachers.length} Pendidik MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+        <SplitLineHeading
+          as="h1"
+          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+        >
           Guru Pembimbing &amp; Wali Kelas XII PPLG 1
-        </h1>
+        </SplitLineHeading>
         <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
           Apresiasi tulus untuk Bapak dan Ibu Guru yang membimbing langkah kami selama tiga tahun di madrasah.
         </p>
       </header>
 
+      <DrawnHairlineRule className="mx-auto mt-5 max-w-xs" />
+
       {/* Kartu Khusus Wali Kelas di Atas */}
       {homeroomTeacher && homeroomCard && (
         <motion.section
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.08 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: MOTION_DURATION.slow,
+            delay: 0.08,
+            ease: MOTION_EASE.editorial,
+          }}
           aria-labelledby="homeroom-heading"
           className="mt-6 sm:mt-8 overflow-hidden rounded-xl border border-foreground/40 bg-card shadow-md"
         >
@@ -202,7 +216,7 @@ export function GuruClient({
                 {active && (
                   <motion.span
                     layoutId="guru-filter-pill"
-                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                    transition={MOTION_EASE.springNav}
                     className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
                     aria-hidden="true"
                   />

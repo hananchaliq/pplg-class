@@ -1,58 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import {
+  ADMIN_COOKIE,
+  ADMIN_SESSION_TOKEN,
+  getExpectedAdminPasscode,
+  isAuthorizedAdmin,
+  setAdminSessionCookie,
+} from "@/lib/admin-auth";
+import {
   createPollAdmin,
   deleteModeratedItem,
   deletePollAdmin,
   deleteStudentAdmin,
   deleteTeacherAdmin,
   getAdminDashboardData,
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
   moderateItem,
   updateSiteSettings,
   upsertStudentAdmin,
   upsertTeacherAdmin,
   type ModeratableTable,
 } from "@/lib/db";
+import {
+  normalizeChannel,
+  parseImageDataUrl,
+  uploadMediaToBlob,
+} from "@/lib/media-store";
 import { decodeDeepText } from "@/lib/domain-logic";
 import type { ContentStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const ADMIN_COOKIE = "xii_pplg1_admin_session";
-const ADMIN_SESSION_TOKEN = "authenticated_admin_xiipplg1";
-
-function getExpectedPasscode(): string {
-  return (process.env.ADMIN_PASSCODE || "ADMIN-MAKN-ENDE").trim();
-}
-
-function isAuthorizedAdmin(req: NextRequest, bodyToken?: string): boolean {
-  const cookieVal = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (cookieVal === ADMIN_SESSION_TOKEN) return true;
-
-  const sessionHeader = req.headers.get("x-admin-session")?.trim();
-  if (sessionHeader === ADMIN_SESSION_TOKEN) return true;
-
-  const authHeader = req.headers.get("authorization")?.trim();
-  if (authHeader === `Bearer ${ADMIN_SESSION_TOKEN}`) return true;
-
-  const headerCode = req.headers.get("x-admin-passcode")?.trim();
-  if (headerCode && headerCode === getExpectedPasscode()) return true;
-
-  if (bodyToken && bodyToken.trim() === ADMIN_SESSION_TOKEN) return true;
-
-  return false;
-}
-
-function setAdminSessionCookie(res: NextResponse) {
-  res.cookies.set(ADMIN_COOKIE, ADMIN_SESSION_TOKEN, {
-    httpOnly: true,
-    path: "/",
-    sameSite: "none",
-    secure: true,
-    maxAge: 60 * 60 * 12,
-  });
+function revalidateAllRoutes() {
+  revalidatePath("/");
+  revalidatePath("/galeri");
+  revalidatePath("/kenangan");
+  revalidatePath("/anggota");
+  revalidatePath("/guru");
+  revalidatePath("/admin");
+  revalidatePath("/", "layout");
 }
 
 export async function GET(req: NextRequest) {
@@ -79,34 +64,9 @@ export async function POST(req: NextRequest) {
     const action = body?.action as string;
 
     if (action === "login") {
-      const email = String(body?.email || "").trim();
       const password = String(body?.password || "").trim();
 
-      // 1. Jika Supabase Auth dikonfigurasi dan user mengirim email + password
-      if (isSupabaseConfigured() && email && password) {
-        const supabase = getSupabaseAdminClient();
-        if (supabase) {
-          const { data: authData, error } =
-            await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-          if (!error && authData.user) {
-            const data = await getAdminDashboardData();
-            const res = NextResponse.json({
-              ok: true,
-              authenticated: true,
-              token: ADMIN_SESSION_TOKEN,
-              data,
-            });
-            setAdminSessionCookie(res);
-            return res;
-          }
-        }
-      }
-
-      // 2. Verifikasi kode admin server
-      if (password === getExpectedPasscode()) {
+      if (password === getExpectedAdminPasscode()) {
         const data = await getAdminDashboardData();
         const res = NextResponse.json({
           ok: true,
@@ -149,32 +109,27 @@ export async function POST(req: NextRequest) {
         typeof body.updatedText === "string" ? body.updatedText : undefined;
 
       const success = await moderateItem(table, id, status, updatedText);
-      if (success && table === "moments" && status === "approved") {
-        const supabase = getSupabaseAdminClient();
-        if (supabase) {
-          await supabase.from("moments").update({ sort_order: 0 }).eq("id", id);
-        }
-      }
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: success, data });
     }
 
     if (action === "upsert_moment") {
-      const supabase = getSupabaseAdminClient();
-      if (!supabase) {
-        return NextResponse.json(
-          { ok: false, error: "Database Supabase belum terhubung." },
-          { status: 500 }
-        );
-      }
       const category = String(body.category || "Momen Kelas").trim();
-      const uploaderName = String(body.uploaderName || "Admin XII PPLG 1").trim();
-      const caption = String(body.caption || "Dokumentasi Kenangan XII PPLG 1").trim();
+      const channel = normalizeChannel(
+        typeof body.channel === "string" ? body.channel : "",
+        category
+      );
+      const uploaderName = String(
+        body.uploaderName || "Admin XII PPLG 1"
+      ).trim();
+      const caption = String(
+        body.caption || "Dokumentasi Kenangan XII PPLG 1"
+      ).trim();
       const phase = (["X", "XI", "XII"].includes(String(body.phase))
         ? String(body.phase)
         : "XII") as "X" | "XI" | "XII";
-      const dateLabel = String(
+      const takenAt = String(
         body.takenAt || new Date().toISOString().slice(0, 10)
       ).trim();
       const imageUrl = String(body.imageUrl || "").trim();
@@ -185,50 +140,38 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const title = `${category} | ${uploaderName}`;
+      let buffer: Buffer | undefined;
+      let contentType = "image/webp";
+      let existingUrl: string | undefined;
 
-      // Jika kategori adalah Foto Sampul Buku dan replaceSingle aktif, perbarui yang sudah ada bila ditemukan
-      if (body.replaceExistingCategory && category) {
-        const { data: existingRows } = await supabase
-          .from("moments")
-          .select("id, title")
-          .ilike("title", `${category} |%`);
-        if (existingRows && existingRows.length > 0) {
-          const targetId = existingRows[0]!.id;
-          const { error: updErr } = await supabase
-            .from("moments")
-            .update({
-              grade: phase,
-              title,
-              caption,
-              date_label: dateLabel,
-              image_url: imageUrl,
-              sort_order: 0,
-            })
-            .eq("id", targetId);
-          if (updErr) throw new Error(updErr.message);
-          revalidatePath("/", "layout");
-          const data = await getAdminDashboardData();
-          return NextResponse.json({ ok: true, data });
-        }
+      if (imageUrl.startsWith("data:image/")) {
+        const parsed = parseImageDataUrl(imageUrl);
+        buffer = parsed.buffer;
+        contentType = parsed.contentType;
+      } else {
+        existingUrl = imageUrl;
       }
 
-      const id = body.id ? String(body.id) : crypto.randomUUID();
-      const { error } = await supabase.from("moments").upsert(
-        {
-          id,
-          grade: phase,
-          title,
-          caption,
-          date_label: dateLabel,
-          image_url: imageUrl,
-          sort_order: 0,
-        },
-        { onConflict: "id" }
-      );
-      if (error) throw new Error(error.message);
+      await uploadMediaToBlob({
+        channel,
+        buffer,
+        contentType,
+        existingUrl,
+        category,
+        caption,
+        uploaderName,
+        phase,
+        takenAt,
+        studentName:
+          typeof body.studentName === "string" ? body.studentName : undefined,
+        studentId:
+          typeof body.studentId === "string" ? body.studentId : undefined,
+        replaceExistingCategory: Boolean(body.replaceExistingCategory),
+        status: "approved",
+        featured: true,
+      });
 
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
     }
@@ -237,7 +180,7 @@ export async function POST(req: NextRequest) {
       const table = body.table as ModeratableTable;
       const id = String(body.id || "");
       const success = await deleteModeratedItem(table, id);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: success, data });
     }
@@ -245,14 +188,14 @@ export async function POST(req: NextRequest) {
     if (action === "settings") {
       const graduationDate = String(body.graduationDate || "");
       await updateSiteSettings(graduationDate);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
     }
 
     if (action === "upsert_student") {
       await upsertStudentAdmin(body.student);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
     }
@@ -260,14 +203,14 @@ export async function POST(req: NextRequest) {
     if (action === "delete_student") {
       const id = String(body.id || "");
       const ok = await deleteStudentAdmin(id);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok, data });
     }
 
     if (action === "upsert_teacher") {
       await upsertTeacherAdmin(body.teacher);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
     }
@@ -275,7 +218,7 @@ export async function POST(req: NextRequest) {
     if (action === "delete_teacher") {
       const id = String(body.id || "");
       const ok = await deleteTeacherAdmin(id);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok, data });
     }
@@ -286,7 +229,7 @@ export async function POST(req: NextRequest) {
         ? body.options.map(String)
         : [];
       await createPollAdmin(question, options);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
     }
@@ -294,7 +237,7 @@ export async function POST(req: NextRequest) {
     if (action === "delete_poll") {
       const id = String(body.id || "");
       const ok = await deletePollAdmin(id);
-      revalidatePath("/", "layout");
+      revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok, data });
     }

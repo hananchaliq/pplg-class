@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**', // This allows any path under the hostname

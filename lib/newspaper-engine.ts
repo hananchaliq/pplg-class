@@ -3,7 +3,7 @@ import { SITE_CONTENT } from "@/lib/content";
 import type { MomentPhase, MomentRow } from "@/lib/types";
 
 export const NEWSPAPER_WIDTH = 960;
-export const NEWSPAPER_HEIGHT = 1322; // 1 : 1.377 (rasio standar LeafThrough)
+export const NEWSPAPER_HEIGHT = 1322; // Rasio standar 1 : 1.377 untuk Vanilla LeafThrough
 
 export type NewspaperTemplate =
   | "chronicle-cover"
@@ -11,12 +11,7 @@ export type NewspaperTemplate =
   | "chronicle-spotlight"
   | "village-editorial"
   | "urban-feature-solo"
-  | "village-times"
-  | "london-news"
-  | "daily-chronicle"
-  | "miami-news"
-  | "daily-prophet"
-  | "urban-feature"
+  | "balanced-duo"
   | "phase-chronicle"
   | "toc"
   | "back-cover";
@@ -61,7 +56,9 @@ export interface NewspaperPlan {
   totalPhotos: number;
 }
 
-// Palet Koran Jadul Kecreaman (Aged Cream Parchment & Crisp Espresso-Sepia Ink)
+// ============================================================================
+// PALET KORAN JADUL KECREAMAN & SKALA TIPOGRAFI STANDAR TERBACA
+// ============================================================================
 const PAPER_CREAM = "#EFE5CE";
 const PAPER_WARM_ALT = "#E5D7B9";
 const PAPER_FOXING = "#D4C29E";
@@ -72,6 +69,22 @@ const INK_RULE = "#8A7864";
 const BOX_INVERTED_BG = "#2D241C";
 const BOX_INVERTED_FG = "#EFE5CE";
 
+const PAD_X = 50;
+const CONTENT_W = NEWSPAPER_WIDTH - PAD_X * 2; // 860px
+
+const TYPE = {
+  bodySolo: 22,
+  lineSolo: 33,
+  bodyDuo: 20.5,
+  lineDuo: 31,
+  bodyCompact: 19.5,
+  lineCompact: 29,
+  byline: 15,
+  kicker: 15,
+  quote: 22.5,
+  quoteLine: 33,
+} as const;
+
 const PHASE_META: Record<
   MomentPhase,
   {
@@ -79,7 +92,7 @@ const PHASE_META: Record<
     rubric: string;
     headline: string;
     sub: string;
-    contextClause: string;
+    phasePhrase: string;
     quotes: string[];
   }
 > = {
@@ -88,41 +101,38 @@ const PHASE_META: Record<
     rubric: "RUBRIK KELAS X · FASE AWAL",
     headline: "JEJAK PERTAMA DI BANGKU MADRASAH",
     sub: "Orientasi, baris kode perdana, dan perkenalan keluarga besar di MAKN Ende.",
-    contextClause:
-      "pada masa awal di Kelas X PPLG 1 ketika langkah-langkah pertama masih penuh rasa ingin tahu di ruang laboratorium madrasah",
+    phasePhrase: "awal perjalanan kami di Kelas X PPLG 1",
     quotes: [
-      "Di ruang lab lantai dua, kami pertama kali belajar bahwa satu titik koma bisa menyatukan tawa satu kelas.",
-      "Seragam baru, nama-nama baru, dan langkah canggung yang pelan-pelan berubah menjadi rumah kedua.",
+      "Di ruang lab lantai dua, satu titik koma pertama menyatukan tawa sekelas.",
+      "Langkah canggung berseragam baru yang pelan-pelan menjadi rumah kedua.",
     ],
   },
   XI: {
     editionTitle: "BAB II · EDISI KELAS XI",
     rubric: "RUBRIK KELAS XI · REKAYASA & PKL",
     headline: "MUSIM PROYEK, LOMBA & KERJA LAPANGAN",
-    sub: "Menembus deadline praktik industri, kompetisi teknologi, dan lembur bersama.",
-    contextClause:
-      "di tengah kesibukan Kelas XI saat praktik kerja lapangan, lomba kejuruan, dan proyek perangkat lunak menuntut kekompakan",
+    sub: "Menembus praktik industri, kompetisi teknologi, dan lembur merakit karya.",
+    phasePhrase: "masa padat praktik industri dan proyek Kelas XI",
     quotes: [
-      "\"Tunggu sebentar, di laptopku tadi jalan kok!\" — kalimat paling sakti sebelum presentasi di depan meja guru.",
-      "Berpencar saat PKL mengajarkan kami arti rindu pulang ke bangku kelas XII PPLG 1.",
+      "\"Tunggu sebentar, di laptopku tadi jalan kok!\" — kalimat paling sakti sebelum presentasi.",
+      "Berpencar saat PKL mengajarkan kami arti rindu pulang ke kelas PPLG 1.",
     ],
   },
   XII: {
     editionTitle: "BAB III · EDISI KELAS XII",
     rubric: "RUBRIK KELAS XII · SENJA KELULUSAN",
     headline: "CATATAN AKHIR SEBELUM MELANGKAH JAUH",
-    sub: "Ujian akhir, foto bersama, dan kenangan yang diarsipkan selamanya.",
-    contextClause:
-      "menjelang hari-hari terakhir di Kelas XII ketika setiap pertemuan terasa lebih berharga untuk dikenang bersama",
+    sub: "Ujian akhir, potret bersama, dan kenangan yang disimpan selamanya.",
+    phasePhrase: "hari-hari terakhir yang berharga di Kelas XII",
     quotes: [
-      "UNO Born to Win, selamat menjalani hidup baru.",
-      "Kelak jarak boleh memisahkan, namun arsip halaman koran ini akan selalu membawa kita pulang.",
+      "UNO Born to Win — selamat melangkah menuju babak hidup baru.",
+      "Kelak jarak boleh memisahkan, namun lembaran koran ini selalu membawa kita pulang.",
     ],
   },
 };
 
 const CATEGORY_LEAD_ANGLE: Record<string, string> = {
-  PKL: "Liputan Lapangan Industri",
+  PKL: "Liputan Praktik Industri",
   Lomba: "Warta Prestasi & Kompetisi",
   "Study tour": "Catatan Perjalanan Angkatan",
   "Acara madrasah": "Berita Kegiatan Madrasah",
@@ -130,41 +140,19 @@ const CATEGORY_LEAD_ANGLE: Record<string, string> = {
   "Hari terakhir": "Edisi Senja & Perpisahan",
 };
 
+// Mayoritas 1 foto utama per halaman (~75%) + sesekali 2 foto seimbang (~25%)
 const INTERIOR_TEMPLATES: Exclude<
   NewspaperTemplate,
   "chronicle-cover" | "phase-opener" | "phase-chronicle" | "toc" | "back-cover"
 >[] = [
   "chronicle-spotlight",
   "village-editorial",
-  "village-times",
   "urban-feature-solo",
-  "chronicle-spotlight",
-  "daily-chronicle",
-  "village-editorial",
-  "london-news",
-  "urban-feature-solo",
-  "miami-news",
-  "daily-prophet",
-  "urban-feature",
+  "balanced-duo",
 ];
 
 function templateCapacity(tpl: NewspaperTemplate): number {
-  switch (tpl) {
-    case "phase-opener":
-    case "chronicle-spotlight":
-    case "village-editorial":
-    case "urban-feature-solo":
-      return 1;
-    case "village-times":
-    case "london-news":
-    case "daily-chronicle":
-    case "miami-news":
-    case "daily-prophet":
-    case "urban-feature":
-      return 2;
-    default:
-      return 1;
-  }
+  return tpl === "balanced-duo" ? 2 : 1;
 }
 
 function cleanMoment(m: MomentRow): MomentRow {
@@ -186,24 +174,27 @@ function buildHeadlineFromCaption(caption: string): string {
   const clean = caption.replace(/["“”]/g, "").trim();
   if (!clean) return "CATATAN KENANGAN KELUARGA UNO";
   const words = clean.split(/\s+/);
-  const picked = words.slice(0, Math.min(8, words.length)).join(" ");
-  return picked.toUpperCase();
+  return words.slice(0, Math.min(7, words.length)).join(" ").toUpperCase();
 }
 
 /**
- * Bangun cerita berita editorial yang unik untuk setiap foto berdasarkan data asli gambar tersebut.
+ * Narasi ringkas editorial (caption asli + 2 kalimat padat & natural)
+ * agar tulisan deskripsi tampil besar, lega, dan nyaman dibaca tanpa penuh basa-basi.
  */
 function buildEditorialStory(
   moment: MomentRow,
   seqNumber: number
 ): MomentEditorialStory {
   const phaseInfo = PHASE_META[moment.phase] ?? PHASE_META.XII;
-  const angle = CATEGORY_LEAD_ANGLE[moment.category] ?? `Arsip ${moment.category}`;
+  const angle =
+    CATEGORY_LEAD_ANGLE[moment.category] ?? `Arsip ${moment.category}`;
   const headline = buildHeadlineFromCaption(moment.caption);
-  const deck = `${angle} · Fase Kelas ${moment.phase} (${moment.taken_at})`;
+  const deck = `${angle} · Kelas ${moment.phase} (${moment.taken_at})`;
   const byline = `Oleh ${moment.uploader_name} · ${moment.taken_at}`;
+  const frameNo = String(seqNumber).padStart(2, "0");
 
-  const body = `Diabadikan oleh ${moment.uploader_name} pada ${moment.taken_at}, potret ini merekam peristiwa "${moment.caption}". Rekaman visual dalam kategori ${moment.category} tersebut lahir ${phaseInfo.contextClause}. Bagi keluarga besar XII PPLG 1 MAKN Ende, bingkai arsip nomor ${String(seqNumber).padStart(2, "0")} ini menjadi saksi kebersamaan yang tidak lekang oleh waktu — pengingat bahwa tawa, kerja keras, dan solidaritas di bangku madrasah selalu layak diabadikan di lembar cetak.`;
+  const captionClean = moment.caption.replace(/[.!?]+$/, "").trim();
+  const body = `“${captionClean}.” Potret arsip #${frameNo} ini diabadikan oleh ${moment.uploader_name} pada ${moment.taken_at} sebagai bagian dari ${phaseInfo.phasePhrase}. Momen dalam rubrik ${moment.category} ini disimpan agar tawa dan kebersamaan XII PPLG 1 MAKN Ende selalu hangat dikenang.`;
 
   return {
     moment,
@@ -211,13 +202,13 @@ function buildEditorialStory(
     deck,
     byline,
     body,
-    frameTag: `NO. ${String(seqNumber).padStart(2, "0")} · KLS ${moment.phase}`,
+    frameTag: `NO. ${frameNo} · KLS ${moment.phase}`,
   };
 }
 
 /**
- * Susun halaman koran sebanyak jumlah foto yang ada tanpa batas 12 halaman,
- * terbagi rapi per fase (Kelas X, Kelas XI, Kelas XII) dan setiap foto memiliki ceritanya sendiri.
+ * Susun rencana halaman koran terbagi rapi per fase (Kelas X, XI, XII)
+ * dengan proporsi mayoritas 1 foto per halaman & sesekali 2 foto seimbang.
  */
 export function buildNewspaperPlan(
   rawMoments: MomentRow[],
@@ -240,12 +231,12 @@ export function buildNewspaperPlan(
 
   const allSorted = sortRealFirst(cleaned);
   const coverHero = allSorted.find((m) => m.featured) ?? allSorted[0];
-  const coverLeft = allSorted[1] ?? coverHero;
-  const coverMoments = [coverHero, coverLeft].filter(Boolean) as MomentRow[];
+  const coverSide = allSorted[1] ?? coverHero;
+  const coverMoments = [coverHero, coverSide].filter(Boolean) as MomentRow[];
 
   const pages: NewspaperPageSpec[] = [];
 
-  // Halaman 0: Sampul Depan Kreatif (Chronicle Cover)
+  // Halaman 1: Sampul Depan Seimbang
   pages.push({
     pageNumber: 1,
     index: 0,
@@ -254,8 +245,8 @@ export function buildNewspaperPlan(
     headline: "Galeri Kenangan Bersama",
     subheadline:
       activeCategory === "Semua"
-        ? "Surat kabar arsip perjalanan tiga tahun angkatan UNO XII PPLG 1 di MAKN Ende."
-        : `Edisi Pilihan "${activeCategory}" · Arsip Perjalanan XII PPLG 1 MAKN Ende.`,
+        ? "Surat kabar arsip perjalanan tiga tahun angkatan UNO XII PPLG 1 MAKN Ende."
+        : `Edisi Pilihan “${activeCategory}” · Arsip Perjalanan XII PPLG 1 MAKN Ende.`,
     stories: coverMoments.map((m, idx) => buildEditorialStory(m, idx + 1)),
     moments: coverMoments,
     quote: "UNO Born to Win, selamat menjalani hidup baru.",
@@ -268,7 +259,6 @@ export function buildNewspaperPlan(
     XI: 1,
     XII: 1,
   };
-
   const tocItems: NonNullable<NewspaperPageSpec["tocItems"]> = [];
   let globalPhotoSeq = 1;
   let globalTplIdx = 0;
@@ -299,7 +289,7 @@ export function buildNewspaperPlan(
         subheadline:
           activeCategory === "Semua"
             ? meta.sub
-            : `Belum ada liputan foto kategori "${activeCategory}" pada fase Kelas ${phase}.`,
+            : `Belum ada foto kategori “${activeCategory}” pada fase Kelas ${phase}.`,
         stories: [],
         moments: [],
         quote: meta.quotes[0]!,
@@ -309,7 +299,7 @@ export function buildNewspaperPlan(
       return;
     }
 
-    // Halaman Pembuka Fase (1 foto utama fase + esai pembuka bab)
+    // Halaman Pembuka Fase (1 foto utama besar)
     const openerMoment = phaseMoments[0]!;
     const openerStory = buildEditorialStory(openerMoment, globalPhotoSeq++);
     pages.push({
@@ -327,14 +317,19 @@ export function buildNewspaperPlan(
       text: `${meta.editionTitle}\n\n${openerStory.headline}\n${openerStory.body}`,
     });
 
-    // Sisa foto dalam fase dibagi habis ke campuran layout 1-foto & 2-foto tanpa batas halaman
+    // Sisa foto: mayoritas 1 foto/halaman, sesekali 2 foto seimbang
     let cursor = 1;
     let phaseSubPage = 1;
     const phaseStoriesAll: MomentEditorialStory[] = [openerStory];
 
     while (cursor < phaseMoments.length) {
-      const tpl =
-        INTERIOR_TEMPLATES[globalTplIdx % INTERIOR_TEMPLATES.length]!;
+      let tpl = INTERIOR_TEMPLATES[globalTplIdx % INTERIOR_TEMPLATES.length]!;
+      const remaining = phaseMoments.length - cursor;
+      // Jangan pakai template 2-foto jika tinggal 1 foto saja
+      if (tpl === "balanced-duo" && remaining < 2) {
+        tpl = "chronicle-spotlight";
+      }
+
       const cap = templateCapacity(tpl);
       const slice = phaseMoments.slice(cursor, cursor + cap);
       cursor += slice.length;
@@ -366,7 +361,6 @@ export function buildNewspaperPlan(
       });
     }
 
-    // Lembar Kronik & Daftar Arsip Fase (menggenapkan edisi tiap fase menjadi catatan bersejarah)
     if (phaseStoriesAll.length >= 2) {
       pages.push({
         pageNumber: pages.length + 1,
@@ -374,10 +368,10 @@ export function buildNewspaperPlan(
         template: "phase-chronicle",
         phase,
         rubricTitle: `${meta.rubric} · KRONIK FASE`,
-        headline: `KRONIK & CATATAN PERJALANAN KELAS ${phase}`,
-        subheadline: `Rangkuman ${phaseStoriesAll.length} rekaman arsip beserta pengunggah dan tanggal peristiwa.`,
+        headline: `KRONIK PERJALANAN KELAS ${phase}`,
+        subheadline: `Daftar ringkas ${phaseStoriesAll.length} momen arsip beserta pengunggah dan tanggal peristiwa.`,
         stories: phaseStoriesAll,
-        moments: phaseStoriesAll.slice(0, 1).map((s) => s.moment),
+        moments: [],
         quote: meta.quotes[1] ?? meta.quotes[0]!,
         alt: `Kronik Perjalanan Kelas ${phase} (${phaseStoriesAll.length} momen tercatat)`,
         text: phaseStoriesAll
@@ -387,10 +381,9 @@ export function buildNewspaperPlan(
     }
   });
 
-  // Perbarui metadata Halaman Sampul agar menampilkan nomor halaman fase yang akurat
   pages[0]!.tocItems = tocItems;
 
-  // Halaman Indeks Rubrik
+  // Halaman Indeks
   const tocPageIndex = pages.length;
   pages.push({
     pageNumber: pages.length + 1,
@@ -398,7 +391,7 @@ export function buildNewspaperPlan(
     template: "toc",
     rubricTitle: "INDEKS & DAFTAR RUBRIK EDISI",
     headline: "Peta Lembaran Arsip UNO",
-    subheadline: `Seluruh ${cleaned.length} foto terbagi dalam ${pages.length + 2} halaman koran per fase angkatan.`,
+    subheadline: `Seluruh ${cleaned.length} foto tersusun dalam ${pages.length + 2} lembar koran per fase angkatan.`,
     stories: [],
     moments: [],
     tocItems,
@@ -412,7 +405,7 @@ export function buildNewspaperPlan(
       .join("\n"),
   });
 
-  // Halaman Penutup / Back Cover
+  // Halaman Penutup
   const backCoverIndex = pages.length;
   pages.push({
     pageNumber: pages.length + 1,
@@ -421,7 +414,7 @@ export function buildNewspaperPlan(
     rubricTitle: "KOLOFON REDAKSI · AKHIR EDISI",
     headline: "TAMAT EDISI INI",
     subheadline:
-      "Diterbitkan oleh arsip keluarga besar XII PPLG 1 — Madrasah Aliyah Kejuruan Negeri Ende.",
+      "Diterbitkan oleh arsip keluarga besar XII PPLG 1 — MAKN Ende.",
     stories: [],
     moments: [],
     quote: "UNO Born to Win, selamat menjalani hidup baru",
@@ -446,35 +439,112 @@ export function createSkeletonNewspaperUrl(spec: NewspaperPageSpec): string {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
-  const title = esc(spec.headline.slice(0, 42));
-  const rubric = esc(spec.rubricTitle.slice(0, 46));
+  const title = esc(spec.headline.slice(0, 40));
+  const rubric = esc(spec.rubricTitle.slice(0, 44));
   const num = String(spec.pageNumber).padStart(2, "0");
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${NEWSPAPER_WIDTH} ${NEWSPAPER_HEIGHT}">
     <rect width="${NEWSPAPER_WIDTH}" height="${NEWSPAPER_HEIGHT}" fill="${PAPER_CREAM}"/>
-    <rect x="30" y="30" width="${NEWSPAPER_WIDTH - 60}" height="${NEWSPAPER_HEIGHT - 60}" fill="none" stroke="${PAPER_FOXING}" stroke-width="2"/>
-    <line x1="52" y1="98" x2="${NEWSPAPER_WIDTH - 52}" y2="98" stroke="${INK_DARK}" stroke-width="2.2"/>
-    <line x1="52" y1="104" x2="${NEWSPAPER_WIDTH - 52}" y2="104" stroke="${INK_MUTED}" stroke-width="1"/>
-    <text x="52" y="80" font-family="Courier New, monospace" font-size="17" fill="${INK_MUTED}">${rubric}</text>
-    <text x="${NEWSPAPER_WIDTH - 52}" y="80" text-anchor="end" font-family="Courier New, monospace" font-size="17" fill="${INK_DARK}">HAL. ${num}</text>
-    <text x="${NEWSPAPER_WIDTH / 2}" y="196" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="34" fill="${INK_DARK}">${title}</text>
-    <rect x="68" y="250" width="${NEWSPAPER_WIDTH - 136}" height="480" fill="${PAPER_WARM_ALT}" stroke="${INK_RULE}" stroke-width="1.5"/>
-    <text x="${NEWSPAPER_WIDTH / 2}" y="490" text-anchor="middle" font-family="Courier New, monospace" font-size="20" fill="${INK_MUTED}">MENCETAK LEMBAR KORAN HALAMAN ${num}...</text>
-    <rect x="68" y="775" width="${NEWSPAPER_WIDTH - 136}" height="12" fill="${PAPER_FOXING}"/>
-    <rect x="68" y="804" width="${NEWSPAPER_WIDTH - 210}" height="12" fill="${PAPER_FOXING}"/>
-    <rect x="68" y="833" width="${NEWSPAPER_WIDTH - 165}" height="12" fill="${PAPER_FOXING}"/>
+    <rect x="28" y="28" width="${NEWSPAPER_WIDTH - 56}" height="${NEWSPAPER_HEIGHT - 56}" fill="none" stroke="${PAPER_FOXING}" stroke-width="2"/>
+    <line x1="50" y1="92" x2="${NEWSPAPER_WIDTH - 50}" y2="92" stroke="${INK_DARK}" stroke-width="2.2"/>
+    <text x="50" y="72" font-family="Courier New, monospace" font-size="16" fill="${INK_MUTED}">${rubric}</text>
+    <text x="${NEWSPAPER_WIDTH - 50}" y="72" text-anchor="end" font-family="Courier New, monospace" font-size="16" fill="${INK_DARK}">HAL. ${num}</text>
+    <text x="${NEWSPAPER_WIDTH / 2}" y="190" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="36" fill="${INK_DARK}">${title}</text>
+    <rect x="66" y="246" width="${NEWSPAPER_WIDTH - 132}" height="460" fill="${PAPER_WARM_ALT}" stroke="${INK_RULE}" stroke-width="1.5"/>
+    <text x="${NEWSPAPER_WIDTH / 2}" y="482" text-anchor="middle" font-family="Courier New, monospace" font-size="20" fill="${INK_MUTED}">MENCETAK LEMBAR HALAMAN ${num}...</text>
+    <rect x="66" y="756" width="${NEWSPAPER_WIDTH - 132}" height="16" fill="${PAPER_FOXING}"/>
+    <rect x="66" y="792" width="${NEWSPAPER_WIDTH - 210}" height="16" fill="${PAPER_FOXING}"/>
+    <rect x="66" y="828" width="${NEWSPAPER_WIDTH - 170}" height="16" fill="${PAPER_FOXING}"/>
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 // ============================================================================
-// PEMUAT GAMBAR AMAN CORS & PENGGAMBAR KANVAS KORAN KECREAMAN VINTAGE
+// OPTIMASI PERFORMA: CACHE KERTAS DASAR TUNGGAL & KANVAS REUSABLE
 // ============================================================================
 
 export type LoadedImageResult =
   | { status: "ok"; image: HTMLImageElement }
   | { status: "cors-blocked" | "error" };
+
+let cachedParchmentScale = 0;
+let cachedParchmentCanvas: HTMLCanvasElement | null = null;
+let scratchCanvas: HTMLCanvasElement | null = null;
+let fontsReadyPromise: Promise<void> | null = null;
+
+function getAdaptiveRasterScale(): number {
+  if (typeof window === "undefined") return 1.5;
+  const dpr = window.devicePixelRatio || 1;
+  const isSmall = window.innerWidth < 768;
+  if (isSmall) return 1.5;
+  return dpr >= 1.5 ? 2 : 1.75;
+}
+
+function getCachedParchmentCanvas(scale: number): HTMLCanvasElement {
+  if (cachedParchmentCanvas && cachedParchmentScale === scale) {
+    return cachedParchmentCanvas;
+  }
+
+  const c = document.createElement("canvas");
+  c.width = Math.round(NEWSPAPER_WIDTH * scale);
+  c.height = Math.round(NEWSPAPER_HEIGHT * scale);
+  const ctx = c.getContext("2d")!;
+  ctx.scale(scale, scale);
+
+  // Dasar kertas koran kecreaman hangat
+  ctx.fillStyle = PAPER_CREAM;
+  ctx.fillRect(0, 0, NEWSPAPER_WIDTH, NEWSPAPER_HEIGHT);
+
+  // Gradien penuaan halus di pinggir kertas
+  const grad = ctx.createRadialGradient(
+    NEWSPAPER_WIDTH * 0.5,
+    NEWSPAPER_HEIGHT * 0.48,
+    220,
+    NEWSPAPER_WIDTH * 0.5,
+    NEWSPAPER_HEIGHT * 0.5,
+    NEWSPAPER_WIDTH * 0.88
+  );
+  grad.addColorStop(0, "rgba(247, 240, 224, 0.32)");
+  grad.addColorStop(0.76, "rgba(232, 219, 192, 0.14)");
+  grad.addColorStop(1, "rgba(186, 165, 130, 0.34)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, NEWSPAPER_WIDTH, NEWSPAPER_HEIGHT);
+
+  // Serat kertas deterministik ringan (digambar SEKALI lalu di-cache untuk seluruh edisi)
+  for (let i = 0; i < 420; i++) {
+    const x = (i * 227 + 41) % NEWSPAPER_WIDTH;
+    const y = (i * 331 + 73) % NEWSPAPER_HEIGHT;
+    ctx.fillStyle =
+      i % 5 === 0 ? "rgba(107, 91, 75, 0.075)" : "rgba(38, 31, 24, 0.032)";
+    ctx.fillRect(x, y, (i % 3) + 1, 1);
+  }
+
+  // Bingkai ganda klasik
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(24, 24, NEWSPAPER_WIDTH - 48, NEWSPAPER_HEIGHT - 48);
+  ctx.strokeStyle = PAPER_FOXING;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(30, 30, NEWSPAPER_WIDTH - 60, NEWSPAPER_HEIGHT - 60);
+
+  cachedParchmentCanvas = c;
+  cachedParchmentScale = scale;
+  return c;
+}
+
+function getScratchCanvas(scale: number): HTMLCanvasElement {
+  const tw = Math.round(NEWSPAPER_WIDTH * scale);
+  const th = Math.round(NEWSPAPER_HEIGHT * scale);
+  if (!scratchCanvas) {
+    scratchCanvas = document.createElement("canvas");
+  }
+  if (scratchCanvas.width !== tw || scratchCanvas.height !== th) {
+    scratchCanvas.width = tw;
+    scratchCanvas.height = th;
+  }
+  return scratchCanvas;
+}
 
 export function loadCorsSafeImage(
   url: string,
@@ -488,6 +558,7 @@ export function loadCorsSafeImage(
 
   return new Promise((resolve) => {
     const img = new Image();
+    img.decoding = "async";
     const isSameOriginOrData =
       cleanUrl.startsWith("data:") ||
       cleanUrl.startsWith("blob:") ||
@@ -507,7 +578,7 @@ export function loadCorsSafeImage(
 
     const timeout = window.setTimeout(() => {
       finish({ status: "error" });
-    }, 9000);
+    }, 8500);
 
     img.onload = () => {
       window.clearTimeout(timeout);
@@ -522,6 +593,10 @@ export function loadCorsSafeImage(
     img.src = cleanUrl;
   });
 }
+
+// ============================================================================
+// PEMBANTU TIPOGRAFI & BINGKAI FOTO EDITORIAL
+// ============================================================================
 
 function wrapTextLines(
   ctx: CanvasRenderingContext2D,
@@ -558,107 +633,57 @@ function wrapTextLines(
   return lines;
 }
 
-function drawCreamNewsprintBase(ctx: CanvasRenderingContext2D) {
-  // Kertas koran jadul kecreaman hangat
-  ctx.fillStyle = PAPER_CREAM;
-  ctx.fillRect(0, 0, NEWSPAPER_WIDTH, NEWSPAPER_HEIGHT);
-
-  // Gradien penuaan pinggiran kertas (vintage parchment aging)
-  const grad = ctx.createRadialGradient(
-    NEWSPAPER_WIDTH * 0.5,
-    NEWSPAPER_HEIGHT * 0.48,
-    200,
-    NEWSPAPER_WIDTH * 0.5,
-    NEWSPAPER_HEIGHT * 0.5,
-    NEWSPAPER_WIDTH * 0.88
-  );
-  grad.addColorStop(0, "rgba(247, 240, 224, 0.35)");
-  grad.addColorStop(0.75, "rgba(232, 219, 192, 0.15)");
-  grad.addColorStop(1, "rgba(186, 165, 130, 0.36)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, NEWSPAPER_WIDTH, NEWSPAPER_HEIGHT);
-
-  // Serat & bintik kertas tua deterministik
-  for (let i = 0; i < 650; i++) {
-    const x = (i * 199 + 41) % NEWSPAPER_WIDTH;
-    const y = (i * 317 + 73) % NEWSPAPER_HEIGHT;
-    const size = (i % 3) + 1;
-    ctx.fillStyle =
-      i % 5 === 0 ? "rgba(107, 91, 75, 0.08)" : "rgba(38, 31, 24, 0.035)";
-    ctx.fillRect(x, y, size, 1);
-  }
-
-  // Bingkai luar kertas koran klasik
-  ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(24, 24, NEWSPAPER_WIDTH - 48, NEWSPAPER_HEIGHT - 48);
-  ctx.strokeStyle = PAPER_FOXING;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(30, 30, NEWSPAPER_WIDTH - 60, NEWSPAPER_HEIGHT - 60);
-}
-
 function drawRunningHeaderAndFooter(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec
 ) {
-  const padX = 48;
-  const rightX = NEWSPAPER_WIDTH - padX;
+  const rightX = NEWSPAPER_WIDTH - PAD_X;
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '14px "Special Elite", "Courier New", monospace';
+  ctx.font = '15px "Special Elite", "Courier New", monospace';
   ctx.textAlign = "left";
-  ctx.fillText("GALERI KENANGAN BERSAMA · XII PPLG 1", padX, 62);
+  ctx.fillText("GALERI KENANGAN BERSAMA · XII PPLG 1", PAD_X, 62);
 
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 15px "Old Standard TT", Georgia, serif';
+  ctx.font = 'bold 16px "Old Standard TT", Georgia, serif';
   ctx.fillText("MAKN ENDE · EDISI ARSIP", NEWSPAPER_WIDTH / 2, 62);
 
   ctx.textAlign = "right";
-  ctx.font = '14px "Special Elite", "Courier New", monospace';
-  ctx.fillText(
-    `HAL. ${String(spec.pageNumber).padStart(2, "0")}`,
-    rightX,
-    62
-  );
+  ctx.font = '15px "Special Elite", "Courier New", monospace';
+  ctx.fillText(`HAL. ${String(spec.pageNumber).padStart(2, "0")}`, rightX, 62);
 
-  // Double rule
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.moveTo(padX, 74);
+  ctx.moveTo(PAD_X, 74);
   ctx.lineTo(rightX, 74);
   ctx.stroke();
 
   ctx.strokeStyle = INK_MUTED;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(padX, 80);
+  ctx.moveTo(PAD_X, 80);
   ctx.lineTo(rightX, 80);
   ctx.stroke();
 
-  // Footer colophon
-  const footY = NEWSPAPER_HEIGHT - 46;
+  const footY = NEWSPAPER_HEIGHT - 44;
   ctx.strokeStyle = INK_RULE;
   ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(padX, footY - 20);
-  ctx.lineTo(rightX, footY - 20);
+  ctx.moveTo(PAD_X, footY - 22);
+  ctx.lineTo(rightX, footY - 22);
   ctx.stroke();
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
+  ctx.font = '13.5px "Special Elite", "Courier New", monospace';
   ctx.textAlign = "left";
-  ctx.fillText(spec.rubricTitle, padX, footY);
+  ctx.fillText(spec.rubricTitle, PAD_X, footY);
 
   ctx.textAlign = "right";
   ctx.fillText("ARSIP KORAN UNO · 2024–2027", rightX, footY);
 }
 
-/**
- * Gambar foto dalam nuansa pucat/faded vintage film (bukan hitam-putih pekat),
- * mendukung bentuk kotak dengan sedikit miring natural maupun lingkaran seperti di The Daily Chronicle.
- */
 function drawVintagePhotoFrame(
   ctx: CanvasRenderingContext2D,
   moment: MomentRow | undefined,
@@ -670,14 +695,13 @@ function drawVintagePhotoFrame(
   frameLabel: string,
   shape: "rect" | "circle" = "rect"
 ) {
-  // Hitung rotasi miring natural tipis (±1.3° .. ±2.1°) untuk foto kotak agar tidak kaku
   const seedStr = `${moment?.id || ""}|${frameLabel}|${Math.round(x)}|${Math.round(y)}`;
   let hash = 0;
   for (let i = 0; i < seedStr.length; i++) {
     hash = (hash * 31 + seedStr.charCodeAt(i)) | 0;
   }
   const tiltSign = hash % 2 === 0 ? 1 : -1;
-  const tiltDeg = 1.2 + (Math.abs(hash) % 10) * 0.1;
+  const tiltDeg = 0.8 + (Math.abs(hash) % 8) * 0.1;
   const tiltRad = shape === "circle" ? 0 : (tiltSign * tiltDeg * Math.PI) / 180;
 
   const cx = x + w / 2;
@@ -685,15 +709,12 @@ function drawVintagePhotoFrame(
 
   ctx.save();
   ctx.translate(cx, cy);
-  if (tiltRad !== 0) {
-    ctx.rotate(tiltRad);
-  }
+  if (tiltRad !== 0) ctx.rotate(tiltRad);
   const lx = -w / 2;
   const ly = -h / 2;
 
   if (shape === "rect") {
-    // Bayangan tipis kertas tempel agar foto miring terasa organik di atas kertas koran
-    ctx.fillStyle = "rgba(38, 31, 24, 0.15)";
+    ctx.fillStyle = "rgba(38, 31, 24, 0.14)";
     ctx.fillRect(lx + 4, ly + 5, w, h);
   }
 
@@ -723,22 +744,20 @@ function drawVintagePhotoFrame(
     const dx = lx + (w - dw) / 2;
     const dy = ly + (h - dh) / 2;
 
-    // Grading cetak foto koran hangat yang seimbang: tajam, tidak silau, dan nyaman dilihat lama
-    ctx.filter = "saturate(74%) contrast(106%) brightness(95%) sepia(12%)";
+    ctx.filter = "saturate(76%) contrast(106%) brightness(95%) sepia(11%)";
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.filter = "none";
 
-    // Vignette tepi sangat halus agar foto menyatu alami tanpa membuat wajah pucat/silau
     const vig = ctx.createRadialGradient(
       0,
       0,
-      Math.min(w, h) * 0.32,
+      Math.min(w, h) * 0.34,
       0,
       0,
       Math.max(w, h) * 0.72
     );
     vig.addColorStop(0, "rgba(30, 23, 18, 0)");
-    vig.addColorStop(1, "rgba(30, 23, 18, 0.14)");
+    vig.addColorStop(1, "rgba(30, 23, 18, 0.13)");
     ctx.fillStyle = vig;
     ctx.fillRect(lx, ly, w, h);
   } else {
@@ -746,19 +765,18 @@ function drawVintagePhotoFrame(
     ctx.fillRect(lx, ly, w, h);
     ctx.fillStyle = INK_MUTED;
     ctx.textAlign = "center";
-    ctx.font = '14px "Special Elite", "Courier New", monospace';
+    ctx.font = '15px "Special Elite", "Courier New", monospace';
     ctx.fillText(
       imgResult?.status === "cors-blocked"
         ? "ARSIP EKSTERNAL · BUKA GRID"
         : "REKAMAN FOTO VINTAGE",
       0,
-      0
+      4
     );
     ctx.textAlign = "left";
   }
   ctx.restore();
 
-  // Garis bingkai cetak koran
   if (shape === "circle") {
     const r = Math.min(w, h) / 2;
     ctx.strokeStyle = INK_DARK;
@@ -781,13 +799,13 @@ function drawVintagePhotoFrame(
     ctx.strokeRect(lx + 3, ly + 3, w - 6, h - 6);
 
     if (frameLabel) {
-      ctx.font = '11px "Special Elite", "Courier New", monospace';
-      const badgeW = Math.min(w - 14, ctx.measureText(frameLabel).width + 24);
-      ctx.fillStyle = "rgba(38, 31, 24, 0.86)";
-      ctx.fillRect(lx + 8, ly + 8, Math.max(96, badgeW), 22);
+      ctx.font = '13px "Special Elite", "Courier New", monospace';
+      const badgeW = Math.min(w - 16, ctx.measureText(frameLabel).width + 24);
+      ctx.fillStyle = "rgba(38, 31, 24, 0.88)";
+      ctx.fillRect(lx + 9, ly + 9, Math.max(108, badgeW), 26);
       ctx.fillStyle = PAPER_CREAM;
       ctx.textAlign = "left";
-      ctx.fillText(frameLabel, lx + 14, ly + 23);
+      ctx.fillText(frameLabel, lx + 16, ly + 27);
     }
   }
 
@@ -795,7 +813,7 @@ function drawVintagePhotoFrame(
 }
 
 /**
- * Gambar paragraf artikel koran lengkap dengan Drop Cap klasik di huruf pertama.
+ * Paragraf deskripsi dengan Drop Cap proporsional & ukuran baca editorial standar (20px–22px).
  */
 function drawDropCapParagraph(
   ctx: CanvasRenderingContext2D,
@@ -803,34 +821,43 @@ function drawDropCapParagraph(
   x: number,
   y: number,
   w: number,
-  lineHeight: number,
-  maxLines: number,
-  color: string = INK_BODY
+  opts?: {
+    fontSize?: number;
+    lineHeight?: number;
+    maxLines?: number;
+    color?: string;
+  }
 ): number {
   const clean = decodeHtmlEntities(text).trim();
   if (!clean) return y;
 
-  const firstChar = clean[0]!.toUpperCase();
-  const restText = clean.slice(1);
+  const fontSize = opts?.fontSize ?? TYPE.bodySolo;
+  const lineHeight = opts?.lineHeight ?? TYPE.lineSolo;
+  const maxLines = opts?.maxLines ?? 8;
+  const color = opts?.color ?? INK_BODY;
 
-  // Kotak Drop Cap
-  const dropSize = 44;
+  // Jika diawali tanda kutip pembuka, ambil huruf pertama sebagai Drop Cap agar rapi
+  const stripped = clean.replace(/^[“"]+/, "");
+  const firstChar = (stripped[0] ?? clean[0]!).toUpperCase();
+  const restText = stripped.slice(1);
+
+  const dropSize = Math.round(fontSize * 2.55); // ~56px untuk body 22px
   ctx.fillStyle = INK_DARK;
   ctx.fillRect(x, y - 4, dropSize, dropSize);
   ctx.fillStyle = PAPER_CREAM;
   ctx.textAlign = "center";
-  ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  ctx.fillText(firstChar, x + dropSize / 2, y + 28);
+  ctx.font = `bold ${Math.round(dropSize * 0.72)}px "Old Standard TT", Georgia, serif`;
+  ctx.fillText(firstChar, x + dropSize / 2, y + Math.round(dropSize * 0.68));
 
   ctx.textAlign = "left";
   ctx.fillStyle = color;
-  ctx.font = '15.5px "Source Serif 4", Georgia, serif';
+  ctx.font = `${fontSize}px "Source Serif 4", Georgia, serif`;
 
-  // 2 baris pertama di samping drop cap
-  const sideIndent = dropSize + 10;
+  const sideIndent = dropSize + 14;
   const words = restText.split(/\s+/).filter(Boolean);
   let idx = 0;
   const sideLines: string[] = [];
+
   for (let row = 0; row < 2 && idx < words.length; row++) {
     let line = words[idx++]!;
     while (
@@ -842,25 +869,25 @@ function drawDropCapParagraph(
     sideLines.push(line);
   }
 
+  const firstBaseline = y + Math.round(fontSize * 0.85);
   sideLines.forEach((ln, r) => {
-    ctx.fillText(ln, x + sideIndent, y + 14 + r * lineHeight);
+    ctx.fillText(ln, x + sideIndent, firstBaseline + r * lineHeight);
   });
 
-  // Sisa baris selebar penuh kolom
   const remainingText = words.slice(idx).join(" ");
   const bodyLines = remainingText
     ? wrapTextLines(ctx, remainingText, w, Math.max(1, maxLines - 2))
     : [];
 
   bodyLines.forEach((ln, r) => {
-    ctx.fillText(ln, x, y + 14 + (r + 2) * lineHeight);
+    ctx.fillText(ln, x, firstBaseline + (r + 2) * lineHeight);
   });
 
   const totalRendered = sideLines.length + bodyLines.length;
-  return y + 18 + Math.max(2, totalRendered) * lineHeight;
+  return y + 12 + Math.max(2, totalRendered) * lineHeight;
 }
 
-function drawStoryColumn(
+function drawEditorialArticle(
   ctx: CanvasRenderingContext2D,
   story: MomentEditorialStory,
   x: number,
@@ -869,15 +896,17 @@ function drawStoryColumn(
   opts?: {
     headlineSize?: number;
     maxHeadlineLines?: number;
-    maxBodyLines?: number;
+    bodySize?: number;
     lineHeight?: number;
+    maxBodyLines?: number;
     withDropCap?: boolean;
   }
 ): number {
-  const headlineSize = opts?.headlineSize ?? 23;
-  const maxHeadlineLines = opts?.maxHeadlineLines ?? 3;
-  const maxBodyLines = opts?.maxBodyLines ?? 7;
-  const lineHeight = opts?.lineHeight ?? 21;
+  const headlineSize = opts?.headlineSize ?? 28;
+  const maxHeadlineLines = opts?.maxHeadlineLines ?? 2;
+  const bodySize = opts?.bodySize ?? TYPE.bodySolo;
+  const lineHeight = opts?.lineHeight ?? TYPE.lineSolo;
+  const maxBodyLines = opts?.maxBodyLines ?? 8;
   const withDropCap = opts?.withDropCap ?? true;
 
   let curY = y;
@@ -886,1681 +915,913 @@ function drawStoryColumn(
   ctx.font = `bold ${headlineSize}px "Old Standard TT", Georgia, serif`;
   const hLines = wrapTextLines(ctx, story.headline, w, maxHeadlineLines);
   hLines.forEach((ln, i) => {
-    ctx.fillText(ln, x, curY + i * (headlineSize + 4));
+    ctx.fillText(ln, x, curY + headlineSize + i * (headlineSize + 6));
   });
-  curY += hLines.length * (headlineSize + 4) + 2;
+  curY += hLines.length * (headlineSize + 6) + 12;
 
-  // Byline
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
+  ctx.font = `${TYPE.byline}px "Special Elite", "Courier New", monospace`;
   const byLines = wrapTextLines(ctx, story.byline.toUpperCase(), w, 1);
   if (byLines[0]) {
     ctx.fillText(byLines[0], x, curY + 12);
-    curY += 20;
+    curY += 24;
   }
 
-  // Garis tipis pemisah judul & isi
   ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 0.9;
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
   ctx.moveTo(x, curY);
-  ctx.lineTo(x + Math.min(w, 110), curY);
+  ctx.lineTo(x + Math.min(w, 128), curY);
   ctx.stroke();
-  curY += 16;
+  curY += 20;
 
   if (withDropCap) {
-    curY = drawDropCapParagraph(ctx, story.body, x, curY, w, lineHeight, maxBodyLines);
-  } else {
-    ctx.fillStyle = INK_BODY;
-    ctx.font = '15.5px "Source Serif 4", Georgia, serif';
-    const bLines = wrapTextLines(ctx, story.body, w, maxBodyLines);
-    bLines.forEach((ln, i) => {
-      ctx.fillText(ln, x, curY + 10 + i * lineHeight);
+    return drawDropCapParagraph(ctx, story.body, x, curY, w, {
+      fontSize: bodySize,
+      lineHeight,
+      maxLines: maxBodyLines,
     });
-    curY += 14 + bLines.length * lineHeight;
   }
 
-  return curY;
+  ctx.fillStyle = INK_BODY;
+  ctx.font = `${bodySize}px "Source Serif 4", Georgia, serif`;
+  const bLines = wrapTextLines(ctx, story.body, w, maxBodyLines);
+  bLines.forEach((ln, i) => {
+    ctx.fillText(ln, x, curY + bodySize + i * lineHeight);
+  });
+  return curY + 14 + bLines.length * lineHeight;
+}
+
+function drawQuotePanel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  quote: string,
+  footer: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  inverted: boolean
+) {
+  ctx.fillStyle = inverted ? BOX_INVERTED_BG : PAPER_WARM_ALT;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = inverted ? PAPER_CREAM : INK_DARK;
+  ctx.lineWidth = inverted ? 1.3 : 1.8;
+  ctx.strokeRect(
+    x + (inverted ? 10 : 0),
+    y + (inverted ? 10 : 0),
+    w - (inverted ? 20 : 0),
+    h - (inverted ? 20 : 0)
+  );
+
+  const cx = x + w / 2;
+  ctx.textAlign = "center";
+  ctx.fillStyle = inverted ? BOX_INVERTED_FG : INK_MUTED;
+  ctx.font = '14px "Special Elite", "Courier New", monospace';
+  ctx.fillText(label, cx, y + 46);
+
+  ctx.strokeStyle = inverted ? "rgba(239, 229, 206, 0.4)" : INK_RULE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 36, y + 64);
+  ctx.lineTo(x + w - 36, y + 64);
+  ctx.stroke();
+
+  ctx.fillStyle = inverted ? BOX_INVERTED_FG : INK_DARK;
+  ctx.font = `italic ${TYPE.quote}px "Old Standard TT", Georgia, serif`;
+  const qLines = wrapTextLines(ctx, `“${quote}”`, w - 52, 5);
+  const blockH = qLines.length * TYPE.quoteLine;
+  const startY = y + Math.max(108, Math.round((h - blockH) / 2) + 22);
+  qLines.forEach((ln, i) => {
+    ctx.fillText(ln, cx, startY + i * TYPE.quoteLine);
+  });
+
+  if (footer) {
+    ctx.fillStyle = inverted ? "rgba(239, 229, 206, 0.78)" : INK_MUTED;
+    ctx.font = '13.5px "Special Elite", "Courier New", monospace';
+    ctx.fillText(footer, cx, y + h - 30);
+  }
 }
 
 // ============================================================================
-// TEMPLATE 1: SAMPUL DEPAN KREATIF (THE DAILY CHRONICLE + LONDON NEWS)
+// TEMPLATE 1: SAMPUL DEPAN SEIMBANG & MUDAH DIBACA
 // ============================================================================
 function drawChronicleCover(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec,
   images: Map<string, LoadedImageResult>
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
+  const midX = NEWSPAPER_WIDTH / 2;
+  const earW = 166;
+  const earH = 62;
 
-  // "Ears" Pojok Kiri & Kanan Atas (seperti London News & Village Times)
-  const earW = 152;
-  const earH = 66;
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 1.4;
   ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, 46, earW, earH);
-  ctx.strokeRect(padX, 46, earW, earH);
-  ctx.fillRect(NEWSPAPER_WIDTH - padX - earW, 46, earW, earH);
-  ctx.strokeRect(NEWSPAPER_WIDTH - padX - earW, 46, earW, earH);
+  ctx.fillRect(PAD_X, 44, earW, earH);
+  ctx.strokeRect(PAD_X, 44, earW, earH);
+  ctx.fillRect(NEWSPAPER_WIDTH - PAD_X - earW, 44, earW, earH);
+  ctx.strokeRect(NEWSPAPER_WIDTH - PAD_X - earW, 44, earW, earH);
 
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
-  ctx.font = '11px "Special Elite", "Courier New", monospace';
-  ctx.fillText("EDISI ARSIP NO. 01", padX + earW / 2, 68);
+  ctx.font = '12.5px "Special Elite", "Courier New", monospace';
+  ctx.fillText("EDISI ARSIP NO. 01", PAD_X + earW / 2, 68);
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 13px "Source Serif 4", Georgia, serif';
-  ctx.fillText("XII PPLG 1 · MAKN Ende", padX + earW / 2, 92);
+  ctx.font = 'italic 15px "Source Serif 4", Georgia, serif';
+  ctx.fillText("XII PPLG 1 · MAKN Ende", PAD_X + earW / 2, 92);
 
   ctx.fillStyle = INK_DARK;
-  ctx.font = '11px "Special Elite", "Courier New", monospace';
-  ctx.fillText("ANGKATAN 2024–2027", NEWSPAPER_WIDTH - padX - earW / 2, 68);
+  ctx.font = '12.5px "Special Elite", "Courier New", monospace';
+  ctx.fillText("ANGKATAN 2024–2027", NEWSPAPER_WIDTH - PAD_X - earW / 2, 68);
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 13px "Source Serif 4", Georgia, serif';
-  ctx.fillText("Harga: Satu Kenangan", NEWSPAPER_WIDTH - padX - earW / 2, 92);
+  ctx.font = 'italic 15px "Source Serif 4", Georgia, serif';
+  ctx.fillText("Harga: Satu Kenangan", NEWSPAPER_WIDTH - PAD_X - earW / 2, 92);
 
-  // Ornamen Lambang UNO di Tengah Masthead (gaya The Daily Chronicle)
-  const midX = NEWSPAPER_WIDTH / 2;
+  // Emblem UNO
   ctx.beginPath();
-  ctx.arc(midX, 78, 28, 0, Math.PI * 2);
+  ctx.arc(midX, 75, 28, 0, Math.PI * 2);
   ctx.fillStyle = INK_DARK;
   ctx.fill();
   ctx.strokeStyle = PAPER_CREAM;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(midX, 78, 23, 0, Math.PI * 2);
+  ctx.arc(midX, 75, 23, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = PAPER_CREAM;
-  ctx.font = 'bold 16px "Old Standard TT", Georgia, serif';
-  ctx.fillText("UNO", midX, 84);
+  ctx.font = 'bold 17px "Old Standard TT", Georgia, serif';
+  ctx.fillText("UNO", midX, 81);
 
-  // Judul Besar Masthead
+  // Masthead Besar
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 52px "Old Standard TT", Georgia, serif';
-  ctx.fillText("GALERI KENANGAN BERSAMA", midX, 166);
+  ctx.font = 'bold 50px "Old Standard TT", Georgia, serif';
+  ctx.fillText("GALERI KENANGAN BERSAMA", midX, 162);
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '13px "Special Elite", "Courier New", monospace';
+  ctx.font = '14px "Special Elite", "Courier New", monospace';
   ctx.fillText(
     "LAPORAN KHUSUS · PENGEMBANGAN PERANGKAT LUNAK DAN GIM · MAKN ENDE",
     midX,
-    192
+    190
   );
 
-  // Pita Gelap Edisi (Inverted Banner Bar seperti London News)
+  // Pita Gelap Edisi
   ctx.fillStyle = BOX_INVERTED_BG;
-  ctx.fillRect(padX, 208, contentW, 34);
+  ctx.fillRect(PAD_X, 206, CONTENT_W, 36);
   ctx.fillStyle = BOX_INVERTED_FG;
-  ctx.font = '13px "Special Elite", "Courier New", monospace';
+  ctx.font = '14px "Special Elite", "Courier New", monospace';
   ctx.textAlign = "left";
-  ctx.fillText("NO. 01 · KORAN ANGKATAN", padX + 16, 230);
+  ctx.fillText("NO. 01 · KORAN ANGKATAN", PAD_X + 16, 229);
   ctx.textAlign = "center";
-  ctx.fillText("EDISI LENGKAP KELAS X · XI · XII", midX, 230);
+  ctx.fillText("EDISI LENGKAP KELAS X · XI · XII", midX, 229);
   ctx.textAlign = "right";
-  ctx.fillText("FLORES — NTT", NEWSPAPER_WIDTH - padX - 16, 230);
+  ctx.fillText("FLORES — NTT", NEWSPAPER_WIDTH - PAD_X - 16, 229);
 
-  // Tata Letak 3 Kolom Halaman Muka (Daily Chronicle Style)
-  const topY = 264;
-  const col1W = 216;
-  const col3W = 222;
-  const gap = 20;
-  const col2X = padX + col1W + gap;
-  const col2W = contentW - col1W - col3W - gap * 2;
-  const col3X = col2X + col2W + gap;
-
-  // Pembatas kolom vertikal
-  ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(col2X - gap / 2, topY);
-  ctx.lineTo(col2X - gap / 2, NEWSPAPER_HEIGHT - 64);
-  ctx.moveTo(col3X - gap / 2, topY);
-  ctx.lineTo(col3X - gap / 2, NEWSPAPER_HEIGHT - 64);
-  ctx.stroke();
+  // Grid Utama Sampul: 2 Kolom Lebar & Lega (536px + 300px)
+  const topY = 262;
+  const leftW = 536;
+  const gap = 24;
+  const rightX = PAD_X + leftW + gap;
+  const rightW = CONTENT_W - leftW - gap; // 300px
 
   const mainStory = spec.stories[0];
-  const sideStory = spec.stories[1] ?? spec.stories[0];
+  const sideStory = spec.stories[1] ?? mainStory;
 
-  // KOLOM KIRI: Foto Lingkaran + Profil Cerita
-  if (sideStory) {
-    drawVintagePhotoFrame(
-      ctx,
-      sideStory.moment,
-      images.get(sideStory.moment.image_url),
-      padX + (col1W - 166) / 2,
-      topY + 4,
-      166,
-      166,
-      "",
-      "circle"
-    );
-    drawStoryColumn(ctx, sideStory, padX, topY + 194, col1W, {
-      headlineSize: 21,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 21,
-      withDropCap: true,
-    });
-  }
-
-  // Kotak Arsip Kecil di Kiri Bawah
-  const stampY = 980;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, stampY, col1W, 250);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(padX, stampY, col1W, 250);
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
-  ctx.fillText("SUARA ANGKATAN", padX + col1W / 2, stampY + 38);
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  const qLines = wrapTextLines(ctx, `“${spec.quote}”`, col1W - 28, 4);
-  qLines.forEach((ln, i) => {
-    ctx.fillText(ln, padX + col1W / 2, stampY + 84 + i * 24);
-  });
-  ctx.fillStyle = INK_MUTED;
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
-  ctx.fillText("XII PPLG 1 · MAKN ENDE", padX + col1W / 2, stampY + 216);
-
-  // KOLOM TENGAH: Tajuk Utama + Foto Besar + 2 Sub-kolom Berita
   if (mainStory) {
     drawVintagePhotoFrame(
       ctx,
       mainStory.moment,
       images.get(mainStory.moment.image_url),
-      col2X,
+      PAD_X,
       topY,
-      col2W,
-      310,
+      leftW,
+      382,
       "TAJUK UTAMA"
     );
 
-    ctx.textAlign = "center";
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = 'italic 14px "Source Serif 4", Georgia, serif';
-    ctx.fillText(mainStory.byline, col2X + col2W / 2, topY + 332);
-
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 28px "Old Standard TT", Georgia, serif';
-    const cHead = wrapTextLines(ctx, mainStory.headline, col2W, 2);
-    cHead.forEach((ln, i) => {
-      ctx.fillText(ln, col2X + col2W / 2, topY + 368 + i * 33);
-    });
-
-    const subColY = topY + 368 + cHead.length * 33 + 12;
-    const subColW = (col2W - 14) / 2;
-    const bodyWords = mainStory.body.split(/\s+/);
-    const half = Math.ceil(bodyWords.length / 2);
-    const part1 = bodyWords.slice(0, half).join(" ");
-    const part2 = bodyWords.slice(half).join(" ");
-
-    drawDropCapParagraph(ctx, part1, col2X, subColY, subColW, 20, 12);
-    ctx.fillStyle = INK_BODY;
-    ctx.font = '15px "Source Serif 4", Georgia, serif';
-    const part2Lines = wrapTextLines(ctx, part2, subColW, 12);
-    part2Lines.forEach((ln, i) => {
-      ctx.fillText(ln, col2X + subColW + 14, subColY + 14 + i * 20);
+    drawEditorialArticle(ctx, mainStory, PAD_X, topY + 402, leftW, {
+      headlineSize: 30,
+      maxHeadlineLines: 2,
+      bodySize: 21,
+      lineHeight: 31,
+      maxBodyLines: 7,
+      withDropCap: true,
     });
   }
 
-  // Strip Sorotan Bawah di Kolom Tengah (Daftar Fase Edisi Ini)
-  const teaserY = 934;
+  // Kolom Kanan: Kotak Catatan UNO (teks 19.5px mudah dibaca) + Potret Lingkaran
+  ctx.fillStyle = BOX_INVERTED_BG;
+  ctx.fillRect(rightX, topY, rightW, 382);
+  ctx.strokeStyle = PAPER_CREAM;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(rightX + 10, topY + 10, rightW - 20, 362);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = BOX_INVERTED_FG;
+  ctx.font = 'bold 26px "Old Standard TT", Georgia, serif';
+  ctx.fillText("CATATAN UNO", rightX + rightW / 2, topY + 54);
+
+  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
+  ctx.fillText("22 Siswa Aktif · 2 Sahabat", rightX + rightW / 2, topY + 84);
+
+  ctx.strokeStyle = "rgba(239, 229, 206, 0.45)";
+  ctx.beginPath();
+  ctx.moveTo(rightX + 28, topY + 102);
+  ctx.lineTo(rightX + rightW - 28, topY + 102);
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.font = `${TYPE.bodyCompact}px "Source Serif 4", Georgia, serif`;
+  const coverNote =
+    "Setiap potret di koran ini menyimpan potongan waktu dari bangku Kelas X, masa PKL Kelas XI, hingga perpisahan di Kelas XII.";
+  wrapTextLines(ctx, coverNote, rightW - 44, 7).forEach((ln, i) => {
+    ctx.fillText(ln, rightX + 22, topY + 138 + i * TYPE.lineCompact);
+  });
+
+  // Kanan Bawah: Foto Lingkaran + Kutipan Angkatan
+  const quoteTop = topY + 402;
+  ctx.fillStyle = PAPER_WARM_ALT;
+  ctx.fillRect(rightX, quoteTop, rightW, 370);
+  ctx.strokeStyle = INK_DARK;
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(rightX, quoteTop, rightW, 370);
+
+  if (sideStory) {
+    drawVintagePhotoFrame(
+      ctx,
+      sideStory.moment,
+      images.get(sideStory.moment.image_url),
+      rightX + (rightW - 146) / 2,
+      quoteTop + 20,
+      146,
+      146,
+      "",
+      "circle"
+    );
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = INK_DARK;
+  ctx.font = 'bold 18px "Old Standard TT", Georgia, serif';
+  ctx.fillText("SUARA ANGKATAN", rightX + rightW / 2, quoteTop + 204);
+
+  ctx.font = 'italic 20px "Source Serif 4", Georgia, serif';
+  ctx.fillStyle = INK_BODY;
+  wrapTextLines(ctx, `“${spec.quote}”`, rightW - 36, 4).forEach((ln, i) => {
+    ctx.fillText(ln, rightX + rightW / 2, quoteTop + 238 + i * 28);
+  });
+
+  // Strip Bawah: 3 Kartu Indeks Fase Seimbang
+  const stripY = 1068;
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(col2X, teaserY);
-  ctx.lineTo(col2X + col2W, teaserY);
+  ctx.moveTo(PAD_X, stripY);
+  ctx.lineTo(PAD_X + CONTENT_W, stripY);
   ctx.stroke();
 
   ctx.textAlign = "left";
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
-  ctx.fillText("SOROTAN RUBRIK PER FASE", col2X, teaserY + 32);
+  ctx.font = 'bold 21px "Old Standard TT", Georgia, serif';
+  ctx.fillText("SOROTAN RUBRIK PER FASE", PAD_X, stripY + 34);
 
   const items = spec.tocItems ?? [
     { phase: "X", title: "BAB I · KELAS X", printedPage: 2, count: 0 },
     { phase: "XI", title: "BAB II · KELAS XI", printedPage: 8, count: 0 },
     { phase: "XII", title: "BAB III · KELAS XII", printedPage: 16, count: 0 },
   ];
-  items.forEach((it, idx) => {
-    const iy = teaserY + 62 + idx * 72;
-    ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(col2X, iy, col2W, 58);
-    ctx.strokeStyle = INK_RULE;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(col2X, iy, col2W, 58);
 
+  const cardGap = 18;
+  const cardW = (CONTENT_W - cardGap * 2) / 3;
+  items.slice(0, 3).forEach((it, idx) => {
+    const cx = PAD_X + idx * (cardW + cardGap);
+    const cy = stripY + 52;
+    ctx.fillStyle = PAPER_WARM_ALT;
+    ctx.fillRect(cx, cy, cardW, 118);
+    ctx.strokeStyle = INK_RULE;
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(cx, cy, cardW, 118);
+
+    ctx.textAlign = "left";
     ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 16px "Old Standard TT", Georgia, serif';
-    ctx.fillText(it.title, col2X + 14, iy + 25);
+    ctx.font = 'bold 19px "Old Standard TT", Georgia, serif';
+    ctx.fillText(it.title, cx + 16, cy + 40);
 
     ctx.fillStyle = INK_MUTED;
-    ctx.font = '12px "Special Elite", "Courier New", monospace';
+    ctx.font = '14px "Special Elite", "Courier New", monospace';
     ctx.fillText(
-      `HALAMAN ${String(it.printedPage).padStart(2, "0")} · ${it.count} FOTO KENANGAN`,
-      col2X + 14,
-      iy + 46
+      `HAL. ${String(it.printedPage).padStart(2, "0")} · ${it.count} FOTO`,
+      cx + 16,
+      cy + 74
     );
+
+    ctx.fillStyle = INK_BODY;
+    ctx.font = 'italic 15px "Source Serif 4", Georgia, serif';
+    ctx.fillText(`Arsip Fase Kelas ${it.phase}`, cx + 16, cy + 100);
   });
-
-  // KOLOM KANAN: Kotak Gelap Inverted ("LIGHTS STUN LONDON" dari Daily Chronicle!)
-  const darkBoxH = 560;
-  ctx.fillStyle = BOX_INVERTED_BG;
-  ctx.fillRect(col3X, topY, col3W, darkBoxH);
-  ctx.strokeStyle = PAPER_CREAM;
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(col3X + 8, topY + 8, col3W - 16, darkBoxH - 16);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = BOX_INVERTED_FG;
-  ctx.font = 'bold 28px "Old Standard TT", Georgia, serif';
-  ctx.fillText("CATATAN", col3X + col3W / 2, topY + 52);
-  ctx.fillText("KELUARGA", col3X + col3W / 2, topY + 84);
-  ctx.fillText("UNO", col3X + col3W / 2, topY + 116);
-
-  ctx.font = 'italic 14px "Source Serif 4", Georgia, serif';
-  ctx.fillText("22 Siswa Aktif · 2 Sahabat", col3X + col3W / 2, topY + 148);
-
-  ctx.strokeStyle = "rgba(239, 229, 206, 0.45)";
-  ctx.beginPath();
-  ctx.moveTo(col3X + 26, topY + 164);
-  ctx.lineTo(col3X + col3W - 26, topY + 164);
-  ctx.stroke();
-
-  ctx.textAlign = "left";
-  ctx.font = '15px "Source Serif 4", Georgia, serif';
-  const darkCopy =
-    "Setiap potret dalam surat kabar ini adalah potongan waktu yang kami simpan dari bangku Kelas X, masa PKL di Kelas XI, hingga detik perpisahan di Kelas XII. Tidak ada momen yang terlalu kecil untuk dilupakan.";
-  const darkLines = wrapTextLines(ctx, darkCopy, col3W - 36, 13);
-  darkLines.forEach((ln, i) => {
-    ctx.fillText(ln, col3X + 18, topY + 194 + i * 24);
-  });
-
-  // Kotak Dekoratif Kamera Analog di Kanan Bawah
-  const camY = topY + darkBoxH + 22;
-  const camH = NEWSPAPER_HEIGHT - 64 - camY;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(col3X, camY, col3W, camH);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(col3X, camY, col3W, camH);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 21px "Old Standard TT", Georgia, serif';
-  ctx.fillText("ARSIP 35MM", col3X + col3W / 2, camY + 42);
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
-  ctx.fillStyle = INK_MUTED;
-  ctx.fillText("ISO 400 · CETAK VINTAGE", col3X + col3W / 2, camY + 66);
-
-  // Ikon Kamera Analog Minimalis di Kanvas
-  const camCx = col3X + col3W / 2;
-  const camCy = camY + 146;
-  ctx.fillStyle = INK_DARK;
-  ctx.fillRect(camCx - 54, camCy - 34, 108, 68);
-  ctx.fillRect(camCx - 22, camCy - 46, 44, 14);
-  ctx.beginPath();
-  ctx.arc(camCx, camCy, 24, 0, Math.PI * 2);
-  ctx.fillStyle = PAPER_CREAM;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(camCx, camCy, 16, 0, Math.PI * 2);
-  ctx.fillStyle = INK_DARK;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(camCx - 4, camCy - 4, 4, 0, Math.PI * 2);
-  ctx.fillStyle = PAPER_CREAM;
-  ctx.fill();
-
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'italic 15px "Source Serif 4", Georgia, serif';
-  ctx.fillText("Balik halaman untuk membaca →", camCx, camY + camH - 36);
 }
 
 // ============================================================================
-// TEMPLATE 2: PEMBUKA FASE RUBRIK (BAB X / XI / XII)
+// TEMPLATE 2: PEMBUKA FASE RUBRIK (1 FOTO UTAMA BESAR + KOLOM LEGA)
 // ============================================================================
 function drawPhaseOpenerPage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec,
   images: Map<string, LoadedImageResult>
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
   const midX = NEWSPAPER_WIDTH / 2;
 
   ctx.textAlign = "center";
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '14px "Special Elite", "Courier New", monospace';
-  ctx.fillText(spec.rubricTitle, midX, 118);
+  ctx.font = `${TYPE.kicker}px "Special Elite", "Courier New", monospace`;
+  ctx.fillText(spec.rubricTitle, midX, 116);
 
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 42px "Old Standard TT", Georgia, serif';
-  const hLines = wrapTextLines(ctx, spec.headline, contentW, 2);
+  ctx.font = 'bold 40px "Old Standard TT", Georgia, serif';
+  const hLines = wrapTextLines(ctx, spec.headline, CONTENT_W, 2);
   hLines.forEach((ln, i) => {
-    ctx.fillText(ln, midX, 168 + i * 48);
+    ctx.fillText(ln, midX, 166 + i * 46);
   });
 
-  const subY = 168 + hLines.length * 48 + 4;
+  const subY = 166 + hLines.length * 46 + 6;
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 19px "Source Serif 4", Georgia, serif';
-  const sLines = wrapTextLines(ctx, spec.subheadline, contentW - 80, 2);
+  ctx.font = 'italic 20px "Source Serif 4", Georgia, serif';
+  const sLines = wrapTextLines(ctx, spec.subheadline, CONTENT_W - 60, 2);
   sLines.forEach((ln, i) => {
-    ctx.fillText(ln, midX, subY + i * 25);
+    ctx.fillText(ln, midX, subY + i * 28);
   });
 
-  const divY = subY + sLines.length * 25 + 14;
+  const divY = subY + sLines.length * 28 + 14;
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(padX, divY);
-  ctx.lineTo(NEWSPAPER_WIDTH - padX, divY);
+  ctx.moveTo(PAD_X, divY);
+  ctx.lineTo(PAD_X + CONTENT_W, divY);
   ctx.stroke();
 
   const story = spec.stories[0];
-  if (story) {
-    const imgY = divY + 22;
-    const imgH = 440;
-    drawVintagePhotoFrame(
-      ctx,
-      story.moment,
-      images.get(story.moment.image_url),
-      padX,
-      imgY,
-      contentW,
-      imgH,
-      story.frameTag
-    );
-
-    const storyY = imgY + imgH + 34;
-    const colW = (contentW - 28) / 2;
-    drawStoryColumn(ctx, story, padX, storyY, colW, {
-      headlineSize: 25,
-      maxHeadlineLines: 3,
-      maxBodyLines: 11,
-      lineHeight: 22,
-      withDropCap: true,
-    });
-
-    // Kotak Manifesto Fase di Kolom Kanan
-    const boxX = padX + colW + 28;
-    ctx.fillStyle = BOX_INVERTED_BG;
-    ctx.fillRect(boxX, storyY, colW, 330);
-    ctx.strokeStyle = PAPER_CREAM;
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(boxX + 10, storyY + 10, colW - 20, 310);
-
-    ctx.textAlign = "center";
-    ctx.fillStyle = BOX_INVERTED_FG;
-    ctx.font = '13px "Special Elite", "Courier New", monospace';
-    ctx.fillText(
-      `MANIFEST · KELAS ${spec.phase ?? "XII"}`,
-      boxX + colW / 2,
-      storyY + 48
-    );
-
-    ctx.font = 'italic 22px "Old Standard TT", Georgia, serif';
-    const qLines = wrapTextLines(ctx, `“${spec.quote}”`, colW - 48, 6);
-    qLines.forEach((ln, i) => {
-      ctx.fillText(ln, boxX + colW / 2, storyY + 104 + i * 32);
-    });
-  } else {
+  if (!story) {
     ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(padX, divY + 36, contentW, 380);
+    ctx.fillRect(PAD_X, divY + 36, CONTENT_W, 420);
     ctx.strokeStyle = INK_RULE;
-    ctx.strokeRect(padX, divY + 36, contentW, 380);
+    ctx.strokeRect(PAD_X, divY + 36, CONTENT_W, 420);
     ctx.fillStyle = INK_MUTED;
-    ctx.font = '18px "Special Elite", "Courier New", monospace';
-    ctx.fillText("BELUM ADA FOTO PADA RUBRIK INI", midX, divY + 230);
-  }
-}
-
-// ============================================================================
-// TEMPLATE 3: THE VILLAGE TIMES (image_97344494.png)
-// ============================================================================
-function drawVillageTimesPage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-  const leftW = 248;
-  const rightX = padX + leftW + 22;
-  const rightW = contentW - leftW - 22;
-
-  ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(rightX - 11, topY);
-  ctx.lineTo(rightX - 11, NEWSPAPER_HEIGHT - 70);
-  ctx.stroke();
-
-  const s0 = spec.stories[0];
-  const s1 = spec.stories[1];
-
-  // Kolom Kiri Atas: Kotak Tajuk Kecil + Cerita Singkat
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, topY, leftW, 108);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(padX, topY, leftW, 108);
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'italic bold 19px "Old Standard TT", Georgia, serif';
-  ctx.fillText("Catatan Redaksi", padX + leftW / 2, topY + 38);
-  ctx.fillStyle = INK_BODY;
-  ctx.font = '13.5px "Source Serif 4", Georgia, serif';
-  const noteLines = wrapTextLines(ctx, spec.quote, leftW - 24, 2);
-  noteLines.forEach((ln, i) => {
-    ctx.fillText(ln, padX + leftW / 2, topY + 66 + i * 20);
-  });
-
-  if (s1) {
-    drawStoryColumn(ctx, s1, padX, topY + 136, leftW, {
-      headlineSize: 21,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 21,
-      withDropCap: true,
-    });
-  } else if (s0) {
-    drawStoryColumn(ctx, s0, padX, topY + 136, leftW, {
-      headlineSize: 21,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 21,
-      withDropCap: true,
-    });
+    ctx.font = '20px "Special Elite", "Courier New", monospace';
+    ctx.fillText("BELUM ADA FOTO PADA RUBRIK INI", midX, divY + 252);
+    return;
   }
 
-  // Kolom Kiri Bawah: Kotak Vintage "ARSIP FOTO"
-  const adY = 740;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, adY, leftW, 470);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 2.4;
-  ctx.strokeRect(padX, adY, leftW, 470);
-  ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(padX + 6, adY + 6, leftW - 12, 458);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  ctx.fillText("UNO", padX + leftW / 2, adY + 58);
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
-  ctx.fillStyle = INK_MUTED;
-  ctx.fillText("EDISI KHUSUS KENANGAN", padX + leftW / 2, adY + 82);
-
-  if (s1) {
-    drawVintagePhotoFrame(
-      ctx,
-      s1.moment,
-      images.get(s1.moment.image_url),
-      padX + 18,
-      adY + 102,
-      leftW - 36,
-      230,
-      s1.frameTag
-    );
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 16px "Old Standard TT", Georgia, serif';
-    const adCap = wrapTextLines(ctx, s1.moment.caption, leftW - 36, 3);
-    adCap.forEach((ln, i) => {
-      ctx.fillText(ln, padX + leftW / 2, adY + 362 + i * 22);
-    });
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = '11px "Special Elite", "Courier New", monospace';
-    ctx.fillText(s1.moment.taken_at, padX + leftW / 2, adY + 440);
-  }
-
-  // Kanan Atas: Headline Besar + Foto Utama + Kolom Berita
-  if (s0) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 32px "Old Standard TT", Georgia, serif';
-    const bigH = wrapTextLines(ctx, s0.headline, rightW, 2);
-    bigH.forEach((ln, i) => {
-      ctx.fillText(ln, rightX, topY + 26 + i * 36);
-    });
-
-    const photoTop = topY + 26 + bigH.length * 36;
-    const subColW = (rightW - 18) / 2;
-
-    // Kanan Bawah Foto + Kolom Teks Kiri
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      rightX + subColW + 18,
-      photoTop,
-      subColW,
-      360,
-      s0.frameTag
-    );
-
-    drawStoryColumn(ctx, s0, rightX, photoTop + 6, subColW, {
-      headlineSize: 19,
-      maxHeadlineLines: 2,
-      maxBodyLines: 14,
-      lineHeight: 20,
-      withDropCap: true,
-    });
-
-    // Bagian Bawah Kanan: Strip Berita Lanjutan & Kotak Kutipan
-    const lowerY = photoTop + 390;
-    ctx.strokeStyle = INK_DARK;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(rightX, lowerY);
-    ctx.lineTo(rightX + rightW, lowerY);
-    ctx.stroke();
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 24px "Old Standard TT", Georgia, serif';
-    ctx.fillText("REKAMAN LENGKAP DI ARSIP KELAS", rightX, lowerY + 34);
-
-    ctx.fillStyle = INK_BODY;
-    ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-    const extStory = s1 ? s1.body : s0.body;
-    const extLines = wrapTextLines(ctx, extStory, rightW, 7);
-    extLines.forEach((ln, i) => {
-      ctx.fillText(ln, rightX, lowerY + 68 + i * 24);
-    });
-  }
-}
-
-// ============================================================================
-// TEMPLATE 4: LONDON NEWS NEWSPAPER (image_2b954846.png)
-// ============================================================================
-function drawLondonNewsPage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-
-  const s0 = spec.stories[0];
-  const s1 = spec.stories[1];
-  const s2 = spec.stories[2];
-
-  const col1W = 240;
-  const col2X = padX + col1W + 20;
-  const col2W = contentW - col1W - 20;
-
-  // Kiri: Cerita 1 + Foto Vertikal + Kolom Bawah
-  if (s0) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 26px "Old Standard TT", Georgia, serif';
-    const h0 = wrapTextLines(ctx, s0.headline, col1W, 3);
-    h0.forEach((ln, i) => {
-      ctx.fillText(ln, padX, topY + 24 + i * 30);
-    });
-    const p0Y = topY + 24 + h0.length * 30 + 6;
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      padX,
-      p0Y,
-      col1W,
-      300,
-      s0.frameTag
-    );
-    drawDropCapParagraph(
-      ctx,
-      s0.body,
-      padX,
-      p0Y + 324,
-      col1W,
-      20.5,
-      14
-    );
-  }
-
-  // Kanan Atas: Kotak Berita Ringkas + Kolom Tengah
-  const boxW = col2W - 10;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(col2X, topY, boxW, 134);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(col2X, topY, boxW, 134);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 24px "Old Standard TT", Georgia, serif';
-  ctx.fillText(
-    s1 ? s1.headline.slice(0, 36) : "SOROTAN XII PPLG 1",
-    col2X + boxW / 2,
-    topY + 42
-  );
-  ctx.fillStyle = INK_BODY;
-  ctx.font = '15px "Source Serif 4", Georgia, serif';
-  const boxDesc = wrapTextLines(
+  const imgY = divY + 22;
+  const imgH = 436;
+  drawVintagePhotoFrame(
     ctx,
-    s1 ? s1.body : spec.quote,
-    boxW - 36,
-    3
-  );
-  boxDesc.forEach((ln, i) => {
-    ctx.fillText(ln, col2X + boxW / 2, topY + 72 + i * 21);
-  });
-
-  // Foto Tengah Lebar (seperti foto penunggang kuda di London News)
-  const midPhotoY = topY + 158;
-  const focusStory = s1 ?? s0;
-  if (focusStory) {
-    drawVintagePhotoFrame(
-      ctx,
-      focusStory.moment,
-      images.get(focusStory.moment.image_url),
-      col2X,
-      midPhotoY,
-      col2W,
-      290,
-      focusStory.frameTag
-    );
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = '12px "Special Elite", "Courier New", monospace';
-    ctx.fillText(focusStory.byline.toUpperCase(), col2X, midPhotoY + 312);
-  }
-
-  // Bawah Kanan: 2 Sub-kolom untuk Cerita Kedua + Kotak Kutipan / Cerita Tambahan
-  const lowY = midPhotoY + 332;
-  const subW = (col2W - 18) / 2;
-  const detailStory = s2 ?? s1 ?? s0;
-  if (detailStory) {
-    drawStoryColumn(ctx, detailStory, col2X, lowY, subW, {
-      headlineSize: 20,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 20,
-      withDropCap: true,
-    });
-    if (s2) {
-      drawVintagePhotoFrame(
-        ctx,
-        s2.moment,
-        images.get(s2.moment.image_url),
-        col2X + subW + 18,
-        lowY,
-        subW,
-        270,
-        s2.frameTag
-      );
-      ctx.fillStyle = INK_DARK;
-      ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-      const qLines = wrapTextLines(ctx, `“${s2.moment.caption}”`, subW, 4);
-      qLines.forEach((ln, i) => {
-        ctx.fillText(ln, col2X + subW + 18, lowY + 298 + i * 22);
-      });
-    } else {
-      const cardX = col2X + subW + 18;
-      const cardH = 380;
-      ctx.fillStyle = PAPER_WARM_ALT;
-      ctx.fillRect(cardX, lowY, subW, cardH);
-      ctx.strokeStyle = INK_DARK;
-      ctx.lineWidth = 1.8;
-      ctx.strokeRect(cardX, lowY, subW, cardH);
-      ctx.strokeStyle = INK_RULE;
-      ctx.lineWidth = 0.9;
-      ctx.strokeRect(cardX + 7, lowY + 7, subW - 14, cardH - 14);
-
-      ctx.textAlign = "center";
-      ctx.fillStyle = INK_DARK;
-      ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
-      ctx.fillText("ARSIP REDAKSI", cardX + subW / 2, lowY + 48);
-      ctx.font = '12px "Special Elite", "Courier New", monospace';
-      ctx.fillStyle = INK_MUTED;
-      ctx.fillText(detailStory.frameTag, cardX + subW / 2, lowY + 74);
-
-      ctx.fillStyle = INK_BODY;
-      ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-      const qLines = wrapTextLines(
-        ctx,
-        `“${detailStory.moment.caption}”`,
-        subW - 32,
-        5
-      );
-      qLines.forEach((ln, i) => {
-        ctx.fillText(ln, cardX + subW / 2, lowY + 124 + i * 24);
-      });
-
-      ctx.fillStyle = INK_MUTED;
-      ctx.font = '12px "Special Elite", "Courier New", monospace';
-      ctx.fillText(
-        `${detailStory.moment.category.toUpperCase()} · ${detailStory.moment.taken_at}`,
-        cardX + subW / 2,
-        lowY + cardH - 36
-      );
-    }
-  }
-}
-
-// ============================================================================
-// TEMPLATE 5: THE DAILY CHRONICLE INTERIOR (image_b10cdc2c.png)
-// ============================================================================
-function drawDailyChroniclePage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-
-  const col1W = 216;
-  const col3W = 220;
-  const gap = 18;
-  const col2X = padX + col1W + gap;
-  const col2W = contentW - col1W - col3W - gap * 2;
-  const col3X = col2X + col2W + gap;
-
-  const s0 = spec.stories[0];
-  const s1 = spec.stories[1] ?? spec.stories[0];
-
-  // Kiri: Lingkaran Foto + Artikel
-  if (s1) {
-    drawVintagePhotoFrame(
-      ctx,
-      s1.moment,
-      images.get(s1.moment.image_url),
-      padX + (col1W - 168) / 2,
-      topY + 4,
-      168,
-      168,
-      "",
-      "circle"
-    );
-    drawStoryColumn(ctx, s1, padX, topY + 196, col1W, {
-      headlineSize: 21,
-      maxHeadlineLines: 3,
-      maxBodyLines: 22,
-      lineHeight: 21,
-      withDropCap: true,
-    });
-  }
-
-  // Tengah: Foto Utama Persegi Panjang + Tajuk + 2 Kolom Cerita
-  if (s0) {
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      col2X,
-      topY,
-      col2W,
-      360,
-      s0.frameTag
-    );
-
-    ctx.textAlign = "center";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 28px "Old Standard TT", Georgia, serif';
-    const midH = wrapTextLines(ctx, s0.headline, col2W, 2);
-    midH.forEach((ln, i) => {
-      ctx.fillText(ln, col2X + col2W / 2, topY + 400 + i * 33);
-    });
-
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = '12px "Special Elite", "Courier New", monospace';
-    ctx.fillText(
-      s0.byline.toUpperCase(),
-      col2X + col2W / 2,
-      topY + 400 + midH.length * 33 + 4
-    );
-
-    const textY = topY + 400 + midH.length * 33 + 30;
-    const subW = (col2W - 14) / 2;
-    const words = s0.body.split(/\s+/);
-    const half = Math.ceil(words.length / 2);
-
-    drawDropCapParagraph(
-      ctx,
-      words.slice(0, half).join(" "),
-      col2X,
-      textY,
-      subW,
-      20,
-      14
-    );
-    ctx.fillStyle = INK_BODY;
-    ctx.font = '15px "Source Serif 4", Georgia, serif';
-    wrapTextLines(ctx, words.slice(half).join(" "), subW, 14).forEach(
-      (ln, i) => {
-        ctx.fillText(ln, col2X + subW + 14, textY + 14 + i * 20);
-      }
-    );
-
-    // Strip Kaki Tengah
-    const boxY = 930;
-    ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(col2X, boxY, col2W, 280);
-    ctx.strokeStyle = INK_DARK;
-    ctx.lineWidth = 1.4;
-    ctx.strokeRect(col2X, boxY, col2W, 280);
-
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      col2X + 14,
-      boxY + 14,
-      160,
-      252,
-      "DETAIL"
-    );
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
-    ctx.fillText("KUTIPAN MOMEN", col2X + 190, boxY + 46);
-    ctx.fillStyle = INK_BODY;
-    ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-    wrapTextLines(ctx, `“${s0.moment.caption}”`, col2W - 208, 7).forEach(
-      (ln, i) => {
-        ctx.fillText(ln, col2X + 190, boxY + 84 + i * 24);
-      }
-    );
-  }
-
-  // Kanan: Kolom Gelap Inverted + Kotak Mesin Tik Bawah
-  ctx.fillStyle = BOX_INVERTED_BG;
-  ctx.fillRect(col3X, topY, col3W, 560);
-  ctx.strokeStyle = PAPER_CREAM;
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(col3X + 8, topY + 8, col3W - 16, 544);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = BOX_INVERTED_FG;
-  ctx.font = 'bold 24px "Old Standard TT", Georgia, serif';
-  ctx.fillText("SOROTAN", col3X + col3W / 2, topY + 48);
-  ctx.fillText(`KELAS ${spec.phase ?? "XII"}`, col3X + col3W / 2, topY + 78);
-
-  ctx.textAlign = "left";
-  ctx.font = '15px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, `${spec.quote} ${s1 ? s1.body : ""}`, col3W - 34, 15).forEach(
-    (ln, i) => {
-      ctx.fillText(ln, col3X + 17, topY + 126 + i * 24);
-    }
+    story.moment,
+    images.get(story.moment.image_url),
+    PAD_X,
+    imgY,
+    CONTENT_W,
+    imgH,
+    story.frameTag
   );
 
-  const lowerBoxY = topY + 584;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(col3X, lowerBoxY, col3W, 520);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(col3X, lowerBoxY, col3W, 520);
-  if (s1) {
-    drawStoryColumn(ctx, s1, col3X + 14, lowerBoxY + 26, col3W - 28, {
-      headlineSize: 20,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 20,
-      withDropCap: false,
-    });
-  }
-}
+  const storyY = imgY + imgH + 34;
+  const colW = 512;
+  const gap = 28;
+  const boxX = PAD_X + colW + gap;
+  const boxW = CONTENT_W - colW - gap; // 320px
+  const availH = Math.max(280, NEWSPAPER_HEIGHT - 84 - storyY);
 
-// ============================================================================
-// TEMPLATE 6: THE MIAMI NEWS BOLD BANNER (image_9c5e2ebc.png)
-// ============================================================================
-function drawMiamiNewsPage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-
-  const s0 = spec.stories[0];
-  const s1 = spec.stories[1];
-
-  // Banner Judul Ultra Bold Melintang di Atas
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 42px "Old Standard TT", Georgia, serif';
-  const bannerLines = wrapTextLines(ctx, spec.headline, contentW, 2);
-  bannerLines.forEach((ln, i) => {
-    ctx.fillText(ln, NEWSPAPER_WIDTH / 2, topY + 34 + i * 44);
+  drawEditorialArticle(ctx, story, PAD_X, storyY, colW, {
+    headlineSize: 28,
+    maxHeadlineLines: 2,
+    bodySize: TYPE.bodySolo,
+    lineHeight: TYPE.lineSolo,
+    maxBodyLines: 8,
+    withDropCap: true,
   });
 
-  const bodyTop = topY + 34 + bannerLines.length * 44 + 8;
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(padX, bodyTop);
-  ctx.lineTo(NEWSPAPER_WIDTH - padX, bodyTop);
-  ctx.stroke();
-
-  const leftW = Math.round(contentW * 0.44);
-  const rightX = padX + leftW + 24;
-  const rightW = contentW - leftW - 24;
-  const gridY = bodyTop + 22;
-
-  // Kiri: 2 Kolom Cerita + Foto Sekunder + Kotak "DI DALAM ARSIP"
-  if (s0) {
-    drawStoryColumn(ctx, s0, padX, gridY, leftW, {
-      headlineSize: 22,
-      maxHeadlineLines: 3,
-      maxBodyLines: 10,
-      lineHeight: 21,
-      withDropCap: true,
-    });
-  }
-
-  if (s1) {
-    drawVintagePhotoFrame(
-      ctx,
-      s1.moment,
-      images.get(s1.moment.image_url),
-      padX,
-      gridY + 410,
-      leftW,
-      260,
-      s1.frameTag
-    );
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 17px "Old Standard TT", Georgia, serif';
-    wrapTextLines(ctx, s1.moment.caption, leftW, 2).forEach((ln, i) => {
-      ctx.fillText(ln, padX, gridY + 696 + i * 22);
-    });
-  }
-
-  // Kotak Kecil "INSIDE THE ARCHIVE" di Kiri Bawah
-  const insideY = gridY + 760;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, insideY, leftW, 170);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(padX, insideY, leftW, 170);
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 18px "Old Standard TT", Georgia, serif';
-  ctx.fillText("DI DALAM ARSIP UNO", padX + leftW / 2, insideY + 34);
-  ctx.fillStyle = INK_BODY;
-  ctx.font = 'italic 15px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, spec.quote, leftW - 28, 4).forEach((ln, i) => {
-    ctx.fillText(ln, padX + leftW / 2, insideY + 72 + i * 22);
-  });
-
-  // Kanan: Foto Utama Besar + Cerita Kedua di Bawah
-  if (s0) {
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      rightX,
-      gridY,
-      rightW,
-      440,
-      s0.frameTag
-    );
-    ctx.textAlign = "left";
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = 'italic 14px "Source Serif 4", Georgia, serif';
-    ctx.fillText(s0.deck, rightX, gridY + 464);
-  }
-
-  if (s1) {
-    drawStoryColumn(ctx, s1, rightX, gridY + 498, rightW, {
-      headlineSize: 25,
-      maxHeadlineLines: 3,
-      maxBodyLines: 12,
-      lineHeight: 22,
-      withDropCap: true,
-    });
-  }
-}
-
-// ============================================================================
-// TEMPLATE 7: DAILY PROPHET MOSAIC CLIPPINGS (2 FOTO BESAR & DETAIL)
-// ============================================================================
-function drawDailyProphetPage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-  const stories = spec.stories.slice(0, 2);
-  const blockGap = 24;
-  const blockH = Math.floor(
-    (NEWSPAPER_HEIGHT - 84 - topY - blockGap * Math.max(0, stories.length - 1)) /
-      Math.max(1, stories.length)
+  drawQuotePanel(
+    ctx,
+    `MANIFEST · KELAS ${spec.phase ?? "XII"}`,
+    spec.quote,
+    "XII PPLG 1 · MAKN ENDE",
+    boxX,
+    storyY,
+    boxW,
+    Math.min(390, availH),
+    true
   );
-
-  stories.forEach((story, idx) => {
-    const by = topY + idx * (blockH + blockGap);
-    ctx.fillStyle = idx % 2 === 1 ? PAPER_WARM_ALT : PAPER_CREAM;
-    ctx.fillRect(padX, by, contentW, blockH);
-    ctx.strokeStyle = INK_DARK;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(padX, by, contentW, blockH);
-
-    // Mini-masthead bar per kliping
-    ctx.fillStyle = INK_DARK;
-    ctx.fillRect(padX + 14, by + 14, contentW - 28, 30);
-    ctx.fillStyle = PAPER_CREAM;
-    ctx.font = '13px "Special Elite", "Courier New", monospace';
-    ctx.textAlign = "left";
-    ctx.fillText(`HARIAN UNO · ${story.frameTag}`, padX + 24, by + 34);
-    ctx.textAlign = "right";
-    ctx.fillText(story.moment.category.toUpperCase(), padX + contentW - 24, by + 34);
-
-    const innerY = by + 62;
-    const innerH = blockH - 80;
-    const photoOnLeft = idx % 2 === 0;
-    const photoW = Math.round(contentW * 0.46);
-    const textW = contentW - photoW - 50;
-    const photoX = photoOnLeft ? padX + 16 : padX + contentW - photoW - 16;
-    const textX = photoOnLeft ? padX + photoW + 34 : padX + 16;
-
-    drawVintagePhotoFrame(
-      ctx,
-      story.moment,
-      images.get(story.moment.image_url),
-      photoX,
-      innerY,
-      photoW,
-      innerH,
-      ""
-    );
-
-    drawStoryColumn(ctx, story, textX, innerY + 14, textW, {
-      headlineSize: 24,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 22,
-      withDropCap: true,
-    });
-  });
 }
 
 // ============================================================================
-// TEMPLATE 8: URBAN FEATURE & TEKA-TEKI ARSIP (image_751f6138.png)
-// ============================================================================
-function drawUrbanFeaturePage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec,
-  images: Map<string, LoadedImageResult>
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
-
-  const s0 = spec.stories[0];
-  const s1 = spec.stories[1];
-
-  // Baris Atas: Judul Fitur Lebar + Kotak Crossword-Style Arsip di Pojok Kanan
-  const crossSize = 156;
-  const headerW = contentW - crossSize - 24;
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  const hLines = wrapTextLines(ctx, spec.headline, headerW, 3);
-  hLines.forEach((ln, i) => {
-    ctx.fillText(ln, padX, topY + 34 + i * 38);
-  });
-  ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  ctx.fillText(spec.subheadline, padX, topY + 34 + hLines.length * 38 + 6);
-
-  // Ornamen Grid Kotak Hitam-Putih Mini (terinspirasi Crossword di image_751f6138.png)
-  const cx = padX + contentW - crossSize;
-  const cy = topY;
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(cx, cy, crossSize, crossSize);
-  const cell = crossSize / 6;
-  for (let r = 0; r < 6; r++) {
-    for (let c = 0; c < 6; c++) {
-      const darkCell = (r * 7 + c * 3 + spec.pageNumber) % 4 === 0;
-      ctx.fillStyle = darkCell ? INK_DARK : PAPER_CREAM;
-      ctx.fillRect(cx + c * cell, cy + r * cell, cell, cell);
-      ctx.strokeStyle = INK_RULE;
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(cx + c * cell, cy + r * cell, cell, cell);
-    }
-  }
-
-  // Foto Panoramik Tengah
-  const midY = topY + Math.max(crossSize + 18, 178);
-  if (s0) {
-    drawVintagePhotoFrame(
-      ctx,
-      s0.moment,
-      images.get(s0.moment.image_url),
-      padX,
-      midY,
-      contentW,
-      360,
-      s0.frameTag
-    );
-
-    const splitY = midY + 388;
-    const colW = (contentW - 24) / 2;
-    drawStoryColumn(ctx, s0, padX, splitY, colW, {
-      headlineSize: 22,
-      maxHeadlineLines: 3,
-      maxBodyLines: 14,
-      lineHeight: 21,
-      withDropCap: true,
-    });
-
-    if (s1) {
-      drawVintagePhotoFrame(
-        ctx,
-        s1.moment,
-        images.get(s1.moment.image_url),
-        padX + colW + 24,
-        splitY,
-        colW,
-        240,
-        s1.frameTag
-      );
-      drawStoryColumn(ctx, s1, padX + colW + 24, splitY + 266, colW, {
-        headlineSize: 20,
-        maxHeadlineLines: 2,
-        maxBodyLines: 9,
-        lineHeight: 20,
-        withDropCap: false,
-      });
-    } else {
-      ctx.fillStyle = PAPER_WARM_ALT;
-      ctx.fillRect(padX + colW + 24, splitY, colW, 380);
-      ctx.strokeStyle = INK_DARK;
-      ctx.strokeRect(padX + colW + 24, splitY, colW, 380);
-      ctx.textAlign = "center";
-      ctx.fillStyle = INK_DARK;
-      ctx.font = 'italic 22px "Old Standard TT", Georgia, serif';
-      wrapTextLines(ctx, `“${spec.quote}”`, colW - 48, 6).forEach((ln, i) => {
-        ctx.fillText(ln, padX + colW + 24 + colW / 2, splitY + 120 + i * 32);
-      });
-    }
-  }
-}
-
-// ============================================================================
-// TEMPLATE 9: FOKUS 1 FOTO — CHRONICLE SPOTLIGHT BROADSHEET
+// TEMPLATE 3: SPOTLIGHT 1 FOTO LEBAR (BESAR, NYAMAN & SEIMBANG)
 // ============================================================================
 function drawChronicleSpotlightPage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec,
   images: Map<string, LoadedImageResult>
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
   const story = spec.stories[0];
   if (!story) return;
 
-  // Tajuk utama selebar halaman
+  const midX = NEWSPAPER_WIDTH / 2;
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 38px "Old Standard TT", Georgia, serif';
-  const hLines = wrapTextLines(ctx, story.headline, contentW, 2);
+  ctx.font = 'bold 36px "Old Standard TT", Georgia, serif';
+  const hLines = wrapTextLines(ctx, story.headline, CONTENT_W - 24, 2);
   hLines.forEach((ln, i) => {
-    ctx.fillText(ln, NEWSPAPER_WIDTH / 2, topY + 32 + i * 42);
+    ctx.fillText(ln, midX, 134 + i * 44);
   });
 
-  const subY = topY + 32 + hLines.length * 42 + 4;
+  const deckY = 134 + hLines.length * 44 + 4;
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 17px "Source Serif 4", Georgia, serif';
-  ctx.fillText(story.deck, NEWSPAPER_WIDTH / 2, subY);
+  ctx.font = 'italic 20px "Source Serif 4", Georgia, serif';
+  ctx.fillText(story.deck, midX, deckY);
 
-  const frameTop = subY + 20;
-  const leftW = 216;
-  const rightW = 218;
-  const gap = 18;
-  const midX = padX + leftW + gap;
-  const midW = contentW - leftW - rightW - gap * 2;
-  const rightX = midX + midW + gap;
-
-  // Kolom Kiri: Lingkaran Potret Close-up + Metadata Arsip
-  drawVintagePhotoFrame(
-    ctx,
-    story.moment,
-    images.get(story.moment.image_url),
-    padX + (leftW - 166) / 2,
-    frameTop + 6,
-    166,
-    166,
-    "",
-    "circle"
-  );
-
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, frameTop + 194, leftW, 220);
+  const ruleY = deckY + 20;
   ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(padX, frameTop + 194, leftW, 220);
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 18px "Old Standard TT", Georgia, serif';
-  ctx.fillText("DATA BINGKAI", padX + leftW / 2, frameTop + 230);
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
-  ctx.fillStyle = INK_MUTED;
-  ctx.fillText(story.frameTag, padX + leftW / 2, frameTop + 264);
-  ctx.fillText(story.moment.category.toUpperCase(), padX + leftW / 2, frameTop + 290);
-  ctx.fillText(story.moment.taken_at, padX + leftW / 2, frameTop + 316);
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'italic 14px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, `Oleh ${story.moment.uploader_name}`, leftW - 24, 2).forEach(
-    (ln, i) => {
-      ctx.fillText(ln, padX + leftW / 2, frameTop + 356 + i * 20);
-    }
-  );
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(PAD_X, ruleY);
+  ctx.lineTo(PAD_X + CONTENT_W, ruleY);
+  ctx.stroke();
 
-  // Kolom Tengah: Foto Utama Lebar + 2 Kolom Cerita Lengkap
+  // Foto Utama Lebar & Lega
+  const photoY = ruleY + 24;
+  const photoH = 472;
   drawVintagePhotoFrame(
     ctx,
     story.moment,
     images.get(story.moment.image_url),
-    midX,
-    frameTop,
-    midW,
-    380,
+    PAD_X,
+    photoY,
+    CONTENT_W,
+    photoH,
     story.frameTag
   );
 
-  const colTextY = frameTop + 408;
-  const subColW = (midW - 14) / 2;
-  const words = story.body.split(/\s+/);
-  const half = Math.ceil(words.length / 2);
-
-  drawDropCapParagraph(
-    ctx,
-    words.slice(0, half).join(" "),
-    midX,
-    colTextY,
-    subColW,
-    21,
-    18
-  );
+  // Bagian Bawah: Deskripsi Lebar (524px, body 22px) + Kartu Data & Kutipan (308px)
+  const lowerY = photoY + photoH + 34;
+  const leftW = 524;
+  const gap = 28;
+  const rightX = PAD_X + leftW + gap;
+  const rightW = CONTENT_W - leftW - gap; // 308px
+  const availH = Math.max(280, NEWSPAPER_HEIGHT - 84 - lowerY);
 
   ctx.textAlign = "left";
-  ctx.fillStyle = INK_BODY;
-  ctx.font = '15.5px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, words.slice(half).join(" "), subColW, 18).forEach((ln, i) => {
-    ctx.fillText(ln, midX + subColW + 14, colTextY + 14 + i * 21);
+  ctx.fillStyle = INK_MUTED;
+  ctx.font = `${TYPE.byline}px "Special Elite", "Courier New", monospace`;
+  ctx.fillText(story.byline.toUpperCase(), PAD_X, lowerY + 14);
+
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD_X, lowerY + 28);
+  ctx.lineTo(PAD_X + 148, lowerY + 28);
+  ctx.stroke();
+
+  drawDropCapParagraph(ctx, story.body, PAD_X, lowerY + 46, leftW, {
+    fontSize: TYPE.bodySolo,
+    lineHeight: TYPE.lineSolo,
+    maxLines: 9,
   });
 
-  // Kolom Kanan: Box Gelap Sepia + Kutipan Kelas
-  const boxH = 540;
-  ctx.fillStyle = BOX_INVERTED_BG;
-  ctx.fillRect(rightX, frameTop, rightW, boxH);
-  ctx.strokeStyle = PAPER_CREAM;
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(rightX + 8, frameTop + 8, rightW - 16, boxH - 16);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = BOX_INVERTED_FG;
-  ctx.font = 'bold 24px "Old Standard TT", Georgia, serif';
-  ctx.fillText("SOROTAN", rightX + rightW / 2, frameTop + 52);
-  ctx.fillText(`KELAS ${story.moment.phase}`, rightX + rightW / 2, frameTop + 84);
-
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, `“${story.moment.caption}”`, rightW - 34, 7).forEach(
-    (ln, i) => {
-      ctx.fillText(ln, rightX + rightW / 2, frameTop + 142 + i * 26);
-    }
-  );
-
+  // Kartu Info Bingkai & Kutipan di Kanan
+  const metaH = 128;
   ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, frameTop + 438, leftW, 560);
-  ctx.strokeStyle = INK_DARK;
-  ctx.strokeRect(padX, frameTop + 438, leftW, 560);
-  ctx.textAlign = "left";
-  drawStoryColumn(ctx, story, padX + 12, frameTop + 464, leftW - 24, {
-    headlineSize: 18,
-    maxHeadlineLines: 3,
-    maxBodyLines: 14,
-    lineHeight: 20,
-    withDropCap: false,
-  });
+  ctx.fillRect(rightX, lowerY, rightW, metaH);
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(rightX, lowerY, rightW, metaH);
 
-  // Kotak kutipan kanan bawah
-  const qBoxY = frameTop + boxH + 20;
-  const qBoxH = NEWSPAPER_HEIGHT - 84 - qBoxY;
-  if (qBoxH > 120) {
-    ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(rightX, qBoxY, rightW, qBoxH);
-    ctx.strokeStyle = INK_DARK;
-    ctx.strokeRect(rightX, qBoxY, rightW, qBoxH);
-    ctx.textAlign = "center";
-    ctx.fillStyle = INK_DARK;
-    ctx.font = 'italic 18px "Old Standard TT", Georgia, serif';
-    wrapTextLines(ctx, `“${spec.quote}”`, rightW - 30, 6).forEach((ln, i) => {
-      ctx.fillText(ln, rightX + rightW / 2, qBoxY + 56 + i * 26);
-    });
-  }
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK_DARK;
+  ctx.font = 'bold 16px "Special Elite", "Courier New", monospace';
+  ctx.fillText("DATA BINGKAI", rightX + 20, lowerY + 34);
+  ctx.fillStyle = INK_BODY;
+  ctx.font = '16px "Source Serif 4", Georgia, serif';
+  ctx.fillText(`Kategori: ${story.moment.category}`, rightX + 20, lowerY + 66);
+  ctx.fillText(`Tanggal: ${story.moment.taken_at}`, rightX + 20, lowerY + 96);
+
+  const qY = lowerY + metaH + 20;
+  const qH = Math.max(180, availH - metaH - 20);
+  drawQuotePanel(
+    ctx,
+    `CATATAN KELAS ${story.moment.phase}`,
+    spec.quote,
+    "",
+    rightX,
+    qY,
+    rightW,
+    Math.min(268, qH),
+    true
+  );
 }
 
 // ============================================================================
-// TEMPLATE 10: FOKUS 1 FOTO — VILLAGE EDITORIAL SPREAD
+// TEMPLATE 4: EDITORIAL 1 FOTO VERTIKAL + ARTIKEL LEBAR
 // ============================================================================
 function drawVillageEditorialPage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec,
   images: Map<string, LoadedImageResult>
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
   const story = spec.stories[0];
   if (!story) return;
 
-  const leftW = 360;
-  const rightX = padX + leftW + 24;
-  const rightW = contentW - leftW - 24;
+  const topY = 110;
+  const leftW = 424;
+  const gap = 30;
+  const rightX = PAD_X + leftW + gap;
+  const rightW = CONTENT_W - leftW - gap; // 406px
 
-  // Kiri Atas: Judul Kolom Besar + Byline + Cerita Panjang Ber-Drop-Cap
-  drawStoryColumn(ctx, story, padX, topY + 8, leftW, {
-    headlineSize: 30,
-    maxHeadlineLines: 4,
-    maxBodyLines: 18,
-    lineHeight: 22,
-    withDropCap: true,
-  });
-
-  // Kanan Atas: Foto Vertikal Besar Berbingkai Ganda
+  // Kolom Kiri: Foto Vertikal Proporsional + Kutipan Gelap di Bawah
   drawVintagePhotoFrame(
     ctx,
     story.moment,
     images.get(story.moment.image_url),
-    rightX,
+    PAD_X,
     topY,
-    rightW,
-    540,
+    leftW,
+    590,
     story.frameTag
   );
 
-  // Kanan Tengah: Kotak Vintage Caption & Lokasi
+  // Keterangan Bingkai di Bawah Foto
+  const capY = topY + 616;
   ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(rightX, topY + 560, rightW, 130);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.6;
-  ctx.strokeRect(rightX, topY + 560, rightW, 130);
-  ctx.textAlign = "center";
+  ctx.fillRect(PAD_X, capY, leftW, 130);
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(PAD_X, capY, leftW, 130);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK_MUTED;
+  ctx.font = '14px "Special Elite", "Courier New", monospace';
+  ctx.fillText(`${story.frameTag} · ${story.moment.category.toUpperCase()}`, PAD_X + 20, capY + 34);
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
-  ctx.fillText("CATATAN BINGKAI FOTO", rightX + rightW / 2, topY + 596);
-  ctx.fillStyle = INK_BODY;
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, `“${story.moment.caption}”`, rightW - 36, 2).forEach(
-    (ln, i) => {
-      ctx.fillText(ln, rightX + rightW / 2, topY + 630 + i * 24);
+  ctx.font = 'italic 19px "Source Serif 4", Georgia, serif';
+  wrapTextLines(ctx, story.moment.caption, leftW - 40, 2).forEach((ln, i) => {
+    ctx.fillText(ln, PAD_X + 20, capY + 68 + i * 28);
+  });
+
+  drawQuotePanel(
+    ctx,
+    `SUARA KELAS ${story.moment.phase}`,
+    spec.quote,
+    "ARSIP UNO · MAKN ENDE",
+    PAD_X,
+    capY + 154,
+    leftW,
+    330,
+    true
+  );
+
+  // Kolom Kanan: Kicker + Judul Besar + Artikel Deskripsi 22px Lega
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(rightX - gap / 2, topY);
+  ctx.lineTo(rightX - gap / 2, NEWSPAPER_HEIGHT - 84);
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK_MUTED;
+  ctx.font = `${TYPE.kicker}px "Special Elite", "Courier New", monospace`;
+  ctx.fillText(
+    `${story.moment.category.toUpperCase()} · FASE KELAS ${story.moment.phase}`,
+    rightX,
+    topY + 20
+  );
+
+  const afterArticleY = drawEditorialArticle(
+    ctx,
+    story,
+    rightX,
+    topY + 42,
+    rightW,
+    {
+      headlineSize: 32,
+      maxHeadlineLines: 3,
+      bodySize: TYPE.bodySolo,
+      lineHeight: TYPE.lineSolo,
+      maxBodyLines: 14,
+      withDropCap: true,
     }
   );
 
-  // Bawah Lebar Penuh: Kotak Iklan/Klise Vintage UNO + Kutipan
-  const footBoxY = 820;
-  const footBoxH = NEWSPAPER_HEIGHT - 84 - footBoxY;
-  ctx.fillStyle = PAPER_WARM_ALT;
-  ctx.fillRect(padX, footBoxY, contentW, footBoxH);
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 2.2;
-  ctx.strokeRect(padX, footBoxY, contentW, footBoxH);
-  ctx.strokeStyle = INK_RULE;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(padX + 8, footBoxY + 8, contentW - 16, footBoxH - 16);
+  // Kotak Stempel Arsip Rapi di Sisa Ruang Bawah Kanan
+  const stampY = Math.max(afterArticleY + 34, 894);
+  const stampH = Math.min(290, NEWSPAPER_HEIGHT - 96 - stampY);
+  if (stampH >= 150) {
+    ctx.fillStyle = PAPER_WARM_ALT;
+    ctx.fillRect(rightX, stampY, rightW, stampH);
+    ctx.strokeStyle = INK_DARK;
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(rightX, stampY, rightW, stampH);
+    ctx.strokeStyle = INK_RULE;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rightX + 8, stampY + 8, rightW - 16, stampH - 16);
 
-  ctx.textAlign = "center";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  ctx.fillText("ARSIP KENANGAN XII PPLG 1", NEWSPAPER_WIDTH / 2, footBoxY + 62);
-  ctx.font = '13px "Special Elite", "Courier New", monospace';
-  ctx.fillStyle = INK_MUTED;
-  ctx.fillText(
-    `${story.frameTag} · KATEGORI ${story.moment.category.toUpperCase()} · ${story.moment.taken_at}`,
-    NEWSPAPER_WIDTH / 2,
-    footBoxY + 94
-  );
-  ctx.fillStyle = INK_BODY;
-  ctx.font = 'italic 20px "Source Serif 4", Georgia, serif';
-  wrapTextLines(ctx, `“${spec.quote}”`, contentW - 96, 3).forEach((ln, i) => {
-    ctx.fillText(ln, NEWSPAPER_WIDTH / 2, footBoxY + 152 + i * 30);
-  });
+    const cx = rightX + rightW / 2;
+    ctx.textAlign = "center";
+    ctx.fillStyle = INK_DARK;
+    ctx.font = 'bold 28px "Old Standard TT", Georgia, serif';
+    ctx.fillText("ARSIP 35MM", cx, stampY + 64);
+
+    ctx.fillStyle = INK_MUTED;
+    ctx.font = '14.5px "Special Elite", "Courier New", monospace';
+    ctx.fillText(`DIABADIKAN OLEH ${story.moment.uploader_name.toUpperCase()}`, cx, stampY + 104);
+    ctx.fillText(`TANGGAL ${story.moment.taken_at.toUpperCase()}`, cx, stampY + 134);
+
+    if (stampH >= 210) {
+      ctx.fillStyle = INK_BODY;
+      ctx.font = 'italic 18px "Source Serif 4", Georgia, serif';
+      ctx.fillText("XII PPLG 1 · MAKN Ende", cx, stampY + stampH - 36);
+    }
+  }
 }
 
 // ============================================================================
-// TEMPLATE 11: FOKUS 1 FOTO — URBAN FEATURE SOLO + CROSSWORD ARSIP
+// TEMPLATE 5: FEATURE SOLO TERPUSAT (FOTO BESAR + TEKS LEGA SATU BLOK)
 // ============================================================================
 function drawUrbanFeatureSoloPage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec,
   images: Map<string, LoadedImageResult>
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
   const story = spec.stories[0];
   if (!story) return;
 
-  const crossSize = 148;
-  const headerW = contentW - crossSize - 24;
+  const midX = NEWSPAPER_WIDTH / 2;
+  const innerW = 796;
+  const innerX = (NEWSPAPER_WIDTH - innerW) / 2;
 
-  ctx.textAlign = "left";
-  ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  const hLines = wrapTextLines(ctx, story.headline, headerW, 3);
-  hLines.forEach((ln, i) => {
-    ctx.fillText(ln, padX, topY + 32 + i * 38);
-  });
+  ctx.textAlign = "center";
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  ctx.fillText(story.deck, padX, topY + 32 + hLines.length * 38 + 6);
+  ctx.font = `${TYPE.kicker}px "Special Elite", "Courier New", monospace`;
+  ctx.fillText(story.deck.toUpperCase(), midX, 118);
 
-  // Mini grid crossword dekoratif
-  const cx = padX + contentW - crossSize;
-  const cy = topY;
-  ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(cx, cy, crossSize, crossSize);
-  const cell = crossSize / 6;
-  for (let r = 0; r < 6; r++) {
-    for (let c = 0; c < 6; c++) {
-      const darkCell = (r * 5 + c * 7 + spec.pageNumber) % 4 === 0;
-      ctx.fillStyle = darkCell ? INK_DARK : PAPER_CREAM;
-      ctx.fillRect(cx + c * cell, cy + r * cell, cell, cell);
-      ctx.strokeStyle = INK_RULE;
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(cx + c * cell, cy + r * cell, cell, cell);
-    }
-  }
+  ctx.fillStyle = INK_DARK;
+  ctx.font = 'bold 38px "Old Standard TT", Georgia, serif';
+  const hLines = wrapTextLines(ctx, story.headline, innerW, 2);
+  hLines.forEach((ln, i) => {
+    ctx.fillText(ln, midX, 166 + i * 44);
+  });
 
-  // Foto Panoramik Fokus Besar
-  const midY = topY + Math.max(crossSize + 20, 174);
+  const byY = 166 + hLines.length * 44 + 4;
+  ctx.fillStyle = INK_MUTED;
+  ctx.font = 'italic 18px "Source Serif 4", Georgia, serif';
+  ctx.fillText(story.byline, midX, byY);
+
+  const photoY = byY + 26;
+  const photoH = 468;
   drawVintagePhotoFrame(
     ctx,
     story.moment,
     images.get(story.moment.image_url),
-    padX,
-    midY,
-    contentW,
-    460,
+    innerX,
+    photoY,
+    innerW,
+    photoH,
     story.frameTag
   );
 
-  // 2 Kolom Cerita Bawah + Kotak Kutipan
-  const splitY = midY + 492;
-  const colW = (contentW - 24) / 2;
-  drawStoryColumn(ctx, story, padX, splitY, colW, {
-    headlineSize: 22,
-    maxHeadlineLines: 3,
-    maxBodyLines: 14,
-    lineHeight: 21,
+  // Blok Bacaan Lebar Satu Kolom Nyaman (796px, body 23px, leading 35px!)
+  const bodyY = photoY + photoH + 38;
+  const afterBody = drawDropCapParagraph(ctx, story.body, innerX, bodyY, innerW, {
+    fontSize: 23,
+    lineHeight: 35,
+    maxLines: 7,
+  });
+
+  // Pita Kutipan Horisontal Rapi di Bawah
+  const qY = Math.max(afterBody + 26, 1044);
+  const qH = Math.min(168, NEWSPAPER_HEIGHT - 84 - qY);
+  if (qH >= 112) {
+    ctx.fillStyle = PAPER_WARM_ALT;
+    ctx.fillRect(innerX, qY, innerW, qH);
+    ctx.strokeStyle = INK_DARK;
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(innerX, qY, innerW, qH);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = INK_DARK;
+    ctx.font = 'italic 22px "Old Standard TT", Georgia, serif';
+    const qLines = wrapTextLines(ctx, `“${spec.quote}”`, innerW - 72, 2);
+    const baseTextY = qY + (qLines.length === 1 ? qH / 2 + 6 : qH / 2 - 10);
+    qLines.forEach((ln, i) => {
+      ctx.fillText(ln, midX, baseTextY + i * 32);
+    });
+  }
+}
+
+// ============================================================================
+// TEMPLATE 6: BALANCED DUO (SESEKALI 2 FOTO — MASING-MASING KOLOM 446PX LEGA)
+// ============================================================================
+function drawBalancedDuoPage(
+  ctx: CanvasRenderingContext2D,
+  spec: NewspaperPageSpec,
+  images: Map<string, LoadedImageResult>
+) {
+  const s0 = spec.stories[0];
+  const s1 = spec.stories[1];
+  if (!s0) return;
+
+  if (!s1) {
+    drawChronicleSpotlightPage(ctx, spec, images);
+    return;
+  }
+
+  const photoW = 386;
+  const gap = 28;
+  const textW = CONTENT_W - photoW - gap; // 446px lebar — body 20.5px lega & enak dibaca!
+
+  // BLOK ATAS: Foto Kiri + Artikel Kanan
+  const row1Y = 108;
+  const row1H = 516;
+  drawVintagePhotoFrame(
+    ctx,
+    s0.moment,
+    images.get(s0.moment.image_url),
+    PAD_X,
+    row1Y,
+    photoW,
+    row1H,
+    s0.frameTag
+  );
+
+  drawEditorialArticle(ctx, s0, PAD_X + photoW + gap, row1Y + 4, textW, {
+    headlineSize: 27,
+    maxHeadlineLines: 2,
+    bodySize: TYPE.bodyDuo,
+    lineHeight: TYPE.lineDuo,
+    maxBodyLines: 10,
     withDropCap: true,
   });
 
-  ctx.fillStyle = BOX_INVERTED_BG;
-  ctx.fillRect(padX + colW + 24, splitY, colW, 380);
-  ctx.strokeStyle = PAPER_CREAM;
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(padX + colW + 34, splitY + 10, colW - 20, 360);
-  ctx.textAlign = "center";
-  ctx.fillStyle = BOX_INVERTED_FG;
-  ctx.font = '13px "Special Elite", "Courier New", monospace';
-  ctx.fillText(
-    `EDISI KELAS ${story.moment.phase} · ${story.moment.taken_at}`,
-    padX + colW + 24 + colW / 2,
-    splitY + 56
-  );
-  ctx.font = 'italic 22px "Old Standard TT", Georgia, serif';
-  wrapTextLines(ctx, `“${story.moment.caption}”`, colW - 54, 6).forEach(
-    (ln, i) => {
-      ctx.fillText(ln, padX + colW + 24 + colW / 2, splitY + 114 + i * 32);
-    }
-  );
-  ctx.font = '13px "Special Elite", "Courier New", monospace';
-  ctx.fillText(
-    `Diabadikan oleh ${story.moment.uploader_name}`,
-    padX + colW + 24 + colW / 2,
-    splitY + 334
+  // Garis Pemisah Ganda Antar 2 Cerita
+  const midDivY = row1Y + row1H + 34;
+  ctx.strokeStyle = INK_DARK;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PAD_X, midDivY);
+  ctx.lineTo(PAD_X + CONTENT_W, midDivY);
+  ctx.stroke();
+  ctx.strokeStyle = INK_RULE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD_X, midDivY + 5);
+  ctx.lineTo(PAD_X + CONTENT_W, midDivY + 5);
+  ctx.stroke();
+
+  // BLOK BAWAH (Silang): Artikel Kiri + Foto Kanan
+  const row2Y = midDivY + 30;
+  const row2H = Math.min(520, NEWSPAPER_HEIGHT - 84 - row2Y);
+
+  drawEditorialArticle(ctx, s1, PAD_X, row2Y + 4, textW, {
+    headlineSize: 27,
+    maxHeadlineLines: 2,
+    bodySize: TYPE.bodyDuo,
+    lineHeight: TYPE.lineDuo,
+    maxBodyLines: 10,
+    withDropCap: true,
+  });
+
+  drawVintagePhotoFrame(
+    ctx,
+    s1.moment,
+    images.get(s1.moment.image_url),
+    PAD_X + textW + gap,
+    row2Y,
+    photoW,
+    row2H,
+    s1.frameTag
   );
 }
 
 // ============================================================================
-// TEMPLATE 12: LEMBAR KRONIK & INDEKS ARSIP PER FASE
+// TEMPLATE 7: KRONIK FASE, INDEKS & HALAMAN PENUTUP
 // ============================================================================
 function drawPhaseChroniclePage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec
 ) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
-  const topY = 104;
+  const midX = NEWSPAPER_WIDTH / 2;
 
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
   ctx.font = 'bold 34px "Old Standard TT", Georgia, serif';
-  ctx.fillText(spec.headline, NEWSPAPER_WIDTH / 2, topY + 32);
+  ctx.fillText(spec.headline, midX, 138);
+
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
-  ctx.fillText(spec.subheadline, NEWSPAPER_WIDTH / 2, topY + 64);
+  ctx.font = 'italic 19px "Source Serif 4", Georgia, serif';
+  ctx.fillText(spec.subheadline, midX, 174);
 
   ctx.strokeStyle = INK_DARK;
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(padX, topY + 84);
-  ctx.lineTo(NEWSPAPER_WIDTH - padX, topY + 84);
+  ctx.moveTo(PAD_X, 194);
+  ctx.lineTo(PAD_X + CONTENT_W, 194);
   ctx.stroke();
 
-  const colW = (contentW - 24) / 2;
-  const items = spec.stories.slice(0, 14);
+  const colW = (CONTENT_W - 24) / 2;
+  const items = spec.stories.slice(0, 12);
   const perCol = Math.ceil(items.length / 2);
 
   items.forEach((st, idx) => {
     const col = idx < perCol ? 0 : 1;
     const row = col === 0 ? idx : idx - perCol;
-    const bx = padX + col * (colW + 24);
-    const by = topY + 104 + row * 136;
-    if (by + 122 > NEWSPAPER_HEIGHT - 84) return;
+    const bx = PAD_X + col * (colW + 24);
+    const by = 220 + row * 164;
+    if (by + 148 > NEWSPAPER_HEIGHT - 80) return;
 
     ctx.fillStyle = idx % 2 === 0 ? PAPER_WARM_ALT : PAPER_CREAM;
-    ctx.fillRect(bx, by, colW, 120);
+    ctx.fillRect(bx, by, colW, 146);
     ctx.strokeStyle = INK_RULE;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx, by, colW, 120);
+    ctx.lineWidth = 1.1;
+    ctx.strokeRect(bx, by, colW, 146);
 
     ctx.textAlign = "left";
     ctx.fillStyle = INK_MUTED;
-    ctx.font = '11px "Special Elite", "Courier New", monospace';
+    ctx.font = '13.5px "Special Elite", "Courier New", monospace';
     ctx.fillText(
       `${st.frameTag} · ${st.moment.category.toUpperCase()}`,
-      bx + 14,
-      by + 24
+      bx + 18,
+      by + 30
     );
 
     ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 17px "Old Standard TT", Georgia, serif';
-    wrapTextLines(ctx, st.moment.caption, colW - 28, 2).forEach((ln, lIdx) => {
-      ctx.fillText(ln, bx + 14, by + 52 + lIdx * 22);
+    ctx.font = 'bold 20px "Old Standard TT", Georgia, serif';
+    wrapTextLines(ctx, st.moment.caption, colW - 36, 2).forEach((ln, lIdx) => {
+      ctx.fillText(ln, bx + 18, by + 64 + lIdx * 26);
     });
 
     ctx.fillStyle = INK_MUTED;
-    ctx.font = 'italic 13px "Source Serif 4", Georgia, serif';
-    ctx.fillText(st.byline, bx + 14, by + 104);
+    ctx.font = 'italic 16px "Source Serif 4", Georgia, serif';
+    ctx.fillText(st.byline, bx + 18, by + 126);
   });
 }
 
-// ============================================================================
-// HALAMAN INDEKS & HALAMAN PENUTUP
-// ============================================================================
-function drawTocPage(
-  ctx: CanvasRenderingContext2D,
-  spec: NewspaperPageSpec
-) {
-  const padX = 48;
-  const contentW = NEWSPAPER_WIDTH - padX * 2;
+function drawTocPage(ctx: CanvasRenderingContext2D, spec: NewspaperPageSpec) {
+  const midX = NEWSPAPER_WIDTH / 2;
+
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'bold 38px "Old Standard TT", Georgia, serif';
-  ctx.fillText(spec.headline, NEWSPAPER_WIDTH / 2, 148);
+  ctx.font = 'bold 40px "Old Standard TT", Georgia, serif';
+  ctx.fillText(spec.headline, midX, 148);
   ctx.fillStyle = INK_MUTED;
-  ctx.font = 'italic 18px "Source Serif 4", Georgia, serif';
-  ctx.fillText(spec.subheadline, NEWSPAPER_WIDTH / 2, 184);
+  ctx.font = 'italic 20px "Source Serif 4", Georgia, serif';
+  ctx.fillText(spec.subheadline, midX, 188);
 
-  let y = 224;
+  let y = 230;
   (spec.tocItems ?? []).forEach((item) => {
     ctx.fillStyle = PAPER_WARM_ALT;
-    ctx.fillRect(padX, y, contentW, 200);
+    ctx.fillRect(PAD_X, y, CONTENT_W, 206);
     ctx.strokeStyle = INK_DARK;
     ctx.lineWidth = 1.6;
-    ctx.strokeRect(padX, y, contentW, 200);
+    ctx.strokeRect(PAD_X, y, CONTENT_W, 206);
 
     ctx.fillStyle = INK_MUTED;
-    ctx.font = '14px "Special Elite", "Courier New", monospace';
+    ctx.font = '15px "Special Elite", "Courier New", monospace';
     ctx.textAlign = "left";
     ctx.fillText(
       `HALAMAN ${String(item.printedPage).padStart(2, "0")} · ${item.count} FOTO KENANGAN`,
-      padX + 28,
-      y + 42
+      PAD_X + 30,
+      y + 44
     );
 
     ctx.fillStyle = INK_DARK;
-    ctx.font = 'bold 30px "Old Standard TT", Georgia, serif';
-    ctx.fillText(item.title, padX + 28, y + 88);
+    ctx.font = 'bold 32px "Old Standard TT", Georgia, serif';
+    ctx.fillText(item.title, PAD_X + 30, y + 92);
 
     ctx.fillStyle = INK_BODY;
-    ctx.font = '18px "Source Serif 4", Georgia, serif';
-    wrapTextLines(ctx, item.subtitle, contentW - 56, 2).forEach((ln, i) => {
-      ctx.fillText(ln, padX + 28, y + 128 + i * 26);
+    ctx.font = '21px "Source Serif 4", Georgia, serif';
+    wrapTextLines(ctx, item.subtitle, CONTENT_W - 60, 2).forEach((ln, i) => {
+      ctx.fillText(ln, PAD_X + 30, y + 136 + i * 30);
     });
 
-    y += 226;
+    y += 232;
   });
 
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 1.6;
-  ctx.strokeRect(padX, y + 12, contentW, 180);
+  ctx.strokeRect(PAD_X, y + 10, CONTENT_W, 180);
   ctx.textAlign = "center";
   ctx.fillStyle = INK_DARK;
-  ctx.font = 'italic 22px "Old Standard TT", Georgia, serif';
+  ctx.font = 'italic 23px "Old Standard TT", Georgia, serif';
   ctx.fillText(
     "“22 siswa aktif, 2 sahabat istimewa, dan para guru yang menjaga langkah kami.”",
-    NEWSPAPER_WIDTH / 2,
+    midX,
     y + 88
   );
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '14px "Special Elite", "Courier New", monospace';
+  ctx.font = '15px "Special Elite", "Courier New", monospace';
   ctx.fillText(
     "MAKN ENDE · PENGEMBANGAN PERANGKAT LUNAK DAN GIM",
-    NEWSPAPER_WIDTH / 2,
-    y + 134
+    midX,
+    y + 136
   );
 }
 
@@ -2568,15 +1829,14 @@ function drawBackCoverPage(
   ctx: CanvasRenderingContext2D,
   spec: NewspaperPageSpec
 ) {
-  const padX = 48;
   const cx = NEWSPAPER_WIDTH / 2;
 
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 2.6;
-  ctx.strokeRect(padX, 130, NEWSPAPER_WIDTH - padX * 2, NEWSPAPER_HEIGHT - 240);
+  ctx.strokeRect(PAD_X, 130, CONTENT_W, NEWSPAPER_HEIGHT - 240);
   ctx.strokeStyle = INK_RULE;
   ctx.lineWidth = 1;
-  ctx.strokeRect(padX + 8, 138, NEWSPAPER_WIDTH - padX * 2 - 16, NEWSPAPER_HEIGHT - 256);
+  ctx.strokeRect(PAD_X + 8, 138, CONTENT_W - 16, NEWSPAPER_HEIGHT - 256);
 
   ctx.beginPath();
   ctx.arc(cx, 380, 96, 0, Math.PI * 2);
@@ -2592,77 +1852,80 @@ function drawBackCoverPage(
   ctx.textAlign = "center";
   ctx.font = 'bold 46px "Old Standard TT", Georgia, serif';
   ctx.fillText("UNO", cx, 392);
-  ctx.font = '12px "Special Elite", "Courier New", monospace';
-  ctx.fillText("XII PPLG 1", cx, 424);
+  ctx.font = '14px "Special Elite", "Courier New", monospace';
+  ctx.fillText("XII PPLG 1", cx, 426);
 
   ctx.fillStyle = INK_DARK;
   ctx.font = 'bold 48px "Old Standard TT", Georgia, serif';
-  ctx.fillText("TAMAT EDISI INI", cx, 574);
+  ctx.fillText("TAMAT EDISI INI", cx, 576);
 
   ctx.strokeStyle = INK_DARK;
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(cx - 170, 604);
-  ctx.lineTo(cx + 170, 604);
+  ctx.moveTo(cx - 170, 606);
+  ctx.lineTo(cx + 170, 606);
   ctx.stroke();
 
   ctx.fillStyle = INK_BODY;
-  ctx.font = 'italic 26px "Source Serif 4", Georgia, serif';
+  ctx.font = 'italic 27px "Source Serif 4", Georgia, serif';
   ctx.fillText(
     `“${spec.quote || "UNO Born to Win, selamat menjalani hidup baru"}”`,
     cx,
-    672
+    676
   );
 
   ctx.fillStyle = INK_MUTED;
-  ctx.font = '15px "Special Elite", "Courier New", monospace';
-  ctx.fillText("MADRASAH ALIYAH KEJURUAN NEGERI ENDE", cx, 790);
-  ctx.fillText("ANGKATAN 2024 — 2027 · ENDE, FLORES — NTT", cx, 824);
-  ctx.fillText("ARSIP DIGITAL KELUARGA BESAR XII PPLG 1", cx, 858);
+  ctx.font = '16px "Special Elite", "Courier New", monospace';
+  ctx.fillText("MADRASAH ALIYAH KEJURUAN NEGERI ENDE", cx, 792);
+  ctx.fillText("ANGKATAN 2024 — 2027 · ENDE, FLORES — NTT", cx, 828);
+  ctx.fillText("ARSIP DIGITAL KELUARGA BESAR XII PPLG 1", cx, 864);
 }
 
 /**
- * Render satu halaman koran ke Blob URL WebP (atau PNG fallback).
+ * Render satu halaman koran ke Blob URL WebP kompak menggunakan
+ * cache latar kertas tunggal + satu kanvas reusable (hemat RAM & CPU).
  */
 export async function renderNewspaperPageToBlobUrl(
   spec: NewspaperPageSpec,
   imageCache: Map<string, LoadedImageResult>
 ): Promise<{ url: string; corsBlockedCount: number }> {
   if (typeof document !== "undefined" && "fonts" in document) {
-    try {
-      await document.fonts.ready;
-    } catch {
-      // Abaikan jika font api tidak tersedia
+    if (!fontsReadyPromise) {
+      fontsReadyPromise = document.fonts.ready.then(() => undefined).catch(() => undefined);
     }
+    await fontsReadyPromise;
   }
 
   const imageMap = new Map<string, LoadedImageResult>();
   let corsBlockedCount = 0;
 
-  await Promise.all(
-    spec.moments.map(async (m) => {
-      const res = await loadCorsSafeImage(m.image_url, imageCache);
-      imageMap.set(m.image_url, res);
-      if (res.status === "cors-blocked") {
-        corsBlockedCount += 1;
-      }
-    })
-  );
+  if (spec.moments.length > 0) {
+    await Promise.all(
+      spec.moments.map(async (m) => {
+        const res = await loadCorsSafeImage(m.image_url, imageCache);
+        imageMap.set(m.image_url, res);
+        if (res.status === "cors-blocked") {
+          corsBlockedCount += 1;
+        }
+      })
+    );
+  }
 
-  const RASTER_SCALE = 2;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(NEWSPAPER_WIDTH * RASTER_SCALE);
-  canvas.height = Math.round(NEWSPAPER_HEIGHT * RASTER_SCALE);
+  const rasterScale = getAdaptiveRasterScale();
+  const canvas = getScratchCanvas(rasterScale);
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return { url: createSkeletonNewspaperUrl(spec), corsBlockedCount };
   }
 
-  ctx.scale(RASTER_SCALE, RASTER_SCALE);
+  // Salin latar kertas koran dari cache tunggal (1 operasi drawImage, tanpa loop serat ulang)
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const parchmentBase = getCachedParchmentCanvas(rasterScale);
+  ctx.drawImage(parchmentBase, 0, 0);
+
+  ctx.scale(rasterScale, rasterScale);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-
-  drawCreamNewsprintBase(ctx);
 
   if (spec.template !== "chronicle-cover") {
     drawRunningHeaderAndFooter(ctx, spec);
@@ -2684,23 +1947,8 @@ export async function renderNewspaperPageToBlobUrl(
     case "urban-feature-solo":
       drawUrbanFeatureSoloPage(ctx, spec, imageMap);
       break;
-    case "village-times":
-      drawVillageTimesPage(ctx, spec, imageMap);
-      break;
-    case "london-news":
-      drawLondonNewsPage(ctx, spec, imageMap);
-      break;
-    case "daily-chronicle":
-      drawDailyChroniclePage(ctx, spec, imageMap);
-      break;
-    case "miami-news":
-      drawMiamiNewsPage(ctx, spec, imageMap);
-      break;
-    case "daily-prophet":
-      drawDailyProphetPage(ctx, spec, imageMap);
-      break;
-    case "urban-feature":
-      drawUrbanFeaturePage(ctx, spec, imageMap);
+    case "balanced-duo":
+      drawBalancedDuoPage(ctx, spec, imageMap);
       break;
     case "phase-chronicle":
       drawPhaseChroniclePage(ctx, spec);
@@ -2714,7 +1962,7 @@ export async function renderNewspaperPageToBlobUrl(
   }
 
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), "image/webp", 0.97);
+    canvas.toBlob((b) => resolve(b), "image/webp", 0.9);
   });
 
   if (blob) {

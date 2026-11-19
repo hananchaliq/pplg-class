@@ -22,18 +22,27 @@ import {
   ImageCropperModal,
   readFileAsDataUrl,
 } from "@/components/ui/image-cropper-modal";
+import {
+  compressImageFile,
+  formatFileSizeKB,
+} from "@/lib/image-compressor";
 import { SITE_CONTENT } from "@/lib/content";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
 import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
+import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { MomentPhase, MomentRow } from "@/lib/types";
 
 const SPECIAL_NON_GALLERY_CATEGORIES = new Set([
   "Foto Hero 3D",
   "Foto Sampul Buku",
   "Foto Bersama Kelas",
+  "ID Card Siswa",
+  "ID Card Sahabat Istimewa",
 ]);
 
 export function GaleriClient({
@@ -63,6 +72,7 @@ export function GaleriClient({
   const koranRef = React.useRef<KoranGaleriHandle | null>(null);
   const gridSectionRef = React.useRef<HTMLElement | null>(null);
 
+  const { toast } = useEditorialToast();
   const [activePhase, setActivePhase] = React.useState<MomentPhase>("XII");
   const [activeCategory, setActiveCategory] = React.useState<string>("Semua");
   const [showAllGrid, setShowAllGrid] = React.useState(false);
@@ -85,6 +95,18 @@ export function GaleriClient({
     ok: boolean;
     text: string;
   } | null>(null);
+
+  React.useEffect(() => {
+    if (lightboxIndex === null && !uploadOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (uploadOpen) setUploadOpen(false);
+        else if (lightboxIndex !== null) setLightboxIndex(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxIndex, uploadOpen]);
 
   const isRealPhoto = React.useCallback((url?: string) => {
     const clean = (url || "").trim();
@@ -147,13 +169,21 @@ export function GaleriClient({
     }, 60);
   };
 
+  const [compressedInfo, setCompressedInfo] = React.useState<string>("");
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const rawDataUrl = await readFileAsDataUrl(file);
+      const [rawDataUrl, compressed] = await Promise.all([
+        readFileAsDataUrl(file),
+        compressImageFile(file),
+      ]);
       setRawUploadSource(rawDataUrl);
-      setCompressedPreview(rawDataUrl);
+      setCompressedPreview(compressed.dataUrl);
+      setCompressedInfo(
+        `WebP ${compressed.width}×${compressed.height}px · ${formatFileSizeKB(compressed.sizeBytes)}`
+      );
       setCropModalOpen(true);
     } catch {
       setUploadFeedback({
@@ -186,26 +216,23 @@ export function GaleriClient({
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        setUploadFeedback({
-          ok: false,
-          text: json.error || "Gagal mengunggah foto momen.",
-        });
+        const errText = json.error || "Gagal mengunggah foto momen.";
+        setUploadFeedback({ ok: false, text: errText });
+        toast({ title: "Gagal mengunggah", description: errText, variant: "error" });
       } else {
-        setUploadFeedback({
-          ok: true,
-          text:
-            json.message || "Foto berhasil dikirim ke antrean moderasi admin!",
-        });
+        const okText =
+          json.message || "Foto berhasil dikirim ke antrean moderasi admin!";
+        setUploadFeedback({ ok: true, text: okText });
+        toast({ title: "Foto terkirim", description: okText, variant: "success" });
         setCaption("");
         setCompressedPreview("");
         notifyPublicDataUpdated();
         void refresh();
       }
     } catch {
-      setUploadFeedback({
-        ok: false,
-        text: "Gagal menghubungi server. Coba lagi sebentar ya.",
-      });
+      const netText = "Gagal menghubungi server. Coba lagi sebentar ya.";
+      setUploadFeedback({ ok: false, text: netText });
+      toast({ title: "Koneksi terputus", description: netText, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -222,9 +249,12 @@ export function GaleriClient({
           <p className="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Edisi Cetak Tiga Tahun · {moments.length} Arsip Foto
           </p>
-          <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+          <SplitLineHeading
+            as="h1"
+            className="mt-1 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+          >
             Galeri Kenangan Bersama
-          </h1>
+          </SplitLineHeading>
           <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
             Lembaran koran cetak jadul kecreaman dan arsip foto vintage Kelas X, XI, hingga XII PPLG 1 MAKN Ende.
           </p>
@@ -297,7 +327,7 @@ export function GaleriClient({
               {active && (
                 <motion.span
                   layoutId="galeri-cat-pill"
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  transition={MOTION_EASE.springNav}
                   className="absolute inset-0 rounded-lg bg-foreground shadow-2xs"
                   aria-hidden="true"
                 />
@@ -373,7 +403,11 @@ export function GaleriClient({
                 type="button"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay: idx * 0.04 }}
+                transition={{
+                  duration: MOTION_DURATION.medium,
+                  delay: idx * 0.04,
+                  ease: MOTION_EASE.editorial,
+                }}
                 whileHover={{ y: -3, rotate: 0, scale: 1.015 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
@@ -384,6 +418,7 @@ export function GaleriClient({
                     <img
                       src={m.image_url}
                       alt={m.caption}
+                      crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                       loading="lazy"
                       className="public-film-photo size-full object-cover transition-transform duration-500 group-hover:scale-103"
@@ -467,6 +502,7 @@ export function GaleriClient({
                 <img
                   src={currentLightboxMoment.image_url}
                   alt={currentLightboxMoment.caption}
+                  crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
                   className="public-film-photo block h-auto max-h-[46dvh] sm:max-h-[56vh] w-auto max-w-full object-contain"
                 />
@@ -604,7 +640,8 @@ export function GaleriClient({
                       />
                     </div>
                     <p className="font-sans text-xs text-muted-foreground">
-                      ✓ Foto siap diunggah ke galeri kelas.
+                      ✓ Foto terkompresi siap diunggah ke Vercel Blob
+                      {compressedInfo ? ` (${compressedInfo})` : ""}.
                     </p>
                   </div>
                 )}
@@ -750,7 +787,11 @@ export function GaleriClient({
         targetAspect={4 / 3}
         targetLabel="4:3 Foto Galeri"
         onClose={() => setCropModalOpen(false)}
-        onConfirm={(croppedWebp) => setCompressedPreview(croppedWebp)}
+        onConfirm={(croppedWebp) => {
+          setCompressedPreview(croppedWebp);
+          const approxBytes = Math.round((croppedWebp.length * 3) / 4);
+          setCompressedInfo(`WebP ter-crop · ~${formatFileSizeKB(approxBytes)}`);
+        }}
       />
     </div>
   );

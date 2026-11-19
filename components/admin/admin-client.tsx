@@ -30,6 +30,11 @@ import {
   ImageCropperModal,
   readFileAsDataUrl,
 } from "@/components/ui/image-cropper-modal";
+import {
+  compressImageDataUrl,
+  dataUrlToWebpFile,
+  formatFileSizeKB,
+} from "@/lib/image-compressor";
 import { DbConnectionGuard } from "@/components/layout/db-connection-guard";
 import { notifyPublicDataUpdated } from "@/lib/use-public-data";
 import {
@@ -75,6 +80,7 @@ interface AdminDashboardData {
   settings: {
     graduation_date: string;
   };
+  blobConnected?: boolean;
   supabaseConnected: boolean;
   dbConnected?: boolean;
   missingTables?: boolean;
@@ -181,14 +187,15 @@ export function AdminClient() {
   const [pollQuestionInput, setPollQuestionInput] = useState("");
   const [pollOptionsInput, setPollOptionsInput] = useState("");
 
-  // State Pemisahan 3 Seksi Media di Pengaturan Admin:
-  // 1) Hero 3D (Upload Sendiri) | 2) Buku Kenangan (Pilih dari yang Ada atau Upload Ulang) | 3) Galeri Momen (Sendiri)
+  // State Pemisahan 3 Kanal Media di Vercel Blob:
+  // 1) hero3d/ | 2) yearbook/ (Sampul, Foto Bersama, ID Card Sahabat Istimewa) | 3) gallery/
   const [mediaSectionTab, setMediaSectionTab] = useState<
     "hero" | "kenangan" | "galeri"
   >("hero");
   const [yearbookSlot, setYearbookSlot] = useState<
-    "Foto Sampul Buku" | "Foto Bersama Kelas"
+    "Foto Sampul Buku" | "Foto Bersama Kelas" | "ID Card Sahabat Istimewa"
   >("Foto Sampul Buku");
+  const [yearbookStudentName, setYearbookStudentName] = useState<string>("");
   const [yearbookMode, setYearbookMode] = useState<"existing" | "upload">(
     "existing"
   );
@@ -198,6 +205,7 @@ export function AdminClient() {
   const [mediaPhase, setMediaPhase] = useState<MomentPhase>("XII");
   const [mediaCaption, setMediaCaption] = useState("");
   const [mediaImageUrl, setMediaImageUrl] = useState("");
+  const [mediaCompressedLabel, setMediaCompressedLabel] = useState("");
   const [mediaUploading, setMediaUploading] = useState(false);
 
   const getActiveToken = useCallback(
@@ -579,38 +587,104 @@ export function AdminClient() {
     }
   };
 
+  const uploadCroppedDataUrlToVercelBlob = useCallback(
+    async (params: {
+      channel: "hero3d" | "yearbook" | "gallery";
+      category: string;
+      phase: MomentPhase;
+      caption: string;
+      imageUrl: string;
+      studentName?: string;
+      studentId?: string;
+      replaceExistingCategory?: boolean;
+    }): Promise<{ ok: boolean; url?: string; error?: string }> => {
+      const token = getActiveToken();
+      const formData = new FormData();
+      formData.append("channel", params.channel);
+      formData.append("category", params.category);
+      formData.append("phase", params.phase);
+      formData.append("caption", params.caption);
+      formData.append("uploaderName", "Admin XII PPLG 1");
+      if (params.studentName) formData.append("studentName", params.studentName);
+      if (params.studentId) formData.append("studentId", params.studentId);
+      if (params.replaceExistingCategory) {
+        formData.append("replaceExistingCategory", "true");
+      }
+      if (token) formData.append("sessionToken", token);
+
+      if (params.imageUrl.startsWith("data:image/")) {
+        // Pastikan terkompresi WebP 0.82 maks 1600px sebelum upload ke Vercel Blob
+        const compressed = await compressImageDataUrl(params.imageUrl, {
+          fileName: `${params.channel}-${params.studentName || params.category}`,
+        });
+        formData.append("file", compressed.file);
+      } else {
+        formData.append("existingUrl", params.imageUrl);
+      }
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: token ? { "x-admin-session": token } : undefined,
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        return { ok: false, error: json.error || "Gagal mengunggah ke Vercel Blob." };
+      }
+      return { ok: true, url: String(json.url || json.item?.url || "") };
+    },
+    [getActiveToken]
+  );
+
+  const handleDeleteBlobMedia = async (id: string) => {
+    try {
+      const token = getActiveToken();
+      const res = await fetch(`/api/upload?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: token ? { "x-admin-session": token } : undefined,
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        await fetchDashboard(token);
+        notifyPublicDataUpdated();
+        setFeedback(
+          "Foto berhasil dihapus dari Vercel Blob & manifest.json dan langsung diperbarui di halaman publik."
+        );
+      } else {
+        setFeedback(json.error || "Gagal menghapus foto dari Vercel Blob.");
+      }
+    } catch {
+      setFeedback("Gagal menghubungi endpoint penghapusan Vercel Blob.");
+    }
+  };
+
   const saveVisualMoment = async (params: {
+    channel: "hero3d" | "yearbook" | "gallery";
     category: string;
     phase: MomentPhase;
     caption: string;
     imageUrl: string;
+    studentName?: string;
+    studentId?: string;
     replaceExistingCategory?: boolean;
   }) => {
     setMediaUploading(true);
     try {
-      const res = await adminPost({
-        action: "upsert_moment",
-        category: params.category,
-        phase: params.phase,
-        caption: params.caption,
-        uploaderName: "Admin XII PPLG 1",
-        imageUrl: params.imageUrl,
-        replaceExistingCategory: params.replaceExistingCategory,
-      });
-      const json = await res.json();
-      if (json.ok && json.data) {
-        setData(json.data);
+      const uploaded = await uploadCroppedDataUrlToVercelBlob(params);
+      if (uploaded.ok) {
+        await fetchDashboard();
         setMediaCaption("");
         setMediaImageUrl("");
+        setMediaCompressedLabel("");
         notifyPublicDataUpdated();
         setFeedback(
-          `Foto "${params.category}" berhasil disimpan ke database dan langsung tampil di model 3D & halaman publik!`
+          `Foto "${params.category}" berhasil diunggah ke Vercel Blob (${params.channel}/) dan langsung tampil real-time di 3D & halaman publik!`
         );
       } else {
-        setFeedback(json.error || "Gagal menyimpan foto ke database.");
+        setFeedback(uploaded.error || "Gagal mengunggah foto ke Vercel Blob.");
       }
     } catch {
-      setFeedback("Gagal mengunggah foto ke server.");
+      setFeedback("Gagal mengunggah foto ke server Vercel Blob.");
     } finally {
       setMediaUploading(false);
     }
@@ -622,6 +696,13 @@ export function AdminClient() {
       setFeedback("Pilih berkas foto dari HP/Desktop terlebih dahulu.");
       return;
     }
+    const channel: "hero3d" | "yearbook" | "gallery" =
+      mediaSectionTab === "hero"
+        ? "hero3d"
+        : mediaSectionTab === "kenangan"
+          ? "yearbook"
+          : "gallery";
+
     const targetCategory =
       mediaSectionTab === "hero"
         ? "Foto Hero 3D"
@@ -629,38 +710,65 @@ export function AdminClient() {
           ? yearbookSlot
           : galleryCategory;
 
+    const matchedStudent =
+      mediaSectionTab === "kenangan" &&
+      yearbookSlot === "ID Card Sahabat Istimewa" &&
+      yearbookStudentName.trim()
+        ? data?.students.find(
+            (s) =>
+              s.id === yearbookStudentName ||
+              s.full_name.toLowerCase() === yearbookStudentName.trim().toLowerCase()
+          )
+        : undefined;
+
     const defaultCaption =
       targetCategory === "Foto Hero 3D"
         ? "Kenangan Meja Belajar 3D XII PPLG 1 MAKN Ende"
         : targetCategory === "Foto Sampul Buku"
           ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
-          : targetCategory === "Foto Bersama Kelas"
-            ? "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende"
-            : "Momen Kenangan XII PPLG 1";
+          : targetCategory === "ID Card Sahabat Istimewa"
+            ? `Potret ID Card ${matchedStudent?.full_name || yearbookStudentName || "Sahabat Istimewa"}`
+            : targetCategory === "Foto Bersama Kelas"
+              ? "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende"
+              : "Momen Kenangan XII PPLG 1";
 
     await saveVisualMoment({
+      channel,
       category: targetCategory,
       phase: mediaPhase,
       caption: mediaCaption.trim() || defaultCaption,
       imageUrl: mediaImageUrl.trim(),
+      studentId: matchedStudent?.id,
+      studentName:
+        matchedStudent?.full_name ||
+        (yearbookSlot === "ID Card Sahabat Istimewa"
+          ? yearbookStudentName.trim() || undefined
+          : undefined),
       replaceExistingCategory: targetCategory === "Foto Sampul Buku",
     });
   };
 
   const handleAssignExistingPhotoToYearbook = async (
     momentItem: MomentRow,
-    slot: "Foto Sampul Buku" | "Foto Bersama Kelas",
+    slot: "Foto Sampul Buku" | "Foto Bersama Kelas" | "ID Card Sahabat Istimewa",
     customImageUrl?: string
   ) => {
     const defaultCaption =
       slot === "Foto Sampul Buku"
         ? "Keluarga Besar UNO · XII PPLG 1 MAKN Ende"
-        : "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende";
+        : slot === "ID Card Sahabat Istimewa"
+          ? `Potret ID Card ${yearbookStudentName || "Sahabat Istimewa"}`
+          : "Kebersamaan Satu Angkatan XII PPLG 1 MAKN Ende";
     await saveVisualMoment({
+      channel: "yearbook",
       category: slot,
       phase: momentItem.phase || "XII",
       caption: mediaCaption.trim() || momentItem.caption || defaultCaption,
       imageUrl: customImageUrl || momentItem.image_url,
+      studentName:
+        slot === "ID Card Sahabat Istimewa"
+          ? yearbookStudentName.trim() || undefined
+          : undefined,
       replaceExistingCategory: slot === "Foto Sampul Buku",
     });
   };
@@ -786,11 +894,11 @@ export function AdminClient() {
 
         <div className="flex items-center gap-3">
           <span className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            Database:{" "}
+            Media Storage:{" "}
             <strong className="text-foreground">
-              {data.dbConnected ?? data.supabaseConnected
-                ? "Supabase PostgreSQL Aktif"
-                : "Belum Terkoneksi / Tabel Belum Siap"}
+              {data.blobConnected
+                ? "Vercel Blob Aktif"
+                : "Mode Fallback Lokal (Set BLOB_READ_WRITE_TOKEN)"}
             </strong>
           </span>
           <button
@@ -1242,18 +1350,34 @@ export function AdminClient() {
                                   targetAspect: 1,
                                   targetLabel: "1:1 Foto ID Card Siswa",
                                   showCircleGuide: true,
-                                  onDone: (croppedWebp) => {
+                                  onDone: async (croppedWebp) => {
+                                    setFeedback("Mengunggah foto siswa (WebP) ke Vercel Blob...");
+                                    const res = await uploadCroppedDataUrlToVercelBlob({
+                                      channel: "yearbook",
+                                      category:
+                                        editingStudent.rail_group === "moved" || !editingStudent.is_active
+                                          ? "ID Card Sahabat Istimewa"
+                                          : "ID Card Siswa",
+                                      phase: "XII",
+                                      caption: `Potret ID Card ${editingStudent.full_name || "Siswa XII PPLG 1"}`,
+                                      imageUrl: croppedWebp,
+                                      studentId: editingStudent.id,
+                                      studentName: editingStudent.full_name || undefined,
+                                    });
+                                    const finalUrl = res.ok && res.url ? res.url : croppedWebp;
                                     setEditingStudent((prev) =>
                                       prev
                                         ? {
                                             ...prev,
-                                            photo_url: croppedWebp,
+                                            photo_url: finalUrl,
                                             show_photo: true,
                                           }
                                         : prev
                                     );
                                     setFeedback(
-                                      "Foto siswa sudah di-crop. Klik 'Simpan Siswa' di bawah untuk menerapkan ke Kartu ID."
+                                      res.ok
+                                        ? "Foto siswa terkompresi WebP berhasil diunggah ke Vercel Blob (yearbook/). Klik 'Simpan Siswa' untuk menyinkronkan."
+                                        : "Foto siswa sudah di-crop. Klik 'Simpan Siswa' di bawah untuk menerapkan ke Kartu ID."
                                     );
                                   },
                                 });
@@ -1915,7 +2039,38 @@ export function AdminClient() {
                       >
                         Halaman Pembuka Foto Bersama (Hal. 1–4 Sebelum Daftar Isi)
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setYearbookSlot("ID Card Sahabat Istimewa");
+                          setYearbookMode("upload");
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          yearbookSlot === "ID Card Sahabat Istimewa"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        ID Card / Sahabat Istimewa (yearbook/)
+                      </button>
                     </div>
+                    {yearbookSlot === "ID Card Sahabat Istimewa" && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <input
+                          type="text"
+                          list="yearbook-student-options"
+                          value={yearbookStudentName}
+                          onChange={(e) => setYearbookStudentName(e.target.value)}
+                          placeholder="Nama siswa / Sahabat Istimewa untuk ID Card..."
+                          className="w-full max-w-sm rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground"
+                        />
+                        <datalist id="yearbook-student-options">
+                          {data.students.map((s) => (
+                            <option key={s.id} value={s.full_name} />
+                          ))}
+                        </datalist>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -2151,20 +2306,33 @@ export function AdminClient() {
                           try {
                             const rawUrl = await readFileAsDataUrl(file);
                             const aspect =
-                              mediaSectionTab === "kenangan" ? 16 / 10 : 4 / 3;
+                              mediaSectionTab === "kenangan"
+                                ? yearbookSlot === "ID Card Sahabat Istimewa"
+                                  ? 1
+                                  : 16 / 10
+                                : 4 / 3;
                             const label =
                               mediaSectionTab === "hero"
-                                ? "4:3 Bingkai Hero 3D"
+                                ? "4:3 Bingkai Hero 3D (hero3d/)"
                                 : mediaSectionTab === "kenangan"
-                                  ? `16:10 ${yearbookSlot}`
-                                  : "4:3 Polaroid Galeri";
+                                  ? yearbookSlot === "ID Card Sahabat Istimewa"
+                                    ? "1:1 ID Card Sahabat Istimewa (yearbook/)"
+                                    : `16:10 ${yearbookSlot} (yearbook/)`
+                                  : "4:3 Polaroid Galeri (gallery/)";
                             setCropConfig({
                               imageSrc: rawUrl,
                               title: `Atur Posisi & Crop: ${label}`,
                               targetAspect: aspect,
                               targetLabel: label,
+                              showCircleGuide:
+                                mediaSectionTab === "kenangan" &&
+                                yearbookSlot === "ID Card Sahabat Istimewa",
                               onDone: (croppedWebp) => {
                                 setMediaImageUrl(croppedWebp);
+                                const webpFile = dataUrlToWebpFile(croppedWebp);
+                                setMediaCompressedLabel(
+                                  `WebP 0.82 · maks 1600px · ${formatFileSizeKB(webpFile.size)}`
+                                );
                               },
                             });
                           } catch {
@@ -2237,9 +2405,17 @@ export function AdminClient() {
                           className="max-h-48 w-auto object-contain"
                         />
                       </div>
+                      {mediaCompressedLabel && (
+                        <p className="font-mono text-[10px] font-semibold text-muted-foreground">
+                          ✓ {mediaCompressedLabel}
+                        </p>
+                      )}
                       <button
                         type="button"
-                        onClick={() => setMediaImageUrl("")}
+                        onClick={() => {
+                          setMediaImageUrl("");
+                          setMediaCompressedLabel("");
+                        }}
                         className="text-[11px] font-semibold text-destructive hover:underline"
                       >
                         Ganti / Hapus Pratinjau
@@ -2278,13 +2454,17 @@ export function AdminClient() {
                     if (mediaSectionTab === "kenangan") {
                       return (
                         m.category === "Foto Sampul Buku" ||
-                        m.category === "Foto Bersama Kelas"
+                        m.category === "Foto Bersama Kelas" ||
+                        m.category === "ID Card Sahabat Istimewa" ||
+                        m.category === "ID Card Siswa"
                       );
                     }
                     return (
                       m.category !== "Foto Hero 3D" &&
                       m.category !== "Foto Sampul Buku" &&
-                      m.category !== "Foto Bersama Kelas"
+                      m.category !== "Foto Bersama Kelas" &&
+                      m.category !== "ID Card Sahabat Istimewa" &&
+                      m.category !== "ID Card Siswa"
                     );
                   })
                   .slice(0, 12)
@@ -2307,6 +2487,7 @@ export function AdminClient() {
                           <img
                             src={m.image_url}
                             alt={m.caption}
+                            crossOrigin="anonymous"
                             referrerPolicy="no-referrer"
                             className="size-full object-cover"
                           />
@@ -2322,9 +2503,9 @@ export function AdminClient() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleDeleteModeratedItem("moments", m.id)}
+                        onClick={() => void handleDeleteBlobMedia(m.id)}
                         className="shrink-0 rounded-lg border border-border bg-muted p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
-                        title="Hapus Foto"
+                        title="Hapus Foto dari Vercel Blob"
                       >
                         <Trash2 className="size-3.5" />
                       </button>

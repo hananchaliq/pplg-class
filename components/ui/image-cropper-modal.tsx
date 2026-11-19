@@ -23,6 +23,12 @@ export type CropPresetRatio =
   | "16:10"
   | "3:4";
 
+import {
+  compressCanvasToWebp,
+  DEFAULT_MAX_IMAGE_DIMENSION,
+  DEFAULT_WEBP_QUALITY,
+} from "@/lib/image-compressor";
+
 export interface ImageCropperModalProps {
   open: boolean;
   imageSrc: string | null;
@@ -55,7 +61,7 @@ export function ImageCropperModal({
   targetAspect = 4 / 3,
   targetLabel = "Rasio Target",
   showCircleGuide = false,
-  maxOutputSide = 1400,
+  maxOutputSide = DEFAULT_MAX_IMAGE_DIMENSION,
   onClose,
   onCancel,
   onConfirm,
@@ -354,14 +360,14 @@ export function ImageCropperModal({
     );
   };
 
-  const handleConfirmCrop = () => {
-    if (!imgRef.current) return;
+  const handleConfirmCrop = async () => {
+    if (!imgRef.current || processing) return;
     setProcessing(true);
     try {
       const img = imgRef.current;
       const { w: vpW, h: vpH } = viewportSize;
 
-      // Hitung ukuran kanvas output beresolusi tinggi sesuai rasio
+      // Hitung ukuran kanvas output sesuai rasio dengan sisi terpanjang maks 1600px
       let outW = maxOutputSide;
       let outH = Math.round(maxOutputSide / effectiveAspect);
       if (outH > maxOutputSide) {
@@ -377,6 +383,9 @@ export function ImageCropperModal({
         setProcessing(false);
         return;
       }
+
+      outCtx.imageSmoothingEnabled = true;
+      outCtx.imageSmoothingQuality = "high";
 
       const ratioOutToVp = outW / vpW;
       const isRotated90 = rotation === 90 || rotation === 270;
@@ -395,8 +404,11 @@ export function ImageCropperModal({
       outCtx.drawImage(img, -naturalSize.w / 2, -naturalSize.h / 2);
       outCtx.restore();
 
-      const webpDataUrl = outCanvas.toDataURL("image/webp", 0.85);
-      handleDone(webpDataUrl);
+      const compressed = await compressCanvasToWebp(outCanvas, {
+        maxDimension: maxOutputSide,
+        quality: DEFAULT_WEBP_QUALITY,
+      });
+      handleDone(compressed.dataUrl);
       handleClose();
     } finally {
       setProcessing(false);
@@ -623,12 +635,12 @@ export function ImageCropperModal({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             disabled={!imgLoaded || processing}
-            onClick={handleConfirmCrop}
+            onClick={() => void handleConfirmCrop()}
             className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0"
           >
             <Check className="size-4" />
             <span>
-              {processing ? "Memproses..." : "Terapkan Posisi & Ukuran"}
+              {processing ? "Mengompresi WebP..." : "Terapkan & Kompres WebP"}
             </span>
           </motion.button>
         </div>

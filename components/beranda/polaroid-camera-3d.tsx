@@ -5,35 +5,25 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { motion, AnimatePresence } from "motion/react";
 import { Camera, ChevronRight } from "lucide-react";
+import { gsap } from "@/lib/gsap-utils";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
 import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
 import { disposeSceneGraph } from "@/components/three/scene-shell";
+import { MOTION_EASE } from "@/lib/motion-tokens";
 import type { MomentRow } from "@/lib/types";
 
 interface PolaroidCamera3DProps {
   moments: MomentRow[];
 }
 
-const LOOP_DURATION_SEC = 7.2;
-
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
-}
-
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp01((x - edge0) / (edge1 - edge0));
-  return t * t * (3 - 2 * t);
-}
-
-function easeOutCubic(t: number): number {
-  const c = clamp01(t);
-  return 1 - Math.pow(1 - c, 3);
-}
-
-function easeInOutCubic(t: number): number {
-  const c = clamp01(t);
-  return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
-}
+const FLOOR_Y = -0.52;
+const PHOTO_W = 1.36;
+const PHOTO_H = 1.63;
+const PHOTO_THICKNESS = 0.014;
+const FLOOR_EPSILON = 0.0025;
+const PHOTO_LAND_Y = FLOOR_Y + PHOTO_THICKNESS * 0.5 + FLOOR_EPSILON;
+const FLOOR_MIN_BOUND_Y = FLOOR_Y + FLOOR_EPSILON;
+const EJECT_SCALE = 0.9;
 
 function loadImageCorsSafe(url: string): Promise<HTMLImageElement | null> {
   const clean = (url || "").trim();
@@ -97,10 +87,44 @@ function wrapCanvasText(
   return lines;
 }
 
+/**
+ * Tekstur bayangan kontak lembut di lantai khusus untuk foto Polaroid agar terasa menyentuh permukaan.
+ */
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.clearRect(0, 0, size, size);
+  const grad = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    size * 0.08,
+    size / 2,
+    size / 2,
+    size * 0.49
+  );
+  grad.addColorStop(0, "rgba(22, 18, 14, 0.44)");
+  grad.addColorStop(0.55, "rgba(22, 18, 14, 0.22)");
+  grad.addColorStop(0.82, "rgba(22, 18, 14, 0.06)");
+  grad.addColorStop(1, "rgba(22, 18, 14, 0)");
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function buildPolaroidCanvasTexture(
   moment: MomentRow | null,
   img: HTMLImageElement | null,
-  seqIndex: number
+  seqIndex: number,
+  maxAnisotropy: number
 ): THREE.CanvasTexture {
   const w = 640;
   const h = 768;
@@ -109,16 +133,16 @@ function buildPolaroidCanvasTexture(
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
 
-  // Kertas Polaroid matte kecreaman hangat (tidak terlalu putih silau saat terkena cahaya 3D)
+  // Kertas Polaroid matte kecreaman hangat (tidak silau, nyaman dibaca lama)
   ctx.fillStyle = "#EFE7D4";
   ctx.fillRect(0, 0, w, h);
 
-  // Tekstur serat halus kertas cetak foto matte
+  // Serat halus kertas cetak foto matte
   for (let i = 0; i < 480; i++) {
     const px = (i * 173 + 29) % w;
     const py = (i * 251 + 61) % h;
     ctx.fillStyle =
-      i % 3 === 0 ? "rgba(92, 76, 60, 0.055)" : "rgba(38, 30, 22, 0.025)";
+      i % 3 === 0 ? "rgba(92, 76, 60, 0.05)" : "rgba(38, 30, 22, 0.025)";
     ctx.fillRect(px, py, 2, 1);
   }
 
@@ -132,25 +156,25 @@ function buildPolaroidCanvasTexture(
   const photoW = w - photoX * 2;
   const photoH = 516;
 
-  // Area foto utama
   ctx.save();
   ctx.beginPath();
   ctx.rect(photoX, photoY, photoW, photoH);
   ctx.clip();
 
   if (img && img.naturalWidth > 0) {
-    const scale = Math.max(photoW / img.naturalWidth, photoH / img.naturalHeight);
+    const scale = Math.max(
+      photoW / img.naturalWidth,
+      photoH / img.naturalHeight
+    );
     const dw = img.naturalWidth * scale;
     const dh = img.naturalHeight * scale;
     const dx = photoX + (photoW - dw) / 2;
     const dy = photoY + (photoH - dh) / 2;
 
-    // Grading foto cetak film analog yang tajam, natural, tidak silau & nyaman dilihat lama
     ctx.filter = "saturate(78%) contrast(106%) brightness(93%) sepia(10%)";
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.filter = "none";
 
-    // Vignette tepi sangat halus + bayangan cekung bingkai cetak asli (tanpa lapisan putih silau)
     const vig = ctx.createRadialGradient(
       photoX + photoW / 2,
       photoY + photoH / 2,
@@ -164,12 +188,10 @@ function buildPolaroidCanvasTexture(
     ctx.fillStyle = vig;
     ctx.fillRect(photoX, photoY, photoW, photoH);
 
-    // Efek cekung tepi atas & kiri seperti kertas emulsi foto asli
     ctx.fillStyle = "rgba(24, 18, 12, 0.22)";
     ctx.fillRect(photoX, photoY, photoW, 3);
     ctx.fillRect(photoX, photoY, 3, photoH);
   } else {
-    // Fallback ilustrasi arsip bila foto eksternal gagal/CORS
     const grad = ctx.createLinearGradient(
       photoX,
       photoY,
@@ -195,12 +217,10 @@ function buildPolaroidCanvasTexture(
   }
   ctx.restore();
 
-  // Garis tepi dalam foto Polaroid
   ctx.strokeStyle = "#A99776";
   ctx.lineWidth = 2;
   ctx.strokeRect(photoX, photoY, photoW, photoH);
 
-  // Teks tulisan editorial kontras tajam & nyaman dibaca pada dagu bawah Polaroid
   const caption = decodeHtmlEntities(
     moment?.caption || "Kenangan bersama keluarga besar XII PPLG 1 MAKN Ende"
   );
@@ -218,21 +238,20 @@ function buildPolaroidCanvasTexture(
 
   ctx.fillStyle = "#4B3E31";
   ctx.font = '16px "Special Elite", "Courier New", monospace';
-  ctx.fillText(
-    `${frameCode} · ${phaseLabel} · ${takenAt}`,
-    w / 2,
-    h - 36
-  );
+  ctx.fillText(`${frameCode} · ${phaseLabel} · ${takenAt}`, w / 2, h - 36);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.anisotropy = Math.min(8, maxAnisotropy);
   texture.needsUpdate = true;
   return texture;
 }
 
 /**
- * Membangun model 3D Kamera Polaroid Vintage multi-bagian (14+ komponen prosedural).
+ * Membangun model 3D Kamera Polaroid Vintage multi-bagian dengan slotAnchor
+ * tepat di mulut celah pengeluaran foto (mengikuti rotasi/posisi/skala kamera secara penuh).
  */
 function createVintagePolaroidCameraModel(): {
   group: THREE.Group;
@@ -242,7 +261,6 @@ function createVintagePolaroidCameraModel(): {
 } {
   const group = new THREE.Group();
 
-  // Bahan PBR bervariasi kekasaran & metalness sesuai panduan Three.js
   const creamBodyMat = new THREE.MeshStandardMaterial({
     color: 0xf0e6cf,
     roughness: 0.52,
@@ -284,7 +302,7 @@ function createVintagePolaroidCameraModel(): {
     metalness: 0.32,
   });
 
-  // 1. Bodi Bawah (Base Deck & Slot Cetak) — beveled ExtrudeGeometry
+  // 1. Bodi Bawah (Base Deck & Slot Cetak)
   const baseShape = new THREE.Shape();
   const bw = 1.15;
   const bd = 0.92;
@@ -307,7 +325,7 @@ function createVintagePolaroidCameraModel(): {
   baseMesh.receiveShadow = true;
   group.add(baseMesh);
 
-  // Kaki karet kecil di dasar kamera agar kokoh & berjarak bersih dari meja
+  // Kaki karet di dasar kamera (menyentuh tepat lantai y = FLOOR_Y saat model diletakkan)
   const footGeo = new THREE.CylinderGeometry(0.11, 0.12, 0.04, 16);
   [
     [-0.92, -0.405, 0.72],
@@ -321,7 +339,7 @@ function createVintagePolaroidCameraModel(): {
     group.add(foot);
   });
 
-  // 2. Bodi Atas Miring Klasik Polaroid (Cream Housing)
+  // 2. Bodi Atas Miring Klasik Polaroid
   const upperShape = new THREE.Shape();
   upperShape.moveTo(-0.92, -0.45);
   upperShape.lineTo(0.92, -0.45);
@@ -343,7 +361,7 @@ function createVintagePolaroidCameraModel(): {
   upperMesh.receiveShadow = true;
   group.add(upperMesh);
 
-  // 3. Pelat Wajah Depan (Front Faceplate)
+  // 3. Pelat Wajah Depan
   const facePlate = new THREE.Mesh(
     new THREE.BoxGeometry(2.14, 0.88, 0.08),
     warmLeatherMat
@@ -353,7 +371,7 @@ function createVintagePolaroidCameraModel(): {
   facePlate.castShadow = true;
   group.add(facePlate);
 
-  // 4. Garis Retro 4-Warna Khas Kamera Polaroid (berhenti rapi di atas bibir slot cetak)
+  // 4. Garis Retro 4-Warna Khas Polaroid
   const stripeColors = [0xa95a42, 0xb5843f, 0x4e6e52, 0x2d6366];
   stripeColors.forEach((hex, idx) => {
     const strip = new THREE.Mesh(
@@ -368,9 +386,9 @@ function createVintagePolaroidCameraModel(): {
     group.add(strip);
   });
 
-  // 5. Celah Slot Pengeluaran Foto Nyata (Cavity Gelap Lega + Bibir Rol Atas & Bawah bebas tabrakan)
+  // 5. Celah Slot Pengeluaran Foto Nyata + Anchor Dunia Presisi
   const slotCavity = new THREE.Mesh(
-    new THREE.BoxGeometry(1.56, 0.09, 0.16),
+    new THREE.BoxGeometry(1.56, 0.095, 0.16),
     new THREE.MeshStandardMaterial({
       color: 0x0e0c0a,
       roughness: 0.98,
@@ -380,27 +398,27 @@ function createVintagePolaroidCameraModel(): {
   slotCavity.position.set(0, -0.215, 0.935);
   group.add(slotCavity);
 
-  // Bibir rol chrome atas & bibir penopang bawah memberi celah vertikal 0.091 unit agar foto 0.012 tak terpotong
   const rollerLipTop = new THREE.Mesh(
     new THREE.BoxGeometry(1.64, 0.028, 0.075),
     chromeMat
   );
-  rollerLipTop.position.set(0, -0.156, 0.985);
+  rollerLipTop.position.set(0, -0.154, 0.985);
   group.add(rollerLipTop);
 
   const rollerLipBottom = new THREE.Mesh(
     new THREE.BoxGeometry(1.64, 0.026, 0.072),
     darkMetalMat
   );
-  rollerLipBottom.position.set(0, -0.274, 0.982);
+  rollerLipBottom.position.set(0, -0.276, 0.982);
   group.add(rollerLipBottom);
 
-  // Anchor eksak mulut celah pengeluaran film tepat di depan bibir rol
+  // Anchor eksak di mulut slot keluar kamera (+Z menghadap keluar celah rol)
   const slotAnchor = new THREE.Object3D();
-  slotAnchor.position.set(0, -0.215, 1.005);
+  slotAnchor.name = "polaroid_slot_anchor";
+  slotAnchor.position.set(0, -0.215, 0.996);
   group.add(slotAnchor);
 
-  // 6. Rakitan Lensa Bertingkat (Outer Collar + Chrome Ring + Inner Baffle + Glass)
+  // 6. Rakitan Lensa Bertingkat
   const lensGroup = new THREE.Group();
   lensGroup.position.set(0.02, 0.44, 0.93);
   lensGroup.rotation.x = -0.14;
@@ -436,10 +454,9 @@ function createVintagePolaroidCameraModel(): {
   opticGlass.position.z = 0.01;
   opticGlass.scale.set(1, 0.55, 1);
   lensGroup.add(opticGlass);
-
   group.add(lensGroup);
 
-  // 7. Modul Flash Strobe Klasik di Kiri Atas
+  // 7. Modul Flash Strobe
   const flashHousing = new THREE.Mesh(
     new THREE.BoxGeometry(0.68, 0.46, 0.42),
     creamBodyMat
@@ -462,7 +479,7 @@ function createVintagePolaroidCameraModel(): {
   flashFrame.position.set(-0.62, 1.32, 0.375);
   group.add(flashFrame);
 
-  // 8. Jendela Bidik (Viewfinder) di Kanan Atas
+  // 8. Jendela Bidik (Viewfinder)
   const viewfinderBox = new THREE.Mesh(
     new THREE.BoxGeometry(0.38, 0.34, 0.48),
     darkMetalMat
@@ -478,7 +495,7 @@ function createVintagePolaroidCameraModel(): {
   vfLens.position.set(0.72, 1.24, 0.46);
   group.add(vfLens);
 
-  // 9. Tombol Rana (Shutter Button) Merah-Terracotta
+  // 9. Tombol Rana (Shutter Button)
   const shutterCollar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.135, 0.145, 0.05, 24),
     chromeMat
@@ -495,7 +512,7 @@ function createVintagePolaroidCameraModel(): {
   shutterButton.position.set(-0.74, 0.36, 0.94);
   group.add(shutterButton);
 
-  // 10. Pengait Tali Samping (Strap Lugs) & Dial Pengatur Cahaya
+  // 10. Pengait Tali & Dial Exposure
   const leftLug = new THREE.Mesh(
     new THREE.TorusGeometry(0.08, 0.02, 10, 20),
     chromeMat
@@ -527,7 +544,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
   const { tier, reducedMotion, webglSupported } = useVisualTier();
   const mountRef = React.useRef<HTMLDivElement | null>(null);
   const pointerRef = React.useRef({ x: 0, y: 0 });
-  const skipRequestedRef = React.useRef(false);
+  const skipCycleFnRef = React.useRef<(() => void) | null>(null);
 
   const realMoments = React.useMemo(() => {
     const reals = moments.filter(
@@ -544,6 +561,12 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     return heroFirst.length > 0 ? heroFirst : moments.slice(0, 6);
   }, [moments]);
 
+  // Ref stabil agar pembaruan data live tidak membongkar ulang WebGLRenderer atau menggandakan loop
+  const momentsRef = React.useRef<MomentRow[]>(realMoments);
+  React.useEffect(() => {
+    momentsRef.current = realMoments;
+  }, [realMoments]);
+
   const [activeIdx, setActiveIdx] = React.useState(0);
   const [stagePhaseLabel, setStagePhaseLabel] = React.useState(
     "Mengokang lensa 35mm..."
@@ -551,7 +574,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
   const is2DFallback = tier === "simple" || reducedMotion || !webglSupported;
 
-  // Fallback siklus 2D otomatis bila perangkat dalam mode Simple / Reduced Motion
+  // Fallback siklus 2D otomatis bila dalam mode Simple / Reduced Motion
   React.useEffect(() => {
     if (!is2DFallback || realMoments.length <= 1) return;
     const id = window.setInterval(() => {
@@ -569,13 +592,28 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     let rafId = 0;
     const isSoftwareGl = isSoftwareWebGL();
 
-    const width = Math.max(320, container.clientWidth || 620);
-    const height = Math.max(380, container.clientHeight || 500);
+    const width = Math.max(300, container.clientWidth || 620);
+    const height = Math.max(340, container.clientHeight || 500);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 45);
-    camera.position.set(0, 0.86, 7.25);
-    camera.lookAt(0, 0.24, 0.2);
+    // Near/Far rapat untuk presisi depth buffer optimal (anti z-fighting)
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.25, 36);
+
+    const applyResponsiveCameraFraming = (w: number, h: number) => {
+      const aspect = Math.max(0.55, w / Math.max(1, h));
+      camera.aspect = aspect;
+      // Tarik jarak kamera sedikit pada viewport potret/sempit agar foto mendarat & zoom selalu muat utuh
+      const portraitBoost = aspect < 1 ? (1 - aspect) * 2.15 : 0;
+      camera.fov = aspect < 0.85 ? 42 : 38;
+      camera.position.set(
+        0,
+        0.92 + portraitBoost * 0.26,
+        7.35 + portraitBoost
+      );
+      camera.lookAt(0, 0.18, 0.38);
+      camera.updateProjectionMatrix();
+    };
+    applyResponsiveCameraFraming(width, height);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -598,7 +636,6 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     container.innerHTML = "";
     container.appendChild(renderer.domElement);
 
-    // Mandatory Studio Environment Reflection
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const envTexture = pmremGenerator.fromScene(
       new RoomEnvironment(),
@@ -607,11 +644,11 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     scene.environment = envTexture;
     pmremGenerator.dispose();
 
-    // Pencahayaan studio sepia seimbang (tanpa glare berlebih agar foto & bodi kamera tetap detail terbaca)
-    const hemiLight = new THREE.HemisphereLight(0xf5ecd8, 0x463a2e, 0.95);
+    // Tata cahaya studio monokrom-hangat seimbang (tanpa glare berlebih)
+    const hemiLight = new THREE.HemisphereLight(0xf5ecd8, 0x463a2e, 0.96);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff3dd, 1.42);
+    const keyLight = new THREE.DirectionalLight(0xfff3dd, 1.38);
     keyLight.position.set(4.2, 5.4, 3.6);
     if (!isSoftwareGl) {
       keyLight.castShadow = true;
@@ -629,22 +666,46 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     flashLight.position.set(-0.62, 1.32, 0.8);
     scene.add(flashLight);
 
-    // Alas bayangan studio dipusatkan persis di bawah kamera (radius 2.15, z=-0.05) sehingga mustahil memotong foto saat zoom
-    const shadowPlaneMat = new THREE.ShadowMaterial({
-      opacity: 0.18,
+    // Lantai penerima bayangan kamera (di y = FLOOR_Y, polygonOffset & renderOrder = 0)
+    const floorShadowMat = new THREE.ShadowMaterial({
+      opacity: 0.17,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 2,
+      polygonOffsetUnits: 2,
     });
-    const shadowPlane = new THREE.Mesh(
-      new THREE.CircleGeometry(2.15, 48),
-      shadowPlaneMat
+    const floorShadowPlane = new THREE.Mesh(
+      new THREE.CircleGeometry(3.2, 48),
+      floorShadowMat
     );
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.set(0, -0.52, -0.05);
-    shadowPlane.receiveShadow = true;
-    shadowPlane.renderOrder = -1;
-    scene.add(shadowPlane);
+    floorShadowPlane.rotation.x = -Math.PI / 2;
+    floorShadowPlane.position.set(0, FLOOR_Y, 0.45);
+    floorShadowPlane.receiveShadow = true;
+    floorShadowPlane.renderOrder = 0;
+    scene.add(floorShadowPlane);
 
-    // Rakit Kamera Polaroid 3D di atas alas studio
+    // Bayangan kontak lembut khusus lembar foto di lantai (renderOrder = 1, bebas z-fighting)
+    const contactShadowTex = createContactShadowTexture();
+    const photoContactShadowMat = new THREE.MeshBasicMaterial({
+      map: contactShadowTex,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
+    const photoContactShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(PHOTO_W * 1.24, PHOTO_H * 1.24),
+      photoContactShadowMat
+    );
+    photoContactShadow.rotation.x = -Math.PI / 2;
+    photoContactShadow.position.set(0, FLOOR_Y + 0.001, 1.6);
+    photoContactShadow.renderOrder = 1;
+    photoContactShadow.visible = false;
+    scene.add(photoContactShadow);
+
+    // Kamera Polaroid 3D berdiri kokoh di atas lantai (kaki karet di y = -0.425 + -0.095 = -0.52 = FLOOR_Y)
     const cameraRig = new THREE.Group();
     const {
       group: polaroidModel,
@@ -652,42 +713,48 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       shutterButton,
       flashBulbMat,
     } = createVintagePolaroidCameraModel();
-    polaroidModel.position.set(0, -0.04, 0);
+    polaroidModel.position.set(0, FLOOR_Y + 0.425, 0);
     cameraRig.add(polaroidModel);
     scene.add(cameraRig);
 
-    // Lembar Foto Polaroid + bidang potong tepat di dalam mulut slot gelap (z = 0.975)
-    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.975);
-    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.975);
+    // Bidang potong dunia yang selalu dihitung ulang dari slotAnchor (getWorldPosition/Quaternion)
+    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     const slotClipList = [slotClipPlane];
     const emptyClipList: THREE.Plane[] = [];
 
-    const CARD_H = 1.63;
-    const EJECT_SCALE = 0.92;
-    const cardGeo = new THREE.BoxGeometry(1.36, CARD_H, 0.012);
+    // Pivot foto tepat di pusat geometri agar rotasi, landing, dan Box3 clamp akurat
+    const cardGeo = new THREE.BoxGeometry(PHOTO_W, PHOTO_H, PHOTO_THICKNESS);
     const edgeMat = new THREE.MeshStandardMaterial({
       color: 0xe9dfc9,
       roughness: 0.78,
       metalness: 0.0,
-      envMapIntensity: 0.25,
+      envMapIntensity: 0.22,
       transparent: true,
       opacity: 0,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
     const backMat = new THREE.MeshStandardMaterial({
       color: 0x2d241c,
       roughness: 0.88,
-      envMapIntensity: 0.2,
+      envMapIntensity: 0.18,
       transparent: true,
       opacity: 0,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
-    // Kertas foto matte-satin rendah pantulan agar isi gambar & teks caption bebas silau dan nyaman dibaca
     const frontMat = new THREE.MeshStandardMaterial({
       color: 0xe6e1d7,
       roughness: 0.88,
       metalness: 0.0,
-      envMapIntensity: 0.18,
+      envMapIntensity: 0.16,
       transparent: true,
       opacity: 0,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
 
     const photoMesh = new THREE.Mesh(cardGeo, [
@@ -695,45 +762,58 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       edgeMat,
       edgeMat,
       edgeMat,
-      frontMat, // +Z face
+      frontMat,
       backMat,
     ]);
     photoMesh.castShadow = !isSoftwareGl;
+    photoMesh.receiveShadow = false;
+    photoMesh.renderOrder = 2;
     photoMesh.visible = false;
     scene.add(photoMesh);
 
-    // Pre-allocated zero-GC math helpers untuk tick()
+    // Pre-allocated zero-GC math helpers
     const _slotWorldPos = new THREE.Vector3();
     const _slotWorldQuat = new THREE.Quaternion();
+    const _slotForward = new THREE.Vector3();
     const _ejectDir = new THREE.Vector3();
-    const _localTiltQuat = new THREE.Quaternion();
+    const _localPitchQuat = new THREE.Quaternion();
     const _xAxis = new THREE.Vector3(1, 0, 0);
-    const _startEjectPos = new THREE.Vector3();
-    const _startEjectQuat = new THREE.Quaternion();
-    const _targetZoomPos = new THREE.Vector3();
-    const _targetZoomQuat = new THREE.Quaternion();
-    const _targetZoomEuler = new THREE.Euler(0, 0, 0, "XYZ");
+    const _ejectEndPos = new THREE.Vector3();
+    const _ejectEndQuat = new THREE.Quaternion();
+    const _landPos = new THREE.Vector3();
+    const _landQuat = new THREE.Quaternion();
+    const _landEuler = new THREE.Euler(-Math.PI / 2, 0.08, 0, "YXZ");
+    const _zoomPos = new THREE.Vector3();
+    const _zoomQuat = new THREE.Quaternion();
+    const _zoomEuler = new THREE.Euler(0.025, 0, 0.01, "XYZ");
+    const _photoBox = new THREE.Box3();
 
-    // Cache gambar yang telah dimuat agar pergantian loop berikutnya instan
-    const loadedImgs = new Map<number, HTMLImageElement | null>();
+    // Cache gambar & manajemen pembuangan tekstur lama
+    const loadedImgs = new Map<string, HTMLImageElement | null>();
     let currentTexture: THREE.CanvasTexture | null = null;
-    let appliedIdx = -1;
+    let loopIdx = 0;
 
     const applyPhotoForIndex = async (targetIdx: number) => {
-      if (isDisposed || realMoments.length === 0) return;
-      const safeIdx =
-        ((targetIdx % realMoments.length) + realMoments.length) %
-        realMoments.length;
-      const moment = realMoments[safeIdx] ?? null;
+      if (isDisposed) return;
+      const list = momentsRef.current;
+      if (list.length === 0) return;
+      const safeIdx = ((targetIdx % list.length) + list.length) % list.length;
+      const moment = list[safeIdx] ?? null;
+      const cacheKey = moment?.id || moment?.image_url || `idx-${safeIdx}`;
 
-      let img = loadedImgs.get(safeIdx);
+      let img = loadedImgs.get(cacheKey);
       if (img === undefined && moment?.image_url) {
         img = await loadImageCorsSafe(moment.image_url);
         if (isDisposed) return;
-        loadedImgs.set(safeIdx, img);
+        loadedImgs.set(cacheKey, img);
       }
 
-      const nextTex = buildPolaroidCanvasTexture(moment, img ?? null, safeIdx);
+      const nextTex = buildPolaroidCanvasTexture(
+        moment,
+        img ?? null,
+        safeIdx,
+        renderer.capabilities.getMaxAnisotropy()
+      );
       if (isDisposed) {
         nextTex.dispose();
         return;
@@ -744,25 +824,206 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       currentTexture = nextTex;
       frontMat.map = nextTex;
       frontMat.needsUpdate = true;
-      appliedIdx = safeIdx;
+
+      // Preload gambar berikutnya agar bebas jeda di siklus selanjutnya
+      const nextIdx = (safeIdx + 1) % list.length;
+      const nextMoment = list[nextIdx];
+      const nextKey =
+        nextMoment?.id || nextMoment?.image_url || `idx-${nextIdx}`;
+      if (nextMoment?.image_url && !loadedImgs.has(nextKey)) {
+        loadedImgs.set(nextKey, null);
+        void loadImageCorsSafe(nextMoment.image_url).then((loaded) => {
+          if (!isDisposed) loadedImgs.set(nextKey, loaded);
+        });
+      }
     };
 
-    // Preload foto pertama dan kedua di latar belakang
     void applyPhotoForIndex(0).then(() => {
       if (!isDisposed) {
         window.dispatchEvent(new CustomEvent("app:scene-ready"));
       }
     });
-    if (realMoments.length > 1 && realMoments[1]?.image_url) {
-      void loadImageCorsSafe(realMoments[1].image_url).then((img) => {
-        if (!isDisposed) loadedImgs.set(1, img);
-      });
-    }
 
-    let loopIdx = 0;
-    let cycleElapsed = 0;
-    let lastReportedPhase = "";
+    // =========================================================================
+    // SATU TIMELINE GSAP DETERMINISTIK:
+    // Anticipation -> Ejeksi Slot (Clipped) -> Arc & Mendarat Rebah di Lantai ->
+    // Settle -> Naik & Zoom agar Terbaca -> Pudar Halus -> Foto Berikutnya
+    // =========================================================================
+    const animState = {
+      shutterPress: 0,
+      flashBurst: 0,
+      recoil: 0,
+      camStepBack: 0,
+      photoVisible: 0,
+      clipActive: 0,
+      ejectP: 0,
+      landP: 0,
+      zoomP: 0,
+      fadeOutP: 0,
+      developP: 0,
+      photoOpacity: 0,
+    };
+
+    const reportPhase = (label: string) => {
+      if (!isDisposed) setStagePhaseLabel(label);
+    };
+
+    const advanceToNextPhoto = () => {
+      const list = momentsRef.current;
+      if (list.length > 0) {
+        loopIdx = (loopIdx + 1) % list.length;
+        setActiveIdx(loopIdx);
+        void applyPhotoForIndex(loopIdx);
+      }
+    };
+
+    const masterTl = gsap.timeline({
+      repeat: -1,
+      defaults: { ease: "power2.out" },
+      onRepeat: () => {
+        advanceToNextPhoto();
+      },
+    });
+
+    // 0. Reset bersih di dalam bodi kamera (tanpa pop / teleport di frame pertama)
+    masterTl.set(animState, {
+      shutterPress: 0,
+      flashBurst: 0,
+      recoil: 0,
+      camStepBack: 0,
+      photoVisible: 0,
+      clipActive: 1,
+      ejectP: 0,
+      landP: 0,
+      zoomP: 0,
+      fadeOutP: 0,
+      developP: 0,
+      photoOpacity: 0,
+    });
+
+    // 1. Anticipation kecil & rana kamera + kilat flash (0.00s -> 0.85s)
+    masterTl.call(() => reportPhase("Membidik momen & menekan rana..."), [], 0.02);
+    masterTl.to(animState, { shutterPress: 1, duration: 0.16, ease: "power2.in" }, 0.36);
+    masterTl.to(animState, { shutterPress: 0, duration: 0.22, ease: "power2.out" }, 0.52);
+    masterTl.to(animState, { flashBurst: 1, recoil: 1, duration: 0.09, ease: "power4.out" }, 0.44);
+    masterTl.to(animState, { flashBurst: 0, recoil: 0, duration: 0.34, ease: "power3.out" }, 0.54);
+
+    // 2. Foto meluncur deterministik tepat dari slot kamera (bagian dalam terpotong clipping plane)
+    masterTl.call(() => reportPhase("Mencetak lembar Polaroid dari slot..."), [], 0.86);
+    masterTl.set(animState, { photoVisible: 1, clipActive: 1 }, 0.86);
+    masterTl.to(animState, { photoOpacity: 1, duration: 0.14, ease: "power1.out" }, 0.86);
+    masterTl.to(
+      animState,
+      { ejectP: 1, duration: 1.52, ease: "power2.out" },
+      0.88
+    );
+    masterTl.to(
+      animState,
+      { developP: 1, duration: 1.65, ease: "power1.inOut" },
+      0.95
+    );
+
+    // 3. Lengkung halus -> mendarat REBAH RATA di atas lantai (y = FLOOR_Y + tebal/2 + epsilon)
+    masterTl.call(() => reportPhase("Lembar foto mendarat di atas meja..."), [], 2.42);
+    masterTl.set(animState, { clipActive: 0 }, 2.42);
+    masterTl.to(
+      animState,
+      { landP: 1, duration: 0.92, ease: "power3.out" },
+      2.42
+    );
+
+    // Jeda tenang saat foto rebah di lantai dengan bayangan kontak lembut (3.34s -> 4.02s)
+
+    // 4. Kamera mundur ringan, foto terangkat halus & zoom menghadap pembaca agar jernih terbaca
+    masterTl.call(() => reportPhase("Mengangkat hasil cetakan agar terbaca..."), [], 4.02);
+    masterTl.to(
+      animState,
+      { camStepBack: 1, duration: 0.86, ease: "power3.inOut" },
+      4.02
+    );
+    masterTl.to(
+      animState,
+      { zoomP: 1, duration: 0.94, ease: "power3.out" },
+      4.05
+    );
+
+    // Tahan agar pengguna bisa membaca foto & caption dengan nyaman (4.99s -> 6.65s)
+
+    // 5. Pudar lembut & kembalikan kamera untuk gulungan film berikutnya
+    masterTl.call(() => reportPhase("Menyiapkan gulungan film berikutnya..."), [], 6.65);
+    masterTl.to(
+      animState,
+      { fadeOutP: 1, photoOpacity: 0, duration: 0.78, ease: "power2.inOut" },
+      6.65
+    );
+    masterTl.to(
+      animState,
+      { camStepBack: 0, duration: 0.72, ease: "power2.inOut" },
+      6.75
+    );
+    masterTl.set(animState, { photoVisible: 0 }, 7.45);
+    // Sedikit jeda tenang sebelum repeat
+    masterTl.to({}, { duration: 0.25 }, 7.45);
+
+    skipCycleFnRef.current = () => {
+      if (isDisposed) return;
+      advanceToNextPhoto();
+      masterTl.restart(false);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        masterTl.pause();
+      } else if (!isDisposed) {
+        masterTl.resume();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const setPhotoClipping = (planes: THREE.Plane[]) => {
+      if (frontMat.clippingPlanes !== planes) {
+        frontMat.clippingPlanes = planes;
+        edgeMat.clippingPlanes = planes;
+        backMat.clippingPlanes = planes;
+      }
+    };
+
+    const computeSlotPose = (
+      pVal: number,
+      outPos: THREE.Vector3,
+      outQuat: THREE.Quaternion
+    ) => {
+      slotAnchor.getWorldPosition(_slotWorldPos);
+      slotAnchor.getWorldQuaternion(_slotWorldQuat);
+
+      // Muka foto (+Z) menghadap ke atas saat keluar dari celah horizontal (-Math.PI / 2)
+      _localPitchQuat.setFromAxisAngle(_xAxis, -Math.PI / 2);
+      outQuat.copy(_slotWorldQuat).multiply(_localPitchQuat);
+
+      // Arah dorong lurus sejajar sumbu +Z slotAnchor
+      _ejectDir.set(0, 0, 1).applyQuaternion(_slotWorldQuat).normalize();
+
+      // p=0: tepi depan foto tepat di dalam mulut slot; p=1: tepi belakang foto bebas bersih dari bibir rol
+      const halfLen = PHOTO_H * 0.5 * EJECT_SCALE;
+      const distFromSlot = THREE.MathUtils.lerp(
+        -halfLen - 0.018,
+        halfLen + 0.095,
+        pVal
+      );
+      outPos.copy(_slotWorldPos).addScaledVector(_ejectDir, distFromSlot);
+    };
+
+    const syncSlotClipPlane = () => {
+      slotAnchor.getWorldPosition(_slotWorldPos);
+      slotAnchor.getWorldQuaternion(_slotWorldQuat);
+      _slotForward.set(0, 0, 1).applyQuaternion(_slotWorldQuat).normalize();
+      // Geser sedikit 0.012 ke dalam mulut slot gelap agar tepi yang muncul selalu utuh keluar dari celah
+      _slotWorldPos.addScaledVector(_slotForward, -0.012);
+      slotClipPlane.setFromNormalAndCoplanarPoint(_slotForward, _slotWorldPos);
+    };
+
     const clock = new THREE.Clock();
+    let elapsed = 0;
 
     const afterDraw = (cb: () => void) => {
       try {
@@ -790,223 +1051,159 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
     const tick = () => {
       if (isDisposed) return;
-      const dt = Math.min(0.06, clock.getDelta());
+      const dt = Math.min(0.05, clock.getDelta());
 
       if (!document.hidden) {
-        if (skipRequestedRef.current) {
-          skipRequestedRef.current = false;
-          cycleElapsed = 0.05;
-          loopIdx =
-            realMoments.length > 0 ? (loopIdx + 1) % realMoments.length : 0;
-          setActiveIdx(loopIdx);
-          void applyPhotoForIndex(loopIdx);
-        } else {
-          cycleElapsed += dt;
-        }
-
-        if (cycleElapsed >= LOOP_DURATION_SEC) {
-          cycleElapsed = cycleElapsed % LOOP_DURATION_SEC;
-          if (realMoments.length > 0) {
-            loopIdx = (loopIdx + 1) % realMoments.length;
-            setActiveIdx(loopIdx);
-            void applyPhotoForIndex(loopIdx);
-          }
-        }
-
-        // Pastikan foto berikutnya selalu siap di cache sebelum akhir siklus
-        const nextIdx =
-          realMoments.length > 0 ? (loopIdx + 1) % realMoments.length : 0;
-        if (
-          cycleElapsed > 4.2 &&
-          !loadedImgs.has(nextIdx) &&
-          realMoments[nextIdx]?.image_url
-        ) {
-          loadedImgs.set(nextIdx, null);
-          void loadImageCorsSafe(realMoments[nextIdx]!.image_url).then(
-            (img) => {
-              if (!isDisposed) loadedImgs.set(nextIdx, img);
-            }
-          );
-        }
-        if (appliedIdx !== loopIdx && cycleElapsed < 0.4) {
-          void applyPhotoForIndex(loopIdx);
-        }
-
-        const t = cycleElapsed;
+        elapsed += dt;
         const px = pointerRef.current.x;
         const py = pointerRef.current.y;
 
-        // 1. Gerak Kamera Polaroid 3D + Kilat Flash + Mundur Halus Saat Foto Zoom
-        const shutterPress =
-          smoothstep(0.62, 0.78, t) * (1 - smoothstep(0.84, 1.04, t));
-        shutterButton.position.z = 0.94 - shutterPress * 0.05;
+        // 1. Update Kamera Rig (diikat erat ke lantai FLOOR_Y tanpa pernah menenggelamkan kaki kamera)
+        shutterButton.position.z = 0.94 - animState.shutterPress * 0.048;
+        flashLight.intensity = animState.flashBurst * 4.4;
+        flashBulbMat.emissiveIntensity = 0.16 + animState.flashBurst * 3.6;
 
-        const flashBurst =
-          smoothstep(0.74, 0.82, t) * (1 - smoothstep(0.84, 1.18, t));
-        flashLight.intensity = flashBurst * 4.5;
-        flashBulbMat.emissiveIntensity = 0.18 + flashBurst * 3.8;
+        // Saat foto sedang keluar dari slot, redam goyangan rig agar slot sangat presisi & kokoh
+        const swayDamp = animState.clipActive > 0.5 ? 0.25 : 1.0;
 
-        const recoil =
-          smoothstep(0.76, 0.84, t) * (1 - smoothstep(0.86, 1.15, t));
-
-        // Kamera sedikit mundur ke kiri saat foto men-zoom agar lega & tak pernah menyentuh lantai
-        const camStepBack =
-          smoothstep(3.05, 4.1, t) * (1 - smoothstep(5.9, 7.05, t));
-
-        cameraRig.position.x = THREE.MathUtils.lerp(
+        cameraRig.position.x = THREE.MathUtils.damp(
           cameraRig.position.x,
-          -camStepBack * 0.48 + px * 0.16,
-          0.1
+          -animState.camStepBack * 0.52 + px * 0.14 * swayDamp,
+          6.5,
+          dt
         );
-        cameraRig.position.y = THREE.MathUtils.lerp(
+        cameraRig.position.y = THREE.MathUtils.damp(
           cameraRig.position.y,
-          0.02 + camStepBack * 0.04 + Math.sin(t * 1.6) * 0.022 + py * 0.06,
-          0.1
+          animState.camStepBack * 0.03 +
+            Math.max(0, Math.sin(elapsed * 1.4) * 0.012 * swayDamp),
+          6.5,
+          dt
         );
-        cameraRig.position.z = THREE.MathUtils.lerp(
+        cameraRig.position.z = THREE.MathUtils.damp(
           cameraRig.position.z,
-          -recoil * 0.08 - camStepBack * 0.92,
-          0.12
+          -animState.recoil * 0.075 - animState.camStepBack * 0.95,
+          7.0,
+          dt
         );
-        cameraRig.rotation.y = THREE.MathUtils.lerp(
+        cameraRig.rotation.y = THREE.MathUtils.damp(
           cameraRig.rotation.y,
-          -0.24 + Math.sin(t * 0.9) * 0.05 - camStepBack * 0.18 + px * 0.2,
-          0.08
+          -0.2 +
+            Math.sin(elapsed * 0.85) * 0.04 * swayDamp -
+            animState.camStepBack * 0.16 +
+            px * 0.18 * swayDamp,
+          6.0,
+          dt
         );
-        cameraRig.rotation.x = THREE.MathUtils.lerp(
+        cameraRig.rotation.x = THREE.MathUtils.damp(
           cameraRig.rotation.x,
-          0.06 - recoil * 0.04 + py * 0.08,
-          0.08
+          0.03 - animState.recoil * 0.032 + py * 0.05 * swayDamp,
+          6.0,
+          dt
         );
 
         cameraRig.updateMatrixWorld(true);
 
-        // 2. Lembar Polaroid: Keluar Akurat Tepat dari Celah Mulut Slot -> Zoom Mendekat -> Pudar Pelan -> Reset
-        const setPhotoClipping = (planes: THREE.Plane[]) => {
-          if (frontMat.clippingPlanes !== planes) {
-            frontMat.clippingPlanes = planes;
-            edgeMat.clippingPlanes = planes;
-            backMat.clippingPlanes = planes;
-          }
-        };
+        // 2. Update Foto Polaroid berdasarkan state timeline GSAP deterministik
+        const op = animState.photoOpacity;
+        const isPhotoShown = animState.photoVisible > 0.5 && op > 0.008;
+        photoMesh.visible = isPhotoShown;
 
-        const computeSlotEjectPose = (
-          pVal: number,
-          outPos: THREE.Vector3,
-          outQuat: THREE.Quaternion
-        ) => {
-          slotAnchor.getWorldPosition(_slotWorldPos);
-          slotAnchor.getWorldQuaternion(_slotWorldQuat);
-
-          // Keluar lurus sejajar celah rol (-91.7° sedikit mendongak) sehingga tidak menabrak bibir rol atas maupun turun ke lantai
-          const pitchRad = -Math.PI / 2 - 0.03;
-          _localTiltQuat.setFromAxisAngle(_xAxis, pitchRad);
-          outQuat.copy(_slotWorldQuat).multiply(_localTiltQuat);
-
-          // Arah dorong persis sejajar bidang lembar foto (sumbu -Y kartu menuju +Z mulut slot)
-          _ejectDir.set(0, -1, 0).applyQuaternion(outQuat).normalize();
-
-          // Jarak terukur persis berdasarkan ukuran kartu terskala: p=0 tersembunyi penuh di dalam slot, p=1 seluruh bingkai bebas dari rol
-          const halfLen = CARD_H * 0.5 * EJECT_SCALE;
-          const distFromSlot = THREE.MathUtils.lerp(
-            -halfLen - 0.012,
-            halfLen + 0.085,
-            pVal
-          );
-          outPos.copy(_slotWorldPos).addScaledVector(_ejectDir, distFromSlot);
-        };
-
-        if (t < 1.08) {
-          photoMesh.visible = false;
+        if (!isPhotoShown) {
           setPhotoClipping(emptyClipList);
-          frontMat.opacity = 0;
-          edgeMat.opacity = 0;
-          backMat.opacity = 0;
-          if (lastReportedPhase !== "bidik") {
-            lastReportedPhase = "bidik";
-            setStagePhaseLabel("Membidik momen & menekan rana...");
-          }
-        } else if (t < 3.05) {
-          // Fase cetak keluar lurus bersih dari mulut rol depan tanpa memotong tepi bawah/atas foto
-          const p = easeOutCubic((t - 1.08) / (3.05 - 1.08));
-          photoMesh.visible = true;
-
-          slotClipPlane
-            .copy(localSlotPlane)
-            .applyMatrix4(polaroidModel.matrixWorld);
-          setPhotoClipping(slotClipList);
-
-          computeSlotEjectPose(p, photoMesh.position, photoMesh.quaternion);
-          photoMesh.scale.set(EJECT_SCALE, EJECT_SCALE, EJECT_SCALE);
-
-          // Efek foto Polaroid perlahan matang warnanya hingga tingkat kecerahan nyaman (bebas silau)
-          const dev = smoothstep(1.15, 2.75, t);
-          const shade = THREE.MathUtils.lerp(0.32, 0.9, dev);
-          frontMat.color.setRGB(shade, shade * 0.98, shade * 0.94);
-
-          const fadeStart = smoothstep(1.08, 1.22, t);
-          frontMat.opacity = fadeStart;
-          edgeMat.opacity = fadeStart;
-          backMat.opacity = fadeStart;
-
-          if (lastReportedPhase !== "cetak") {
-            lastReportedPhase = "cetak";
-            setStagePhaseLabel("Mencetak lembar Polaroid kelas...");
-          }
-        } else if (t < 5.45) {
-          // Fase terangkat melengkung ke atas & zoom mendekat penuh di atas lantai (clearance lantai aman > 0.10 unit)
-          setPhotoClipping(emptyClipList);
-          const p = easeInOutCubic((t - 3.05) / 1.15);
-          computeSlotEjectPose(1, _startEjectPos, _startEjectQuat);
-
-          _targetZoomPos.set(px * 0.08, 0.44 + py * 0.05, 3.18);
-          _targetZoomEuler.set(0.03, px * 0.12, 0.012, "XYZ");
-          _targetZoomQuat.setFromEuler(_targetZoomEuler);
-
-          photoMesh.visible = true;
-          photoMesh.position.lerpVectors(_startEjectPos, _targetZoomPos, p);
-          // Busur angkat saat kartu berputar tegak agar sudut bawah kertas tak pernah mendekati alas studio
-          photoMesh.position.y += Math.sin(p * Math.PI) * 0.24;
-          photoMesh.quaternion.slerpQuaternions(
-            _startEjectQuat,
-            _targetZoomQuat,
-            p
-          );
-
-          const zoomScale = THREE.MathUtils.lerp(EJECT_SCALE, 1.05, p);
-          photoMesh.scale.set(zoomScale, zoomScale, zoomScale);
-          frontMat.color.setRGB(0.9, 0.882, 0.846);
-          frontMat.opacity = 1;
-          edgeMat.opacity = 1;
-          backMat.opacity = 1;
-
-          if (lastReportedPhase !== "zoom") {
-            lastReportedPhase = "zoom";
-            setStagePhaseLabel("Menampilkan hasil cetakan kenangan...");
-          }
+          photoContactShadow.visible = false;
+          photoContactShadowMat.opacity = 0;
         } else {
-          // Fase pudar pelan-pelan sebelum looping ulang
-          setPhotoClipping(emptyClipList);
-          const fadeOutP = smoothstep(5.45, 6.75, t);
-          const op = Math.max(0, 1 - fadeOutP);
-          photoMesh.visible = op > 0.01;
-          photoMesh.position.set(
-            px * 0.08,
-            0.44 + fadeOutP * 0.14,
-            3.18 + fadeOutP * 0.22
-          );
-          const driftScale = 1.05 + fadeOutP * 0.08;
-          photoMesh.scale.set(driftScale, driftScale, driftScale);
-          photoMesh.rotation.set(0.03, px * 0.12, 0.012);
-          frontMat.color.setRGB(0.9, 0.882, 0.846);
+          // Matangkan warna emulsi Polaroid tanpa silau
+          const shade = THREE.MathUtils.lerp(0.36, 0.9, animState.developP);
+          frontMat.color.setRGB(shade, shade * 0.985, shade * 0.955);
+
+          const isOpaque = op > 0.96;
           frontMat.opacity = op;
           edgeMat.opacity = op;
           backMat.opacity = op;
+          frontMat.depthWrite = isOpaque;
+          edgeMat.depthWrite = isOpaque;
+          backMat.depthWrite = isOpaque;
 
-          if (lastReportedPhase !== "fade") {
-            lastReportedPhase = "fade";
-            setStagePhaseLabel("Menyiapkan gulungan film berikutnya...");
+          // Hitung titik ujung slot terkini secara dinamis dari slotAnchor
+          computeSlotPose(1, _ejectEndPos, _ejectEndQuat);
+
+          // Target posisi mendarat rebah rata di depan kamera tepat di atas lantai
+          _landPos.set(
+            _ejectEndPos.x + 0.04,
+            PHOTO_LAND_Y,
+            _ejectEndPos.z + 0.42
+          );
+          _landQuat.setFromEuler(_landEuler);
+
+          // Target posisi naik & zoom agar terbaca jelas tanpa menyentuh lantai
+          _zoomPos.set(px * 0.07, 0.48 + py * 0.04, 3.22);
+          _zoomEuler.set(0.025, px * 0.1, 0.01, "XYZ");
+          _zoomQuat.setFromEuler(_zoomEuler);
+
+          if (animState.landP <= 0.0001) {
+            // FASE 1: Keluar tepat dari slot anchor (bagian dalam body disembunyikan oleh clipping plane)
+            syncSlotClipPlane();
+            setPhotoClipping(slotClipList);
+            computeSlotPose(
+              animState.ejectP,
+              photoMesh.position,
+              photoMesh.quaternion
+            );
+            photoMesh.scale.setScalar(EJECT_SCALE);
+          } else if (animState.zoomP <= 0.0001) {
+            // FASE 2: Busur lembut dari mulut slot menuju pendaratan rebah rata di atas lantai
+            setPhotoClipping(emptyClipList);
+            const lp = animState.landP;
+            photoMesh.position.lerpVectors(_ejectEndPos, _landPos, lp);
+            // Lengkung naik tipis sebelum mendarat mulus (anticipation & soft settle)
+            photoMesh.position.y += Math.sin(lp * Math.PI) * 0.16;
+            photoMesh.quaternion.slerpQuaternions(_ejectEndQuat, _landQuat, lp);
+            const landScale = THREE.MathUtils.lerp(EJECT_SCALE, 0.95, lp);
+            photoMesh.scale.setScalar(landScale);
+          } else {
+            // FASE 3 & 4: Terangkat melengkung dari lantai -> zoom menghadap kamera -> pudar halus
+            setPhotoClipping(emptyClipList);
+            const zp = animState.zoomP;
+            photoMesh.position.lerpVectors(_landPos, _zoomPos, zp);
+            // Busur angkat ekstra agar sisi bawah kertas selalu jauh di atas lantai saat berputar tegak
+            photoMesh.position.y += Math.sin(zp * Math.PI) * 0.36;
+            photoMesh.quaternion.slerpQuaternions(_landQuat, _zoomQuat, zp);
+            const curScale =
+              THREE.MathUtils.lerp(0.95, 1.05, zp) + animState.fadeOutP * 0.06;
+            photoMesh.scale.setScalar(curScale);
+
+            if (animState.fadeOutP > 0.001) {
+              photoMesh.position.y += animState.fadeOutP * 0.12;
+              photoMesh.position.z += animState.fadeOutP * 0.18;
+            }
           }
+
+          // ANTI-FLOOR-PENETRATION GUARANTEE:
+          // Ukur Box3 dunia di setiap frame & jepit y agar titik terbawah foto >= FLOOR_MIN_BOUND_Y
+          photoMesh.updateMatrixWorld(true);
+          _photoBox.setFromObject(photoMesh);
+          if (_photoBox.min.y < FLOOR_MIN_BOUND_Y) {
+            photoMesh.position.y += FLOOR_MIN_BOUND_Y - _photoBox.min.y;
+            photoMesh.updateMatrixWorld(true);
+            _photoBox.setFromObject(photoMesh);
+          }
+
+          // Update bayangan kontak lembut di lantai mengikuti X/Z foto & ketinggiannya
+          const clearance = Math.max(0, _photoBox.min.y - FLOOR_Y);
+          const groundProximity = Math.max(0, 1 - clearance / 0.85);
+          const shadowAlpha = groundProximity * groundProximity * op * 0.78;
+          photoContactShadow.visible = shadowAlpha > 0.015;
+          photoContactShadowMat.opacity = shadowAlpha;
+          photoContactShadow.position.set(
+            photoMesh.position.x,
+            FLOOR_Y + 0.001,
+            photoMesh.position.z
+          );
+          const spreadScale =
+            (0.94 + clearance * 0.45) * photoMesh.scale.x;
+          photoContactShadow.scale.set(spreadScale, spreadScale, 1);
+          photoContactShadow.rotation.z = -_landEuler.y * animState.landP;
         }
       }
 
@@ -1028,20 +1225,23 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
     const resizeObserver = new ResizeObserver(() => {
       if (isDisposed || !container) return;
-      const nw = Math.max(300, container.clientWidth);
-      const nh = Math.max(340, container.clientHeight);
-      camera.aspect = nw / nh;
-      camera.updateProjectionMatrix();
+      const nw = Math.max(280, container.clientWidth);
+      const nh = Math.max(320, container.clientHeight);
+      applyResponsiveCameraFraming(nw, nh);
       renderer.setSize(nw, nh);
     });
     resizeObserver.observe(container);
 
     return () => {
       isDisposed = true;
+      skipCycleFnRef.current = null;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      masterTl.kill();
       window.clearTimeout(rafId);
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       if (currentTexture) currentTexture.dispose();
+      contactShadowTex.dispose();
       envTexture.dispose();
       disposeSceneGraph(scene);
       renderer.dispose();
@@ -1049,12 +1249,28 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [is2DFallback, realMoments]);
+  }, [is2DFallback]);
+
+  React.useEffect(() => {
+    if (!is2DFallback) {
+      window.dispatchEvent(
+        new CustomEvent("app:scene-loading", {
+          detail: { label: "Menyiapkan kamera Polaroid 3D..." },
+        })
+      );
+      return;
+    }
+    const raf = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent("app:scene-ready"));
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [is2DFallback]);
 
   const activeMoment =
     realMoments[activeIdx % Math.max(1, realMoments.length)] ?? null;
   const activeCaption = decodeHtmlEntities(
-    activeMoment?.caption || "XII PPLG 1 · MAKN Ende — Satu Angkatan, Satu Cerita"
+    activeMoment?.caption ||
+      "XII PPLG 1 · MAKN Ende — Satu Angkatan, Satu Cerita"
   );
   const activeDate = decodeHtmlEntities(
     activeMoment?.taken_at || "2024 — 2027"
@@ -1078,7 +1294,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       );
       return;
     }
-    skipRequestedRef.current = true;
+    skipCycleFnRef.current?.();
   };
 
   return (
@@ -1087,39 +1303,32 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       onPointerLeave={handlePointerLeave}
       className="relative w-full overflow-visible"
     >
-      {/* Panggung WebGL 3D Terbuka atau Tumpukan Kertas Cetak Foto Asli 2D */}
       {is2DFallback ? (
         <div className="relative flex min-h-[400px] sm:min-h-[470px] w-full items-center justify-center py-8 px-4">
           <div className="relative mx-auto w-[286px] sm:w-[336px]">
-            {/* Lembar foto tumpukan belakang kanan (kedalaman kertas cetak fisik) */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 translate-x-3 translate-y-2 rotate-[4.5deg] rounded-[3px] border border-[#CBBBA0] bg-[#EAE0C8] shadow-[0_14px_30px_-12px_rgba(24,18,12,0.28)]"
             />
-            {/* Lembar foto tumpukan belakang kiri */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -translate-x-3 translate-y-1.5 -rotate-[4deg] rounded-[3px] border border-[#D4C5AA] bg-[#F1E8D3] shadow-[0_16px_32px_-12px_rgba(24,18,12,0.3)]"
             />
-
-            {/* Selotip kertas transparan tipis di sisi atas seperti tempelan foto asli */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute -top-3.5 left-1/2 z-20 h-7 w-24 -translate-x-1/2 -rotate-2 border border-[#C8B99B]/60 bg-[#F5EDD6]/75 shadow-xs backdrop-blur-[1px]"
             />
 
-            {/* Kertas Cetak Foto Polaroid Utama yang Otentik */}
             <AnimatePresence mode="wait">
               <motion.figure
                 key={`${activeMoment?.id ?? "fallback"}-${activeIdx}`}
-                initial={{ opacity: 0, y: 18, rotate: -2.2, scale: 0.97 }}
+                initial={{ opacity: 0, y: 16, rotate: -2.2, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, rotate: -1.1, scale: 1 }}
-                exit={{ opacity: 0, y: -14, rotate: 1.5, scale: 0.98 }}
+                exit={{ opacity: 0, y: -12, rotate: 1.4, scale: 0.98 }}
                 whileHover={{ rotate: 0, y: -4, scale: 1.015 }}
-                transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                transition={MOTION_EASE.springTactile}
                 className="relative z-10 rounded-[3px] border border-[#D2C3A6] bg-[#F6EFE0] p-3.5 pb-6 text-[#1E1712] shadow-[0_24px_48px_-16px_rgba(24,18,12,0.38),0_4px_12px_-4px_rgba(24,18,12,0.18),inset_0_1px_0_rgba(255,255,255,0.65)]"
               >
-                {/* Tekstur serat kertas cetak sangat halus */}
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 rounded-[3px] opacity-30"
@@ -1130,7 +1339,6 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
                   }}
                 />
 
-                {/* Bidang Foto Emulsi Cekung dengan Bingkai Tipis Asli */}
                 <div className="relative aspect-[4/3.45] w-full overflow-hidden rounded-[2px] border border-[#B8A789] bg-[#241C16] shadow-[inset_0_2px_6px_rgba(0,0,0,0.28)]">
                   {activeMoment?.image_url &&
                   !activeMoment.image_url.startsWith(
@@ -1139,6 +1347,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
                     <img
                       src={activeMoment.image_url}
                       alt={activeCaption}
+                      crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                       className="public-film-photo size-full object-cover"
                     />
@@ -1150,14 +1359,12 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
                       </p>
                     </div>
                   )}
-                  {/* Vignette tipis alami di tepi cetakan */}
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 shadow-[inset_0_0_24px_rgba(24,18,12,0.18)]"
                   />
                 </div>
 
-                {/* Dagu Bawah Kertas Polaroid dengan Tulisan Tangan & Cap Frame */}
                 <figcaption className="relative mt-4 px-1 text-center">
                   <p className="line-clamp-2 font-hand text-[22px] sm:text-[24px] font-semibold leading-[1.2] text-[#1F1812]">
                     {activeCaption}
@@ -1179,12 +1386,12 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       ) : (
         <div
           ref={mountRef}
+          data-scene-canvas="polaroid"
           aria-label="Model 3D Kamera Polaroid Jadul mencetak foto kenangan XII PPLG 1"
           className="relative h-[420px] sm:h-[500px] lg:h-[540px] w-full cursor-grab active:cursor-grabbing"
         />
       )}
 
-      {/* Keterangan Tipis Foto Sedang Dicetak + Tombol Cetak Berikutnya */}
       <div className="relative z-10 mt-1 flex flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -1200,14 +1407,21 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           </p>
         </div>
 
-        <button
+        <motion.button
           type="button"
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.96 }}
+          transition={MOTION_EASE.springTactile}
           onClick={handleNextPhoto}
-          className="inline-flex min-h-[34px] shrink-0 items-center justify-center gap-1 rounded-lg border border-border bg-card/85 px-3 py-1.5 font-sans text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+          className="group relative inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 overflow-hidden rounded-lg border border-border bg-card/85 px-3 py-1.5 font-sans text-xs font-semibold text-foreground transition-colors hover:border-foreground/45"
         >
-          <span>Cetak Foto Lain</span>
-          <ChevronRight className="size-3.5" />
-        </button>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -translate-x-full bg-foreground/[0.06] transition-transform duration-300 ease-out group-hover:translate-x-0"
+          />
+          <span className="relative z-10">Cetak Foto Lain</span>
+          <ChevronRight className="relative z-10 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+        </motion.button>
       </div>
     </div>
   );
