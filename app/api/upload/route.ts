@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 import {
   deleteMediaFromBlob,
@@ -15,11 +15,18 @@ import type { MomentPhase } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 function revalidateAllPublicMediaPages() {
+  try {
+    revalidateTag("media-manifest");
+  } catch {
+    // Abaikan jika revalidateTag dipanggil di luar konteks cache
+  }
   revalidatePath("/");
   revalidatePath("/galeri");
   revalidatePath("/kenangan");
+  revalidatePath("/karya");
   revalidatePath("/anggota");
   revalidatePath("/guru");
+  revalidatePath("/dream-board");
   revalidatePath("/admin");
   revalidatePath("/", "layout");
 }

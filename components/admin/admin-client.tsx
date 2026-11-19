@@ -66,6 +66,26 @@ interface RawTimeCapsuleAdmin {
   created_at?: string;
 }
 
+interface PendingBlobSubmissionRow {
+  id: string;
+  senderName: string;
+  title: string;
+  caption: string;
+  category: string;
+  channel: "hero3d" | "yearbook" | "gallery" | "karya" | "students";
+  phase: MomentPhase;
+  takenAt: string;
+  blobUrl: string;
+  pathname: string;
+  studentId?: string;
+  studentName?: string;
+  demoUrl?: string;
+  repoUrl?: string;
+  tags?: string[];
+  status: "pending";
+  createdAt: string;
+}
+
 interface AdminDashboardData {
   students: StudentRow[];
   teachers: TeacherRow[];
@@ -77,6 +97,7 @@ interface AdminDashboardData {
   thanksList: ThanksRow[];
   works: WorkRow[];
   polls?: PollWithOptions[];
+  pendingSubmissions?: PendingBlobSubmissionRow[];
   settings: {
     graduation_date: string;
   };
@@ -96,6 +117,9 @@ interface QueueRow {
   text: string;
   status: ContentStatus;
   createdAt?: string;
+  imageUrl?: string;
+  channel?: string;
+  isBlobSubmission?: boolean;
 }
 
 const ADMIN_TOKEN_STORAGE_KEY = "xii_pplg1_admin_token";
@@ -141,6 +165,9 @@ export function AdminClient() {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [pendingBlobQueue, setPendingBlobQueue] = useState<
+    PendingBlobSubmissionRow[]
+  >([]);
   const [sessionToken, setSessionToken] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -238,14 +265,30 @@ export function AdminClient() {
       try {
         const token = overrideToken || readStoredAdminToken();
         if (token) setSessionToken(token);
-        const res = await fetch("/api/admin", {
-          cache: "no-store",
-          headers: token ? { "x-admin-session": token } : undefined,
-        });
+        const [res, subRes] = await Promise.all([
+          fetch("/api/admin", {
+            cache: "no-store",
+            headers: token ? { "x-admin-session": token } : undefined,
+          }),
+          fetch("/api/submissions", {
+            cache: "no-store",
+            headers: token ? { "x-admin-session": token } : undefined,
+          }).catch(() => null),
+        ]);
         const json = await res.json();
         if (json.ok && json.authenticated && json.data) {
           setAuthenticated(true);
           setData(json.data);
+          if (subRes && subRes.ok) {
+            const subJson = await subRes.json().catch(() => null);
+            if (subJson?.ok && Array.isArray(subJson.items)) {
+              setPendingBlobQueue(subJson.items);
+            } else if (Array.isArray(json.data.pendingSubmissions)) {
+              setPendingBlobQueue(json.data.pendingSubmissions);
+            }
+          } else if (Array.isArray(json.data.pendingSubmissions)) {
+            setPendingBlobQueue(json.data.pendingSubmissions);
+          }
           setGradDateInput(
             json.data.settings?.graduation_date?.slice(0, 16) ||
               "2026-05-15T08:00"
@@ -290,12 +333,16 @@ export function AdminClient() {
 
       if (json.data) {
         setData(json.data);
+        if (Array.isArray(json.data.pendingSubmissions)) {
+          setPendingBlobQueue(json.data.pendingSubmissions);
+        }
         setGradDateInput(
           json.data.settings?.graduation_date?.slice(0, 16) ||
             "2026-05-15T08:00"
         );
         setAuthenticated(true);
         setLoading(false);
+        void fetchDashboard(token);
       } else {
         setAuthenticated(true);
         await fetchDashboard(token);
@@ -311,11 +358,38 @@ export function AdminClient() {
     writeStoredAdminToken("");
     setAuthenticated(false);
     setData(null);
+    setPendingBlobQueue([]);
   };
 
   const queueItems = useMemo<QueueRow[]>(() => {
     if (!data) return [];
     const rows: QueueRow[] = [];
+    const seenIds = new Set<string>();
+
+    // 1. Kiriman foto pengunjung dari pending-manifest.json (/api/submissions)
+    const pendingList =
+      pendingBlobQueue.length > 0
+        ? pendingBlobQueue
+        : (data.pendingSubmissions ?? []);
+    for (const p of pendingList) {
+      seenIds.add(p.id);
+      const isKarya = p.channel === "karya";
+      rows.push({
+        table: isKarya ? "works" : "moments",
+        tableLabel: isKarya
+          ? "Karya Siswa (Pending Blob)"
+          : `Foto ${p.channel.toUpperCase()} (Pending Blob)`,
+        id: p.id,
+        author: p.senderName,
+        subtitle: `Channel: ${p.channel}/ • Kelas ${p.phase} • ${p.category} (${p.takenAt})`,
+        text: p.caption,
+        status: p.status,
+        createdAt: p.createdAt,
+        imageUrl: p.blobUrl,
+        channel: p.channel,
+        isBlobSubmission: true,
+      });
+    }
 
     for (const m of data.memoryEntries) {
       const stu = data.students.find((s) => s.id === m.student_id);
@@ -384,6 +458,8 @@ export function AdminClient() {
     }
 
     for (const mo of data.moments) {
+      if (seenIds.has(mo.id)) continue;
+      seenIds.add(mo.id);
       rows.push({
         table: "moments",
         tableLabel: "Galeri Momen",
@@ -393,10 +469,13 @@ export function AdminClient() {
         text: mo.caption,
         status: mo.status,
         createdAt: mo.created_at,
+        imageUrl: mo.image_url,
       });
     }
 
     for (const w of data.works) {
+      if (seenIds.has(w.id)) continue;
+      seenIds.add(w.id);
       const stu = data.students.find((s) => s.id === w.student_id);
       rows.push({
         table: "works",
@@ -406,11 +485,12 @@ export function AdminClient() {
         subtitle: `${w.title} [${w.tags.join(", ")}]`,
         text: w.description,
         status: w.status,
+        imageUrl: w.image_url,
       });
     }
 
     return rows;
-  }, [data]);
+  }, [data, pendingBlobQueue]);
 
   const filteredQueue = useMemo(() => {
     if (statusFilter === "all") return queueItems;
@@ -441,6 +521,51 @@ export function AdminClient() {
     updatedText?: string
   ) => {
     try {
+      const token = getActiveToken();
+      const isBlobItem =
+        table === "moments" ||
+        pendingBlobQueue.some((p) => p.id === id);
+
+      if (isBlobItem && (status === "approved" || status === "rejected")) {
+        const endpoint =
+          status === "approved"
+            ? `/api/submissions/${encodeURIComponent(id)}/approve`
+            : "/api/submissions";
+        const method = status === "approved" ? "POST" : "PATCH";
+
+        const subRes = await fetch(endpoint, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "x-admin-session": token } : {}),
+          },
+          body: JSON.stringify({
+            id,
+            action: status === "approved" ? "approve" : "reject",
+            updatedText,
+            ...(token ? { sessionToken: token } : {}),
+          }),
+        });
+        const subJson = await subRes.json();
+        if (!subRes.ok || !subJson.ok) {
+          setFeedback(
+            subJson.error ||
+              "Gagal memproses moderasi foto di Vercel Blob."
+          );
+          return;
+        }
+        setEditingKey(null);
+        await fetchDashboard(token);
+        notifyPublicDataUpdated();
+        setFeedback(
+          subJson.message ||
+            (status === "approved"
+              ? "Foto berhasil di-ACC ke manifest.json Vercel Blob dan langsung tampil di halaman publik!"
+              : "Kiriman ditolak. File gambar fisik telah dihapus dari Vercel Blob.")
+        );
+        return;
+      }
+
       const res = await adminPost({
         action: "moderate",
         table,
@@ -449,16 +574,25 @@ export function AdminClient() {
         updatedText,
       });
       const json = await res.json();
-      if (json.ok && json.data) {
+      if (res.ok && json.ok && json.data) {
         setData(json.data);
+        if (Array.isArray(json.data.pendingSubmissions)) {
+          setPendingBlobQueue(json.data.pendingSubmissions);
+        }
         setEditingKey(null);
         notifyPublicDataUpdated();
         setFeedback(
           `Item berhasil diperbarui menjadi '${status === "approved" ? "Disetujui" : status === "rejected" ? "Ditolak" : "Menunggu"}' dan disinkronkan ke halaman publik.`
         );
+      } else {
+        setFeedback(json.error || "Gagal memperbarui status moderasi.");
       }
-    } catch {
-      setFeedback("Gagal memperbarui status moderasi.");
+    } catch (err) {
+      setFeedback(
+        err instanceof Error
+          ? err.message
+          : "Gagal memperbarui status moderasi."
+      );
     }
   };
 
@@ -1055,57 +1189,79 @@ export function AdminClient() {
                     className="rounded-xl border border-border bg-card p-4 shadow-sm"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-foreground">
-                            {item.tableLabel}
-                          </span>
-                          <span className="text-sm font-bold text-foreground">
-                            {item.author}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            • {item.subtitle}
-                          </span>
-                        </div>
-
-                        {isEditing ? (
-                          <div className="mt-2 space-y-2">
-                            <textarea
-                              value={editingText}
-                              onChange={(e) => setEditingText(e.target.value)}
-                              rows={3}
-                              className="w-full rounded-lg border border-border bg-background p-2.5 text-sm text-foreground"
+                      <div className="flex flex-1 items-start gap-3">
+                        {item.imageUrl && (
+                          <div
+                            onClick={() =>
+                              setLightboxPhoto({
+                                url: item.imageUrl!,
+                                caption: item.text || item.subtitle,
+                                badge: `${item.tableLabel} · ${item.author}`,
+                              })
+                            }
+                            className="relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted shadow-2xs"
+                            title="Klik untuk lihat foto ukuran asli"
+                          >
+                            <img
+                              src={item.imageUrl}
+                              alt={item.text}
+                              referrerPolicy="no-referrer"
+                              className="size-full object-cover transition-transform duration-200 hover:scale-105"
                             />
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleModerate(
-                                    item.table,
-                                    item.id,
-                                    "approved",
-                                    editingText
-                                  )
-                                }
-                                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                              >
-                                <Save className="h-3.5 w-3.5" />
-                                Simpan &amp; Setujui
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingKey(null)}
-                                className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground"
-                              >
-                                Batal
-                              </button>
-                            </div>
                           </div>
-                        ) : (
-                          <p className="mt-1.5 text-sm leading-relaxed text-foreground">
-                            {item.text}
-                          </p>
                         )}
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-foreground">
+                              {item.tableLabel}
+                            </span>
+                            <span className="text-sm font-bold text-foreground">
+                              {item.author}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              • {item.subtitle}
+                            </span>
+                          </div>
+
+                          {isEditing ? (
+                            <div className="mt-2 space-y-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                rows={3}
+                                className="w-full rounded-lg border border-border bg-background p-2.5 text-sm text-foreground"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleModerate(
+                                      item.table,
+                                      item.id,
+                                      "approved",
+                                      editingText
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                                >
+                                  <Save className="h-3.5 w-3.5" />
+                                  Simpan &amp; Setujui
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingKey(null)}
+                                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                              {item.text}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">

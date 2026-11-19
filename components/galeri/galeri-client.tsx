@@ -197,42 +197,75 @@ export function GaleriClient({
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!compressedPreview) {
+      setUploadFeedback({
+        ok: false,
+        text: "Pilih foto kenangan terlebih dahulu sebelum mengirim.",
+      });
+      return;
+    }
     setSubmitting(true);
     setUploadFeedback(null);
     try {
-      const res = await fetch("/api/submit", {
+      // Pastikan file yang dikirim sudah terkompresi client-side (HTML5 Canvas, max 1600px, image/webp, kualitas 0.82)
+      const compressed = await compressImageFile(
+        await (await fetch(compressedPreview)).blob(),
+        {
+          fileName: `galeri-${category}-${uploaderName || "xiipplg1"}`,
+          maxDimension: 1600,
+          quality: 0.82,
+        }
+      );
+
+      const formData = new FormData();
+      formData.append("file", compressed.file);
+      formData.append("channel", "gallery");
+      formData.append("category", category);
+      formData.append("senderName", uploaderName);
+      formData.append("uploaderName", uploaderName);
+      formData.append("title", `${category} | ${uploaderName}`);
+      formData.append("caption", caption);
+      formData.append("phase", phase);
+      formData.append("classCode", classCode);
+      formData.append("honeypot", "");
+
+      const res = await fetch("/api/submissions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "moment",
-          uploaderName,
-          caption,
-          category,
-          phase,
-          classCode,
-          imageDataUrl: compressedPreview || undefined,
-          honeypot: "",
-        }),
+        body: formData,
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
         const errText = json.error || "Gagal mengunggah foto momen.";
         setUploadFeedback({ ok: false, text: errText });
-        toast({ title: "Gagal mengunggah", description: errText, variant: "error" });
+        toast({
+          title: "Gagal mengunggah",
+          description: errText,
+          variant: "error",
+        });
       } else {
         const okText =
-          json.message || "Foto berhasil dikirim ke antrean moderasi admin!";
+          json.message ||
+          "Foto berhasil dikirim ke antrean moderasi admin (pending-manifest.json)!";
         setUploadFeedback({ ok: true, text: okText });
-        toast({ title: "Foto terkirim", description: okText, variant: "success" });
+        toast({
+          title: "Foto terkirim ke antrean",
+          description: okText,
+          variant: "success",
+        });
         setCaption("");
         setCompressedPreview("");
+        setCompressedInfo("");
         notifyPublicDataUpdated();
         void refresh();
       }
     } catch {
       const netText = "Gagal menghubungi server. Coba lagi sebentar ya.";
       setUploadFeedback({ ok: false, text: netText });
-      toast({ title: "Koneksi terputus", description: netText, variant: "error" });
+      toast({
+        title: "Koneksi terputus",
+        description: netText,
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }

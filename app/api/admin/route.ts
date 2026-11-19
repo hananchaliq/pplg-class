@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import {
   ADMIN_COOKIE,
   ADMIN_SESSION_TOKEN,
@@ -31,11 +31,19 @@ import type { ContentStatus } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 function revalidateAllRoutes() {
+  try {
+    revalidateTag("media-manifest");
+    revalidateTag("pending-manifest");
+  } catch {
+    // Abaikan jika revalidateTag dipanggil di luar konteks cache
+  }
   revalidatePath("/");
   revalidatePath("/galeri");
   revalidatePath("/kenangan");
+  revalidatePath("/karya");
   revalidatePath("/anggota");
   revalidatePath("/guru");
+  revalidatePath("/dream-board");
   revalidatePath("/admin");
   revalidatePath("/", "layout");
 }

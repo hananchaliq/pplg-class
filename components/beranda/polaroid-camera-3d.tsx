@@ -547,18 +547,34 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
   const skipCycleFnRef = React.useRef<(() => void) | null>(null);
 
   const realMoments = React.useMemo(() => {
-    const reals = moments.filter(
+    const heroChannelMoments = moments.filter(
+      (m) => m.category === "Foto Hero 3D"
+    );
+    const realHeroPhotos = heroChannelMoments.filter(
       (m) =>
         Boolean(m.image_url) &&
         !m.image_url.startsWith("/api/moment-illustration")
     );
-    const heroFirst = [...reals].sort(
-      (a, b) =>
-        (b.category === "Foto Hero 3D" ? 1 : 0) -
-          (a.category === "Foto Hero 3D" ? 1 : 0) ||
-        (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
-    );
-    return heroFirst.length > 0 ? heroFirst : moments.slice(0, 6);
+    if (realHeroPhotos.length > 0) {
+      return realHeroPhotos;
+    }
+    if (heroChannelMoments.length > 0) {
+      return heroChannelMoments;
+    }
+    return [
+      {
+        id: "fallback-hero-1",
+        image_url:
+          "/api/moment-illustration?title=Kebersamaan+XII+PPLG+1&phase=XII&category=Foto+Hero+3D&seed=101",
+        caption: "Kebersamaan Keluarga Besar XII PPLG 1 di MAKN Ende",
+        taken_at: "2026-03-10",
+        category: "Foto Hero 3D",
+        phase: "XII" as const,
+        uploader_name: "Arsip XII PPLG 1",
+        featured: true,
+        status: "approved" as const,
+      },
+    ];
   }, [moments]);
 
   // Ref stabil agar pembaruan data live tidak membongkar ulang WebGLRenderer atau menggandakan loop

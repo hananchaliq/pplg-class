@@ -27,6 +27,10 @@ import {
   readFileAsDataUrl,
 } from "@/components/ui/image-cropper-modal";
 import {
+  compressImageDataUrl,
+  compressImageFile,
+} from "@/lib/image-compressor";
+import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
@@ -443,6 +447,59 @@ export function KaryaClient({
       .slice(0, 5);
 
     try {
+      const selectedStudent = students.find((s) => s.id === studentId);
+      const studentName = selectedStudent?.full_name || "Siswa XII PPLG 1";
+
+      if (workImageDataUrl && workImageDataUrl.startsWith("data:image/")) {
+        const compressed = await compressImageDataUrl(workImageDataUrl, {
+          fileName: `karya-${title || studentName}`,
+          maxDimension: 1600,
+          quality: 0.82,
+        });
+
+        const formData = new FormData();
+        formData.append("file", compressed.file);
+        formData.append("channel", "karya");
+        formData.append("category", "Karya Siswa");
+        formData.append("senderName", studentName);
+        formData.append("studentName", studentName);
+        formData.append("studentId", studentId);
+        formData.append("title", title);
+        formData.append("caption", description);
+        formData.append("demoUrl", demoUrl.startsWith("http") ? demoUrl : "");
+        formData.append("repoUrl", repoUrl.startsWith("http") ? repoUrl : "");
+        formData.append(
+          "tags",
+          (parsedTags.length ? parsedTags : ["PPLG"]).join(",")
+        );
+        formData.append("classCode", classCode);
+        formData.append("honeypot", "");
+
+        const res = await fetch("/api/submissions", {
+          method: "POST",
+          body: formData,
+        });
+        const json = await res.json();
+        const msg = json.ok
+          ? json.message
+          : json.error || "Gagal mengirim data karya.";
+        setFeedback(msg);
+        toast({
+          title: json.ok ? "Karya didaftarkan ke antrean" : "Gagal mengirim",
+          description: msg,
+          variant: json.ok ? "success" : "error",
+        });
+        if (json.ok) {
+          setTitle("");
+          setDescription("");
+          setWorkImageDataUrl(null);
+          setWorkCropSource(null);
+          notifyPublicDataUpdated();
+          void refresh();
+        }
+        return;
+      }
+
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1545,9 +1602,15 @@ export function KaryaClient({
                         const f = e.target.files?.[0];
                         if (!f) return;
                         try {
-                          const raw = await readFileAsDataUrl(f);
+                          const [raw, compressed] = await Promise.all([
+                            readFileAsDataUrl(f),
+                            compressImageFile(f, {
+                              maxDimension: 1600,
+                              quality: 0.82,
+                            }),
+                          ]);
                           setWorkCropSource(raw);
-                          setWorkImageDataUrl(raw);
+                          setWorkImageDataUrl(compressed.dataUrl);
                           setWorkCropOpen(true);
                         } finally {
                           e.target.value = "";

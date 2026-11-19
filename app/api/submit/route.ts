@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { SubmitPayloadSchema, verifyClassCode } from "@/lib/domain-logic";
-import { createPendingSubmission, getSupabaseAdminClient } from "@/lib/db";
+import { createPendingSubmission } from "@/lib/db";
 
 // Rate limit sederhana per IP / perangkat di memori server
 const rateMap = new Map<string, { count: number; resetAt: number }>();
@@ -88,16 +88,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             ok: false,
-            error: "Format gambar harus berupa WebP, JPEG, PNG, atau tautan pratinjau valid.",
+            error:
+              "Format gambar harus berupa WebP, JPEG, PNG, atau tautan pratinjau valid.",
           },
           { status: 400 }
         );
       }
-      if (payload.imageDataUrl.length > 4 * 1024 * 1024) {
+      // Base64 overhead ~1.33x dari 2MB binary (~2.8MB string)
+      if (payload.imageDataUrl.length > 2.85 * 1024 * 1024) {
         return NextResponse.json(
           {
             ok: false,
-            error: "Ukuran gambar terkompresi maksimal 3 MB.",
+            error:
+              "Ukuran file gambar melebihi batas maksimal 2 MB. Pastikan gambar sudah terkompresi.",
           },
           { status: 400 }
         );
@@ -106,29 +109,13 @@ export async function POST(req: NextRequest) {
 
     const created = await createPendingSubmission(payload);
 
-    if (payload.type === "work" && created?.id) {
-      const autoScreenshotUrl =
-        payload.imageDataUrl ||
-        (payload.demoUrl && /^https?:\/\//i.test(payload.demoUrl.trim())
-          ? `https://api.microlink.io/?url=${encodeURIComponent(
-              payload.demoUrl.trim()
-            )}&screenshot=true&meta=false&embed=screenshot.url`
-          : undefined);
-
-      if (autoScreenshotUrl) {
-        const supabase = getSupabaseAdminClient();
-        if (supabase) {
-          await supabase
-            .from("works")
-            .update({ image_url: autoScreenshotUrl })
-            .eq("id", created.id);
-        }
-      }
-    }
-
     revalidatePath("/");
     revalidatePath("/galeri");
     revalidatePath("/kenangan");
+    revalidatePath("/karya");
+    revalidatePath("/anggota");
+    revalidatePath("/dream-board");
+    revalidatePath("/admin");
     revalidatePath("/", "layout");
 
     return NextResponse.json({
@@ -137,10 +124,11 @@ export async function POST(req: NextRequest) {
       message:
         "Terima kasih! Kirimanmu sudah masuk ke antrean moderasi admin dan akan tampil setelah disetujui.",
     });
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "Terjadi kesalahan saat memproses kiriman." },
-      { status: 500 }
-    );
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Terjadi kesalahan saat memproses kiriman.";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
