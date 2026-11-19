@@ -2649,7 +2649,7 @@ export async function renderNewspaperPageToBlobUrl(
     })
   );
 
-  const RASTER_SCALE = 1.75;
+  const RASTER_SCALE = 2;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(NEWSPAPER_WIDTH * RASTER_SCALE);
   canvas.height = Math.round(NEWSPAPER_HEIGHT * RASTER_SCALE);
@@ -2714,7 +2714,7 @@ export async function renderNewspaperPageToBlobUrl(
   }
 
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), "image/webp", 0.94);
+    canvas.toBlob((b) => resolve(b), "image/webp", 0.97);
   });
 
   if (blob) {

@@ -517,7 +517,7 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
         {/* Panggung Koran LeafThrough Kecreaman */}
         <div
           ref={stageCardRef}
-          className="relative mt-4 rounded-xl border border-[#C9B794] bg-[#E5D7B9]/65 px-2 py-4 sm:px-6 sm:py-6 dark:border-border dark:bg-secondary/55"
+          className="relative mt-4 rounded-xl border border-[#B29E7C] bg-[#C5B495] shadow-[inset_0_2px_16px_rgba(38,31,24,0.14)] px-2 py-4 sm:px-6 sm:py-6 dark:border-border dark:bg-secondary/55 dark:shadow-none"
         >
           <DynamicLeafThrough
             magazineRef={leafRef}
@@ -528,32 +528,32 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
             plain={isPlain}
             bleed={!isPlain}
             preload={4}
-            maxPixelRatio={2}
+            maxPixelRatio={3}
             label="Galeri Kenangan Bersama — Koran XII PPLG 1"
             paper={{
               backColor: "#EFE5CE",
-              roughness: 0.88,
-              metalness: 0.01,
-              inkGloss: 0.03,
-              grain: true,
-              grainStrength: 0.14,
-              showThrough: 0.06,
-              wrinkles: 0.9,
-              bulge: 0.82,
+              roughness: 0.96,
+              metalness: 0.0,
+              inkGloss: 0.0,
+              grain: false,
+              grainStrength: 0,
+              showThrough: 0,
+              wrinkles: 0.18,
+              bulge: 0.52,
             }}
             lighting={{
               ambient: {
-                sky: "#EFE6D2",
-                ground: "#C9B794",
-                intensity: 1.15,
+                sky: "#FFFFFF",
+                ground: "#F8F8F8",
+                intensity: 2.05,
               },
               sun: {
-                color: "#F5ECD8",
-                intensity: 0.82,
-                position: [1.6, 1.8, 2.4],
+                color: "#FFFFFF",
+                intensity: 1.24,
+                position: [-1.8, 1.4, 4.2],
               },
               shadows: true,
-              floorShadow: 0.16,
+              floorShadow: 0.18,
             }}
             motion={{
               reducedMotion: "auto",
