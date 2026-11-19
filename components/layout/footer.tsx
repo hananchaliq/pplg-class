@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import { SITE_CONTENT } from "@/lib/content";
 import { useLivePublicData } from "@/lib/use-public-data";
 import { UnoLogo } from "@/components/ui/uno-logo";
@@ -39,7 +40,13 @@ export function Footer() {
   }, [liveData]);
 
   return (
-    <footer className="mt-14 sm:mt-20 border-t border-border bg-card/90 pb-24 lg:pb-0 text-card-foreground">
+    <motion.footer
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-14 sm:mt-20 border-t border-border bg-card/90 pb-24 lg:pb-0 text-card-foreground"
+    >
       <div className="ikat-divider" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
@@ -63,20 +70,26 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Tautan Cepat (Hanya Desktop; Mobile tanpa navbar footer) */}
+          {/* Tautan Cepat dengan Garis Bawah Animasi (Hanya Desktop; Mobile tanpa navbar footer) */}
           <nav
             aria-label="Navigasi Bawah"
-            className="hidden lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1 font-sans text-xs"
+            className="hidden lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1.5 font-sans text-xs"
           >
             {SITE_CONTENT.nav.links.map((l) => (
-              <a
+              <motion.a
                 key={l.href}
                 href={l.href}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={(e) => handleNavigate(e, l.href)}
-                className="font-medium text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap"
+                className="group relative py-0.5 font-medium text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap"
               >
-                {l.label}
-              </a>
+                <span>{l.label}</span>
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-[1.5px] origin-left scale-x-0 bg-primary transition-transform duration-200 ease-out group-hover:scale-x-100"
+                />
+              </motion.a>
             ))}
           </nav>
         </div>
@@ -91,6 +104,6 @@ export function Footer() {
           </p>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }

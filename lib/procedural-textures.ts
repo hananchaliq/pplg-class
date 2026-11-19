@@ -784,7 +784,167 @@ export function createDreamNoteTexture(
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
 }
 
+/**
+ * Tekstur layar laptop prosedural bertema editor kode XII PPLG 1 MAKN Ende.
+ * Diekspor untuk kompatibilitas penuh dengan scene 3D meja belajar / hero-desk-scene-hd.
+ */
+export function createLaptopScreenTexture(
+  firstArg?: THREE.WebGLRenderer | string | object | null,
+  ...rest: unknown[]
+): THREE.CanvasTexture {
+  const renderer =
+    firstArg instanceof THREE.WebGLRenderer
+      ? firstArg
+      : (rest.find((a) => a instanceof THREE.WebGLRenderer) as
+          | THREE.WebGLRenderer
+          | undefined) ?? null;
 
+  const width = 512;
+  const height = 320;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#181816";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "#262624";
+  ctx.fillRect(0, 0, width, 28);
+
+  const dots = ["#A95A42", "#B5843F", "#4E6E52"];
+  dots.forEach((col, i) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(16 + i * 14, 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "#C9C4B8";
+  ctx.font = `600 12px ${getMonoFont()}`;
+  ctx.textAlign = "left";
+  ctx.fillText("uno-xii-pplg-1 — index.tsx", 64, 18);
+
+  const lines = [
+    "const angkatan = 'UNO · XII PPLG 1';",
+    "const sekolah  = 'MAKN Ende, NTT';",
+    "const tahun    = '2024 — 2027';",
+    "",
+    "export function kenangan() {",
+    "  return 'Satu Atap, Satu Cerita';",
+    "}",
+  ];
+  ctx.font = `500 14px ${getMonoFont()}`;
+  lines.forEach((line, idx) => {
+    ctx.fillStyle = idx % 2 === 0 ? "#ECE9E1" : "#B8B4AA";
+    ctx.fillText(line, 24, 62 + idx * 28);
+  });
+
+  return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+}
+
+/**
+ * Tekstur kartu foto Polaroid vintage prosedural (kompatibel lintas signature pemanggil).
+ */
+export function createPolaroidTexture(
+  firstArg?: THREE.WebGLRenderer | string | object | null,
+  ...rest: unknown[]
+): THREE.CanvasTexture {
+  const renderer =
+    firstArg instanceof THREE.WebGLRenderer
+      ? firstArg
+      : (rest.find((a) => a instanceof THREE.WebGLRenderer) as
+          | THREE.WebGLRenderer
+          | undefined) ?? null;
+
+  const opts =
+    firstArg && typeof firstArg === "object" && !(firstArg instanceof THREE.WebGLRenderer)
+      ? (firstArg as Record<string, unknown>)
+      : null;
+
+  const rawCaption =
+    typeof firstArg === "string"
+      ? firstArg
+      : String(opts?.caption ?? opts?.title ?? "Kenangan XII PPLG 1");
+  const rawDate =
+    typeof rest[0] === "string"
+      ? rest[0]
+      : String(opts?.date ?? opts?.dateStr ?? opts?.taken_at ?? "2024 — 2027");
+  const rawUrl = String(opts?.imageUrl ?? opts?.image_url ?? "").trim();
+
+  const w = 512;
+  const h = 620;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#F5EDD8";
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "#C9B794";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, w - 4, h - 4);
+
+  const px = 32;
+  const py = 32;
+  const pw = w - px * 2;
+  const ph = 420;
+
+  const drawFallbackArt = () => {
+    const grad = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    grad.addColorStop(0, "#3D3124");
+    grad.addColorStop(1, "#261F18");
+    ctx.fillStyle = grad;
+    ctx.fillRect(px, py, pw, ph);
+    ctx.fillStyle = "#EFE5CE";
+    ctx.textAlign = "center";
+    ctx.font = `700 32px ${getHandwritingFont()}`;
+    ctx.fillText("UNO · XII PPLG 1", w / 2, py + ph / 2);
+  };
+
+  drawFallbackArt();
+
+  ctx.fillStyle = "#261F18";
+  ctx.textAlign = "center";
+  ctx.font = `700 22px ${getHandwritingFont()}`;
+  ctx.fillText(decodeHtmlEntities(rawCaption).slice(0, 34), w / 2, py + ph + 54);
+
+  ctx.fillStyle = "#6B5B4B";
+  ctx.font = `600 14px ${getMonoFont()}`;
+  ctx.fillText(decodeHtmlEntities(rawDate).slice(0, 28), w / 2, h - 32);
+
+  const tex = applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+
+  if (
+    typeof window !== "undefined" &&
+    rawUrl.length > 0 &&
+    !rawUrl.startsWith("/api/moment-illustration")
+  ) {
+    const img = new window.Image();
+    if (rawUrl.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(px, py, pw, ph);
+      ctx.clip();
+      const iw = img.naturalWidth || img.width || pw;
+      const ih = img.naturalHeight || img.height || ph;
+      const sc = Math.max(pw / iw, ph / ih);
+      const dw = iw * sc;
+      const dh = ih * sc;
+      ctx.filter = "saturate(46%) contrast(92%) brightness(104%) sepia(20%)";
+      ctx.drawImage(img, px + (pw - dw) / 2, py + (ph - dh) / 2, dw, dh);
+      ctx.filter = "none";
+      ctx.restore();
+      tex.needsUpdate = true;
+    };
+    img.src = rawUrl;
+  }
+
+  return tex;
+}
 
 export interface GroupPhotoBookItem {
   imageUrl: string;

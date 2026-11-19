@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Send, X, CheckCircle2, Pin } from "lucide-react";
 import {
   DreamBoardSection,
@@ -158,70 +158,81 @@ export function DreamBoardClient({
       />
 
       {/* Modal Lembar Doa & Semangat untuk Sahabat (Bersih, Rapi, Bergaya Kertas Catatan Tulis) */}
-      {cheerTargetDream && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="dream-cheer-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
-        >
+      <AnimatePresence>
+        {cheerTargetDream && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: "spring", stiffness: 340, damping: 26 }}
-            style={{
-              borderTopColor: cheerTargetDream.paper_color || "#5C5A54",
-            }}
-            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
+            key="dream-cheer-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dream-cheer-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
-              <div>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Lembar Doa &amp; Semangat Sahabat UNO
-                </p>
-                <h2
-                  id="dream-cheer-title"
-                  className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground"
-                >
-                  Untuk {cheerTargetDream.student_name}
-                </h2>
-                <p className="mt-1 font-hand text-lg sm:text-xl font-bold text-foreground/85">
-                  &ldquo;{cheerTargetDream.dream}&rdquo;
-                </p>
-              </div>
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.92 }}
-                aria-label="Tutup lembar doa"
-                onClick={() => setCheerTargetDream(null)}
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-4" />
-              </motion.button>
-            </div>
-
-            <div className="mt-4 max-h-52 space-y-2.5 overflow-y-auto pr-1">
-              {cheerTargetDream.cheers && cheerTargetDream.cheers.length > 0 ? (
-                cheerTargetDream.cheers.map((c) => (
-                  <div
-                    key={c.id}
-                    className="border-b border-dashed border-border pb-2.5 last:border-b-0"
+            <motion.div
+              key={cheerTargetDream.id}
+              initial={{ opacity: 0, y: 22, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 340, damping: 26 }}
+              style={{
+                borderTopColor: cheerTargetDream.paper_color || "#5C5A54",
+              }}
+              className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-2xl sm:p-6"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+                <div>
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Lembar Doa &amp; Semangat Sahabat UNO
+                  </p>
+                  <h2
+                    id="dream-cheer-title"
+                    className="mt-0.5 font-serif text-xl sm:text-2xl font-bold text-foreground"
                   >
-                    <p className="font-sans text-sm leading-relaxed text-foreground">
-                      &ldquo;{c.message}&rdquo;
-                    </p>
-                    <p className="mt-0.5 text-right font-serif text-xs font-bold text-foreground">
-                      ~ {c.author_name}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="py-2 font-sans text-xs sm:text-sm italic leading-relaxed text-muted-foreground">
-                  Belum ada catatan doa di lembar ini. Tuliskan doa pertamamu di bawah!
-                </p>
-              )}
-            </div>
+                    Untuk {cheerTargetDream.student_name}
+                  </h2>
+                  <p className="mt-1 font-hand text-lg sm:text-xl font-bold text-foreground/85">
+                    &ldquo;{cheerTargetDream.dream}&rdquo;
+                  </p>
+                </div>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.92 }}
+                  aria-label="Tutup lembar doa"
+                  onClick={() => setCheerTargetDream(null)}
+                  className="inline-flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </motion.button>
+              </div>
+
+              <div className="mt-4 max-h-52 space-y-2.5 overflow-y-auto pr-1">
+                {cheerTargetDream.cheers && cheerTargetDream.cheers.length > 0 ? (
+                  cheerTargetDream.cheers.map((c, idx) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.25) }}
+                      className="border-b border-dashed border-border pb-2.5 last:border-b-0"
+                    >
+                      <p className="font-sans text-sm leading-relaxed text-foreground">
+                        &ldquo;{c.message}&rdquo;
+                      </p>
+                      <p className="mt-0.5 text-right font-serif text-xs font-bold text-foreground">
+                        ~ {c.author_name}
+                      </p>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="py-2 font-sans text-xs sm:text-sm italic leading-relaxed text-muted-foreground">
+                    Belum ada catatan doa di lembar ini. Tuliskan doa pertamamu di bawah!
+                  </p>
+                )}
+              </div>
 
             <form
               onSubmit={handleSendCheer}
@@ -315,25 +326,33 @@ export function DreamBoardClient({
                 </motion.button>
               </div>
             </form>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Modal Tulis Kertas Cita-Cita Siswa (Rapi & Bersih Tanpa Ornamen AI) */}
-      {newDreamOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="new-dream-title"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
-        >
+      <AnimatePresence>
+        {newDreamOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: "spring", stiffness: 340, damping: 26 }}
-            style={{ borderTopColor: dreamColor }}
-            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
+            key="new-dream-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-dream-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[#141413]/75 p-0 backdrop-blur-xs sm:items-center sm:p-4"
           >
+            <motion.div
+              initial={{ opacity: 0, y: 22, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 340, damping: 26 }}
+              style={{ borderTopColor: dreamColor }}
+              className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-border border-t-[6px] bg-card p-5 text-card-foreground shadow-2xl sm:rounded-xl sm:p-6"
+            >
             <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
                 <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -492,9 +511,10 @@ export function DreamBoardClient({
                 </motion.button>
               </div>
             </form>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "motion/react";
 
 interface UnoLogoProps {
   size?: "sm" | "md" | "lg";
@@ -9,7 +10,7 @@ interface UnoLogoProps {
 
 /**
  * Logo Bulat Monokrom "UNO" — Kelas XII PPLG 1 MAKN Ende
- * Nuansa perak-gelatin & charcoal kertas tua tanpa warna mencolok.
+ * Nuansa perak-gelatin & charcoal kertas tua dengan gerak orbit tipis & kilau interaktif.
  */
 export function UnoLogo({ size = "md", className = "" }: UnoLogoProps) {
   const uid = React.useId().replace(/:/g, "");
@@ -21,9 +22,12 @@ export function UnoLogo({ size = "md", className = "" }: UnoLogoProps) {
         : "size-10 sm:size-11";
 
   return (
-    <span
+    <motion.span
       aria-hidden="true"
-      className={`relative inline-flex ${dimensions} shrink-0 items-center justify-center rounded-full shadow-sm select-none ${className}`}
+      whileHover={{ scale: 1.08, rotate: -4 }}
+      whileTap={{ scale: 0.94 }}
+      transition={{ type: "spring", stiffness: 360, damping: 20 }}
+      className={`group/logo relative inline-flex ${dimensions} shrink-0 items-center justify-center rounded-full shadow-sm select-none overflow-hidden ${className}`}
     >
       <svg
         viewBox="0 0 64 64"
@@ -66,14 +70,17 @@ export function UnoLogo({ size = "md", className = "" }: UnoLogoProps) {
           strokeWidth="2.5"
         />
 
-        <circle
+        <motion.circle
           cx="32"
           cy="32"
           r="26"
           stroke="#C9C4B8"
           strokeWidth="1"
           strokeDasharray="2.5 2.5"
-          opacity="0.65"
+          opacity="0.68"
+          style={{ transformOrigin: "32px 32px" }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
         />
 
         <polygon
@@ -117,6 +124,12 @@ export function UnoLogo({ size = "md", className = "" }: UnoLogoProps) {
           opacity="0.9"
         />
       </svg>
-    </span>
+
+      {/* Kilau cahaya tipis diagonal saat kursor melintasi logo */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-tr from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/logo:translate-x-full"
+      />
+    </motion.span>
   );
 }

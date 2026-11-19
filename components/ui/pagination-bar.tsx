@@ -23,6 +23,7 @@ export function PaginationBar({
   itemLabel = "data",
   className = "",
 }: PaginationBarProps) {
+  const pillGroupId = React.useId();
   if (totalPages <= 1) return null;
 
   const startItem = (currentPage - 1) * pageSize + 1;
@@ -50,8 +51,9 @@ export function PaginationBar({
 
       <div className="flex items-center justify-center gap-1.5 sm:gap-2">
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.06, x: -1 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: "spring", stiffness: 360, damping: 22 }}
           type="button"
           disabled={currentPage <= 1}
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
@@ -82,18 +84,25 @@ export function PaginationBar({
                   )}
                   <motion.button
                     whileHover={{ scale: 1.06 }}
-                    whileTap={{ scale: 0.94 }}
+                    whileTap={{ scale: 0.92 }}
                     type="button"
                     onClick={() => onPageChange(p)}
                     aria-label={`Halaman ${p}`}
                     aria-current={active ? "page" : undefined}
-                    className={`inline-flex size-9 items-center justify-center rounded-lg font-mono text-xs font-bold tabular-nums transition-colors ${
+                    className={`relative inline-flex size-9 items-center justify-center rounded-lg font-mono text-xs font-bold tabular-nums transition-colors ${
                       active
-                        ? "bg-primary text-primary-foreground shadow-xs"
+                        ? "text-primary-foreground"
                         : "border border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
-                    {p}
+                    {active && (
+                      <motion.span
+                        layoutId={`pagination-active-${pillGroupId}`}
+                        transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                        className="absolute inset-0 rounded-lg bg-primary shadow-xs"
+                      />
+                    )}
+                    <span className="relative z-10">{p}</span>
                   </motion.button>
                 </React.Fragment>
               );
@@ -101,8 +110,9 @@ export function PaginationBar({
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.06, x: 1 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: "spring", stiffness: 360, damping: 22 }}
           type="button"
           disabled={currentPage >= totalPages}
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}

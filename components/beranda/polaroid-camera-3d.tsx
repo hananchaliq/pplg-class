@@ -220,6 +220,7 @@ function buildPolaroidCanvasTexture(
  */
 function createVintagePolaroidCameraModel(): {
   group: THREE.Group;
+  slotAnchor: THREE.Object3D;
   shutterButton: THREE.Mesh;
   flashBulbMat: THREE.MeshStandardMaterial;
 } {
@@ -290,6 +291,20 @@ function createVintagePolaroidCameraModel(): {
   baseMesh.receiveShadow = true;
   group.add(baseMesh);
 
+  // Kaki karet kecil di dasar kamera agar kokoh & berjarak bersih dari meja
+  const footGeo = new THREE.CylinderGeometry(0.11, 0.12, 0.04, 16);
+  [
+    [-0.92, -0.405, 0.72],
+    [0.92, -0.405, 0.72],
+    [-0.92, -0.405, -0.72],
+    [0.92, -0.405, -0.72],
+  ].forEach(([fx, fy, fz]) => {
+    const foot = new THREE.Mesh(footGeo, darkMetalMat);
+    foot.position.set(fx!, fy!, fz!);
+    foot.castShadow = true;
+    group.add(foot);
+  });
+
   // 2. Bodi Atas Miring Klasik Polaroid (Cream Housing)
   const upperShape = new THREE.Shape();
   upperShape.moveTo(-0.92, -0.45);
@@ -305,7 +320,6 @@ function createVintagePolaroidCameraModel(): {
     bevelSize: 0.045,
     bevelSegments: 3,
   });
-  // Putar agar profil miring menghadap ke sumbu Z depan
   upperGeo.rotateY(Math.PI / 2);
   upperGeo.translate(-1.08, 0.48, 0.02);
   const upperMesh = new THREE.Mesh(upperGeo, creamBodyMat);
@@ -323,39 +337,52 @@ function createVintagePolaroidCameraModel(): {
   facePlate.castShadow = true;
   group.add(facePlate);
 
-  // 4. Garis Retro 4-Warna Khas Kamera Polaroid Jadul
+  // 4. Garis Retro 4-Warna Khas Kamera Polaroid (berhenti rapi di atas bibir slot cetak)
   const stripeColors = [0xa95a42, 0xb5843f, 0x4e6e52, 0x2d6366];
   stripeColors.forEach((hex, idx) => {
     const strip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, 0.62, 0.02),
+      new THREE.BoxGeometry(0.065, 0.24, 0.02),
       new THREE.MeshStandardMaterial({
         color: hex,
         roughness: 0.42,
         metalness: 0.08,
       })
     );
-    strip.position.set((idx - 1.5) * 0.072, -0.05, 0.94);
+    strip.position.set((idx - 1.5) * 0.072, -0.02, 0.962);
     group.add(strip);
   });
 
-  // 5. Celah Slot Pengeluaran Foto & Bibir Chrome
-  const slotMouth = new THREE.Mesh(
-    new THREE.BoxGeometry(1.48, 0.065, 0.16),
+  // 5. Celah Slot Pengeluaran Foto Nyata (Cavity Gelap + Bibir Rol Atas & Bawah)
+  const slotCavity = new THREE.Mesh(
+    new THREE.BoxGeometry(1.52, 0.056, 0.14),
     new THREE.MeshStandardMaterial({
-      color: 0x16120e,
-      roughness: 0.95,
+      color: 0x0e0c0a,
+      roughness: 0.98,
       metalness: 0.0,
     })
   );
-  slotMouth.position.set(0, -0.22, 0.92);
-  group.add(slotMouth);
+  slotCavity.position.set(0, -0.22, 0.935);
+  group.add(slotCavity);
 
-  const rollerLip = new THREE.Mesh(
-    new THREE.BoxGeometry(1.56, 0.032, 0.08),
+  // Bibir rol chrome atas & bibir penopang bawah tepat di tepi mulut slot
+  const rollerLipTop = new THREE.Mesh(
+    new THREE.BoxGeometry(1.62, 0.032, 0.068),
     chromeMat
   );
-  rollerLip.position.set(0, -0.165, 0.96);
-  group.add(rollerLip);
+  rollerLipTop.position.set(0, -0.178, 0.975);
+  group.add(rollerLipTop);
+
+  const rollerLipBottom = new THREE.Mesh(
+    new THREE.BoxGeometry(1.62, 0.028, 0.062),
+    darkMetalMat
+  );
+  rollerLipBottom.position.set(0, -0.262, 0.972);
+  group.add(rollerLipBottom);
+
+  // Anchor eksak mulut celah pengeluaran film (di dalam grup model kamera)
+  const slotAnchor = new THREE.Object3D();
+  slotAnchor.position.set(0, -0.22, 0.978);
+  group.add(slotAnchor);
 
   // 6. Rakitan Lensa Bertingkat (Outer Collar + Chrome Ring + Inner Baffle + Glass)
   const lensGroup = new THREE.Group();
@@ -477,7 +504,7 @@ function createVintagePolaroidCameraModel(): {
   exposureDial.position.set(0.72, 0.42, 0.91);
   group.add(exposureDial);
 
-  return { group, shutterButton, flashBulbMat };
+  return { group, slotAnchor, shutterButton, flashBulbMat };
 }
 
 export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
@@ -531,8 +558,8 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 45);
-    camera.position.set(0, 0.36, 7.15);
-    camera.lookAt(0, 0.08, 0);
+    camera.position.set(0, 0.95, 7.2);
+    camera.lookAt(0, 0.06, 0.25);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -585,31 +612,36 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     flashLight.position.set(-0.62, 1.32, 0.8);
     scene.add(flashLight);
 
-    // Alas meja studio tipis sebagai contact shadow
+    // Alas meja studio berada di bawah kamera & jalur cetak Polaroid sehingga foto tak pernah menembus lantai
     const shadowPlane = new THREE.Mesh(
-      new THREE.CircleGeometry(3.2, 48),
-      new THREE.ShadowMaterial({ opacity: 0.22 })
+      new THREE.CircleGeometry(3.4, 48),
+      new THREE.ShadowMaterial({ opacity: 0.2 })
     );
     shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -0.82;
+    shadowPlane.position.y = -0.58;
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // Rakit Kamera Polaroid 3D
+    // Rakit Kamera Polaroid 3D di atas alas studio
     const cameraRig = new THREE.Group();
-    const { group: polaroidModel, shutterButton, flashBulbMat } =
-      createVintagePolaroidCameraModel();
-    polaroidModel.position.set(0, -0.35, 0);
+    const {
+      group: polaroidModel,
+      slotAnchor,
+      shutterButton,
+      flashBulbMat,
+    } = createVintagePolaroidCameraModel();
+    polaroidModel.position.set(0, -0.06, 0);
     cameraRig.add(polaroidModel);
     scene.add(cameraRig);
 
-    // Lembar Foto Polaroid + bidang potong celah slot depan
-    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.95);
-    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.95);
+    // Lembar Foto Polaroid + bidang potong eksak tepat di bibir slot model kamera
+    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.955);
+    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.955);
     const slotClipList = [slotClipPlane];
     const emptyClipList: THREE.Plane[] = [];
 
-    const cardGeo = new THREE.BoxGeometry(1.36, 1.63, 0.014);
+    const CARD_H = 1.63;
+    const cardGeo = new THREE.BoxGeometry(1.36, CARD_H, 0.012);
     const edgeMat = new THREE.MeshStandardMaterial({
       color: 0xf5edd8,
       roughness: 0.65,
@@ -642,6 +674,18 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     photoMesh.castShadow = !isSoftwareGl;
     photoMesh.visible = false;
     scene.add(photoMesh);
+
+    // Pre-allocated zero-GC math helpers untuk tick()
+    const _slotWorldPos = new THREE.Vector3();
+    const _slotWorldQuat = new THREE.Quaternion();
+    const _ejectDir = new THREE.Vector3();
+    const _localTiltQuat = new THREE.Quaternion();
+    const _xAxis = new THREE.Vector3(1, 0, 0);
+    const _startEjectPos = new THREE.Vector3();
+    const _startEjectQuat = new THREE.Quaternion();
+    const _targetZoomPos = new THREE.Vector3();
+    const _targetZoomQuat = new THREE.Quaternion();
+    const _targetZoomEuler = new THREE.Euler(0, 0, 0, "XYZ");
 
     // Cache gambar yang telah dimuat agar pergantian loop berikutnya instan
     const loadedImgs = new Map<number, HTMLImageElement | null>();
@@ -778,7 +822,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         const recoil =
           smoothstep(0.76, 0.84, t) * (1 - smoothstep(0.86, 1.15, t));
 
-        // Kamera sedikit mundur ke kiri bawah saat foto men-zoom agar foto lega di tengah
+        // Kamera sedikit mundur ke kiri saat foto men-zoom agar lega & tak pernah menyentuh lantai
         const camStepBack =
           smoothstep(3.05, 4.1, t) * (1 - smoothstep(5.9, 7.05, t));
 
@@ -789,28 +833,28 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         );
         cameraRig.position.y = THREE.MathUtils.lerp(
           cameraRig.position.y,
-          -camStepBack * 0.14 + Math.sin(t * 1.6) * 0.025 + py * 0.08,
+          0.02 + camStepBack * 0.04 + Math.sin(t * 1.6) * 0.022 + py * 0.06,
           0.1
         );
         cameraRig.position.z = THREE.MathUtils.lerp(
           cameraRig.position.z,
-          -recoil * 0.08 - camStepBack * 0.95,
+          -recoil * 0.08 - camStepBack * 0.92,
           0.12
         );
         cameraRig.rotation.y = THREE.MathUtils.lerp(
           cameraRig.rotation.y,
-          -0.26 + Math.sin(t * 0.9) * 0.05 - camStepBack * 0.18 + px * 0.22,
+          -0.24 + Math.sin(t * 0.9) * 0.05 - camStepBack * 0.18 + px * 0.2,
           0.08
         );
         cameraRig.rotation.x = THREE.MathUtils.lerp(
           cameraRig.rotation.x,
-          0.08 - recoil * 0.05 + py * 0.12,
+          0.06 - recoil * 0.04 + py * 0.08,
           0.08
         );
 
         cameraRig.updateMatrixWorld(true);
 
-        // 2. Lembar Polaroid: Cetak Keluar Tepat dari Mulut Slot -> Zoom Mendekat -> Pudar Pelan -> Reset
+        // 2. Lembar Polaroid: Keluar Akurat Tepat dari Celah Mulut Slot -> Zoom Mendekat -> Pudar Pelan -> Reset
         const setPhotoClipping = (planes: THREE.Plane[]) => {
           if (frontMat.clippingPlanes !== planes) {
             frontMat.clippingPlanes = planes;
@@ -819,21 +863,33 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           }
         };
 
-        const computeEjectPose = (pVal: number) => {
-          const rxLocal = -1.23 + pVal * 0.16;
-          const forwardDir = new THREE.Vector3(
-            0,
-            -Math.cos(rxLocal),
-            -Math.sin(rxLocal)
+        const computeSlotEjectPose = (
+          pVal: number,
+          outPos: THREE.Vector3,
+          outQuat: THREE.Quaternion
+        ) => {
+          slotAnchor.getWorldPosition(_slotWorldPos);
+          slotAnchor.getWorldQuaternion(_slotWorldQuat);
+
+          // Sudut keluar: sejajar celah slot depan (~ -86°, nyaris mendatar dengan ujung luar sedikit naik saat selesai cetak)
+          const pitchRad = -1.5 + pVal * 0.14;
+          _localTiltQuat.setFromAxisAngle(_xAxis, pitchRad);
+          outQuat.copy(_slotWorldQuat).multiply(_localTiltQuat);
+
+          // Arah gerak kertas persis searah sumbu -Y kartu yang keluar keluar dari celah slot (+Z kamera)
+          _ejectDir.set(0, -1, 0).applyQuaternion(outQuat).normalize();
+          // Dorong sedikit ke atas (+0.08 saat p=1) agar foto terangkat anggun di atas alas studio tanpa menembus lantai
+          _ejectDir.y += 0.06 + pVal * 0.08;
+          _ejectDir.normalize();
+
+          // Saat p=0: tepi ujung depan (+CARD_H/2 dari pusat) persis masuk 0.02 di dalam mulut slot (terclip penuh)
+          // Saat p=1: tepi belakang (-CARD_H/2 dari pusat) telah melampaui 0.08 di depan bibir rol slot
+          const distFromSlot = THREE.MathUtils.lerp(
+            -(CARD_H * 0.5) - 0.015,
+            CARD_H * 0.5 + 0.09,
+            pVal
           );
-          const slotOrigin = new THREE.Vector3(0, -0.565, 0.96);
-          const localCenter = slotOrigin.addScaledVector(
-            forwardDir,
-            pVal * 1.6 - 0.78
-          );
-          const worldCenter = localCenter.clone();
-          cameraRig.localToWorld(worldCenter);
-          return { worldCenter, rxLocal };
+          outPos.copy(_slotWorldPos).addScaledVector(_ejectDir, distFromSlot);
         };
 
         if (t < 1.08) {
@@ -847,26 +903,22 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Membidik momen & menekan rana...");
           }
         } else if (t < 3.05) {
-          // Fase cetak keluar tepat dari celah bibir slot depan dengan clipping bidang slot
+          // Fase cetak keluar lurus dari celah rol depan dengan bidang potong di dalam mulut slot model
           const p = easeOutCubic((t - 1.08) / (3.05 - 1.08));
           photoMesh.visible = true;
 
-          slotClipPlane.copy(localSlotPlane).applyMatrix4(cameraRig.matrixWorld);
+          slotClipPlane
+            .copy(localSlotPlane)
+            .applyMatrix4(polaroidModel.matrixWorld);
           setPhotoClipping(slotClipList);
 
-          const { worldCenter, rxLocal } = computeEjectPose(p);
-          photoMesh.position.copy(worldCenter);
-          photoMesh.rotation.set(
-            cameraRig.rotation.x + rxLocal,
-            cameraRig.rotation.y,
-            cameraRig.rotation.z
-          );
-          const s = 0.9 + p * 0.06;
+          computeSlotEjectPose(p, photoMesh.position, photoMesh.quaternion);
+          const s = 0.92 + p * 0.05;
           photoMesh.scale.set(s, s, s);
 
-          // Efek foto Polaroid perlahan matang warnanya saat keluar
+          // Efek foto Polaroid perlahan matang warnanya saat keluar dari kamera
           const dev = smoothstep(1.15, 2.75, t);
-          const shade = THREE.MathUtils.lerp(0.32, 1.0, dev);
+          const shade = THREE.MathUtils.lerp(0.34, 1.0, dev);
           frontMat.color.setRGB(shade, shade * 0.99, shade * 0.96);
 
           const fadeStart = smoothstep(1.08, 1.24, t);
@@ -879,24 +931,24 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Mencetak lembar Polaroid kelas...");
           }
         } else if (t < 5.45) {
-          // Fase terlepas dari slot & zoom mendekat tanpa terpotong
+          // Fase terlepas bebas dari slot & zoom mendekat tanpa terpotong
           setPhotoClipping(emptyClipList);
           const p = easeInOutCubic((t - 3.05) / 1.15);
-          const { worldCenter: startPos, rxLocal: startRx } = computeEjectPose(1);
-          const targetPos = new THREE.Vector3(
-            px * 0.08,
-            0.16 + py * 0.05,
-            3.35
-          );
+          computeSlotEjectPose(1, _startEjectPos, _startEjectQuat);
+
+          _targetZoomPos.set(px * 0.08, 0.24 + py * 0.05, 3.32);
+          _targetZoomEuler.set(0.04, px * 0.12, 0.015, "XYZ");
+          _targetZoomQuat.setFromEuler(_targetZoomEuler);
 
           photoMesh.visible = true;
-          photoMesh.position.lerpVectors(startPos, targetPos, p);
-          photoMesh.rotation.set(
-            THREE.MathUtils.lerp(cameraRig.rotation.x + startRx, 0.02, p),
-            THREE.MathUtils.lerp(cameraRig.rotation.y, px * 0.12, p),
-            THREE.MathUtils.lerp(cameraRig.rotation.z, 0.015, p)
+          photoMesh.position.lerpVectors(_startEjectPos, _targetZoomPos, p);
+          photoMesh.quaternion.slerpQuaternions(
+            _startEjectQuat,
+            _targetZoomQuat,
+            p
           );
-          const zoomScale = THREE.MathUtils.lerp(0.96, 1.18, p);
+
+          const zoomScale = THREE.MathUtils.lerp(0.97, 1.16, p);
           photoMesh.scale.set(zoomScale, zoomScale, zoomScale);
           frontMat.color.setRGB(1, 1, 1);
           frontMat.opacity = 1;
@@ -915,12 +967,12 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           photoMesh.visible = op > 0.01;
           photoMesh.position.set(
             px * 0.08,
-            0.16 + fadeOutP * 0.16,
-            3.35 + fadeOutP * 0.24
+            0.24 + fadeOutP * 0.16,
+            3.32 + fadeOutP * 0.24
           );
-          const driftScale = 1.18 + fadeOutP * 0.1;
+          const driftScale = 1.16 + fadeOutP * 0.1;
           photoMesh.scale.set(driftScale, driftScale, driftScale);
-          photoMesh.rotation.set(0.02, px * 0.12, 0.015);
+          photoMesh.rotation.set(0.04, px * 0.12, 0.015);
           frontMat.opacity = op;
           edgeMat.opacity = op;
           backMat.opacity = op;

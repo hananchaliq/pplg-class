@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, Crown, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type {
   LanyardMember,
   TeamLanyardRailLabels,
@@ -150,10 +151,10 @@ export function FlatIdCardRail({
         />
       </div>
 
-      {/* Carousel geser horizontal pada 1 gagang besi */}
+      {/* Carousel geser horizontal pada 1 gagang besi dengan Motion UI 3D Spring Flip */}
       <div
         ref={scrollRef}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-6 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-6 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, idx) => {
           const isFlipped = flippedId === item.id;
@@ -165,42 +166,54 @@ export function FlatIdCardRail({
           const showImg = Boolean(item.image) && !failedImages[item.id];
 
           return (
-            <div
+            <motion.div
               key={item.id}
-              className="w-[244px] sm:w-[264px] shrink-0 snap-center"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: Math.min(idx * 0.035, 0.25) }}
+              className="w-[244px] sm:w-[264px] shrink-0 snap-center [perspective:1100px]"
             >
-              {/* Tali gantungan pendek dari gagang besi ke kartu */}
+              {/* Tali gantungan pendek berayun tipis saat hover */}
               <div className="mx-auto flex flex-col items-center" aria-hidden="true">
                 <span className={`h-5 w-3 ${colorClass}`} />
                 <span className="size-3 rounded-full border border-border bg-muted" />
               </div>
 
-              <button
+              <motion.button
                 type="button"
                 aria-label={`${item.name}, ${item.role}. ${
                   isFlipped ? labels.back : labels.flip
                 }`}
                 aria-pressed={isFlipped}
                 onClick={() => handleToggleFlip(item, idx)}
-                className={`group relative flex h-[338px] w-full flex-col justify-between overflow-hidden rounded-xl border p-4 text-left text-card-foreground shadow-sm transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                  isSpecialFriend
-                    ? "border-2 border-foreground/70 bg-secondary shadow-md"
-                    : "border-border bg-card"
-                }`}
+                whileHover={{ y: -5, scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                animate={{ rotateY: isFlipped ? 180 : 0 }}
+                transition={{
+                  rotateY: { type: "spring", stiffness: 250, damping: 24, mass: 0.9 },
+                  y: { type: "spring", stiffness: 360, damping: 24 },
+                }}
+                style={{ transformStyle: "preserve-3d" }}
+                className="group relative block h-[338px] w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                {/* Pita warna monokrom di bagian atas kartu */}
-                <span
-                  aria-hidden="true"
-                  className={`absolute inset-x-0 top-0 h-12 ${colorClass}`}
-                />
-                {/* Lubang Lanyard */}
-                <span
-                  aria-hidden="true"
-                  className="relative mx-auto mt-0.5 block h-2 w-10 rounded-full bg-background/90"
-                />
+                {/* Sisi Depan Kartu */}
+                <div
+                  style={{ backfaceVisibility: "hidden" }}
+                  className={`absolute inset-0 flex flex-col justify-between overflow-hidden rounded-xl border p-4 text-card-foreground shadow-sm transition-shadow group-hover:shadow-md ${
+                    isSpecialFriend
+                      ? "border-2 border-foreground/70 bg-secondary shadow-md"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-x-0 top-0 h-12 ${colorClass}`}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="relative mx-auto mt-0.5 block h-2 w-10 rounded-full bg-background/90"
+                  />
 
-                {!isFlipped ? (
-                  /* Sisi Depan Kartu */
                   <div className="relative z-10 mt-3 flex flex-1 flex-col items-center text-center">
                     {isSpecialFriend && (
                       <span className="mb-1 inline-flex items-center gap-1 border border-border bg-card px-2.5 py-0.5 font-mono text-[10px] font-bold text-foreground shadow-2xs">
@@ -209,7 +222,7 @@ export function FlatIdCardRail({
                       </span>
                     )}
                     <div
-                      className={`relative size-22 overflow-hidden rounded-full bg-muted shadow-sm ${
+                      className={`relative size-22 overflow-hidden rounded-full bg-muted shadow-sm transition-transform duration-300 group-hover:scale-105 ${
                         isSpecialFriend
                           ? "border-2 border-foreground ring-2 ring-border"
                           : "border-2 border-card"
@@ -240,14 +253,35 @@ export function FlatIdCardRail({
                       </p>
                     )}
                     <div className="mt-auto w-full border-t border-dashed border-border pt-2.5 text-center">
-                      <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-widest text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
                         {isSpecialFriend && <Sparkles className="size-3 text-foreground" />}
                         <span>TAP UNTUK MEMBALIK</span>
                       </span>
                     </div>
                   </div>
-                ) : (
-                  /* Sisi Belakang Kartu */
+                </div>
+
+                {/* Sisi Belakang Kartu (Tersembunyi di balik rotateY(180deg)) */}
+                <div
+                  style={{
+                    backfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                  }}
+                  className={`absolute inset-0 flex flex-col justify-between overflow-hidden rounded-xl border p-4 text-card-foreground shadow-md ${
+                    isSpecialFriend
+                      ? "border-2 border-foreground/70 bg-secondary"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-x-0 top-0 h-12 ${colorClass}`}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="relative mx-auto mt-0.5 block h-2 w-10 rounded-full bg-background/90"
+                  />
+
                   <div className="relative z-10 mt-4 flex flex-1 flex-col justify-between text-left">
                     <div>
                       <p className="truncate font-serif text-sm font-bold text-foreground">
@@ -275,54 +309,79 @@ export function FlatIdCardRail({
                       </span>
                     </div>
                   </div>
-                )}
-              </button>
-            </div>
+                </div>
+              </motion.button>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Navigasi Prev / Next Ikon di Bawah Gagang Besi */}
+      {/* Navigasi Prev / Next Ikon dengan Motion UI Spring Feedback */}
       {items.length > 1 && (
         <div className="mt-3 flex items-center justify-center gap-3 px-4">
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.07 }}
+            whileTap={{ scale: 0.92 }}
             disabled={activeIndex <= 0}
             onClick={() => scrollToCard(activeIndex - 1)}
             aria-label="Kartu sebelumnya"
-            className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-xs transition-colors hover:bg-muted disabled:opacity-40"
+            className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
           >
             <ChevronLeft className="size-4" />
-          </button>
+          </motion.button>
 
-          <span className="min-w-[4.5rem] text-center font-mono text-xs font-bold tabular-nums text-foreground">
-            {String(activeIndex + 1).padStart(2, "0")}{" "}
+          <div className="relative min-w-[4.75rem] overflow-hidden text-center font-mono text-xs font-bold tabular-nums text-foreground">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={activeIndex}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+                className="inline-block"
+              >
+                {String(activeIndex + 1).padStart(2, "0")}
+              </motion.span>
+            </AnimatePresence>{" "}
             <span className="text-muted-foreground">/</span>{" "}
-            {String(items.length).padStart(2, "0")}
-          </span>
+            <span>{String(items.length).padStart(2, "0")}</span>
+          </div>
 
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.07 }}
+            whileTap={{ scale: 0.92 }}
             disabled={activeIndex >= items.length - 1}
             onClick={() => scrollToCard(activeIndex + 1)}
             aria-label="Kartu berikutnya"
-            className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-xs transition-colors hover:bg-muted disabled:opacity-40"
+            className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
           >
             <ChevronRight className="size-4" />
-          </button>
+          </motion.button>
         </div>
       )}
 
       {/* Keterangan dan tombol aksi di bawah rail */}
       <div className="mt-3 flex flex-col items-center gap-2.5 px-4 text-center">
-        <div aria-live="polite" className="min-h-[2.2rem]">
-          <p className="text-xs font-medium text-foreground">
-            {activePerson ? `${activePerson.name} — ${activePerson.role}` : caption}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {activePerson ? (isShowingBack ? labels.back : labels.flip) : ""}
-          </p>
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePerson?.id ?? "empty"}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            aria-live="polite"
+            className="min-h-[2.2rem]"
+          >
+            <p className="text-xs font-medium text-foreground">
+              {activePerson ? `${activePerson.name} — ${activePerson.role}` : caption}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {activePerson ? (isShowingBack ? labels.back : labels.flip) : ""}
+            </p>
+          </motion.div>
+        </AnimatePresence>
         {action && <div className="flex w-full justify-center sm:w-auto">{action}</div>}
       </div>
     </section>

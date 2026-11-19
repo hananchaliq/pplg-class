@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Crop,
   FlipHorizontal,
@@ -402,67 +403,92 @@ export function ImageCropperModal({
     }
   };
 
-  if (!open || !imageSrc) return null;
+  const aspectPillId = React.useId();
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#141413]/80 p-3 sm:p-4 backdrop-blur-xs"
-    >
-      <div className="max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-5 text-card-foreground shadow-2xl">
-        {/* Header Modal Crop */}
-        <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              Editor Gambar Interaktif · HP & Desktop
-            </p>
-            <h3 className="mt-0.5 font-serif text-lg font-bold text-foreground">
-              {title}
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Tutup editor foto"
-            className="inline-flex min-h-[38px] min-w-[38px] items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+    <AnimatePresence>
+      {open && imageSrc && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-[#141413]/80 p-3 sm:p-4 backdrop-blur-xs"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 340, damping: 26 }}
+            className="max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-5 text-card-foreground shadow-2xl"
           >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Pilihan Rasio Ukuran Gambar (Otomatis Target + Manual) */}
-        <div className="mt-3">
-          <p className="text-[11px] font-semibold text-muted-foreground">
-            Rasio Bingkai Crop (Otomatis menyesuaikan tempat foto, bisa diubah manual):
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: "target", label: `Otomatis (${targetLabel})` },
-                { id: "original", label: "Sesuai Ukuran Asli" },
-                { id: "1:1", label: "1:1 (ID Card)" },
-                { id: "4:3", label: "4:3 (Polaroid)" },
-                { id: "16:10", label: "16:10 (Lebar)" },
-                { id: "3:4", label: "3:4 (Potret)" },
-              ] as Array<{ id: CropPresetRatio; label: string }>
-            ).map((opt) => (
-              <button
-                key={opt.id}
+            {/* Header Modal Crop */}
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Editor Gambar Interaktif · HP & Desktop
+                </p>
+                <h3 className="mt-0.5 font-serif text-lg font-bold text-foreground">
+                  {title}
+                </h3>
+              </div>
+              <motion.button
                 type="button"
-                onClick={() => setRatioMode(opt.id)}
-                className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                  ratioMode === opt.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={handleClose}
+                aria-label="Tutup editor foto"
+                className="inline-flex min-h-[38px] min-w-[38px] items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+                <X className="size-4" />
+              </motion.button>
+            </div>
+
+            {/* Pilihan Rasio Ukuran Gambar (Otomatis Target + Manual) dengan sliding layoutId */}
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Rasio Bingkai Crop (Otomatis menyesuaikan tempat foto, bisa diubah manual):
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: "target", label: `Otomatis (${targetLabel})` },
+                    { id: "original", label: "Sesuai Ukuran Asli" },
+                    { id: "1:1", label: "1:1 (ID Card)" },
+                    { id: "4:3", label: "4:3 (Polaroid)" },
+                    { id: "16:10", label: "16:10 (Lebar)" },
+                    { id: "3:4", label: "3:4 (Potret)" },
+                  ] as Array<{ id: CropPresetRatio; label: string }>
+                ).map((opt) => {
+                  const active = ratioMode === opt.id;
+                  return (
+                    <motion.button
+                      key={opt.id}
+                      type="button"
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setRatioMode(opt.id)}
+                      className={`relative rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                        active
+                          ? "border-primary text-primary-foreground"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId={`crop-ratio-${aspectPillId}`}
+                          transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                          className="absolute inset-0 rounded-md bg-primary"
+                        />
+                      )}
+                      <span className="relative z-10">{opt.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
 
         {/* Area Kanvas Interaktif Geser Posisi & Cubit/Scroll */}
         <div className="mt-3 flex flex-col items-center justify-center rounded-xl border border-border bg-[#161614] p-3">
@@ -592,8 +618,10 @@ export function ImageCropperModal({
           >
             Batal
           </button>
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
             disabled={!imgLoaded || processing}
             onClick={handleConfirmCrop}
             className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0"
@@ -602,10 +630,12 @@ export function ImageCropperModal({
             <span>
               {processing ? "Memproses..." : "Terapkan Posisi & Ukuran"}
             </span>
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
