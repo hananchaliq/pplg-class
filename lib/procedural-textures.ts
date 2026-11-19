@@ -786,10 +786,11 @@ export function createDreamNoteTexture(
 
 /**
  * Tekstur layar laptop prosedural bertema editor kode XII PPLG 1 MAKN Ende.
- * Diekspor untuk kompatibilitas penuh dengan scene 3D meja belajar / hero-desk-scene-hd.
+ * Mendukung mode menyala (`isOn = true`) dan mati/standby (`isOn = false`),
+ * serta diekspor untuk kompatibilitas penuh dengan scene 3D meja belajar / hero-desk-scene-hd.
  */
 export function createLaptopScreenTexture(
-  firstArg?: THREE.WebGLRenderer | string | object | null,
+  firstArg?: boolean | THREE.WebGLRenderer | string | object | null,
   ...rest: unknown[]
 ): THREE.CanvasTexture {
   const renderer =
@@ -799,12 +800,82 @@ export function createLaptopScreenTexture(
           | THREE.WebGLRenderer
           | undefined) ?? null;
 
+  const opts =
+    firstArg && typeof firstArg === "object" && !(firstArg instanceof THREE.WebGLRenderer)
+      ? (firstArg as { isOn?: boolean; powered?: boolean })
+      : null;
+
+  const isOn =
+    typeof firstArg === "boolean"
+      ? firstArg
+      : typeof opts?.isOn === "boolean"
+        ? opts.isOn
+        : typeof opts?.powered === "boolean"
+          ? opts.powered
+          : typeof rest[0] === "boolean"
+            ? rest[0]
+            : true;
+
   const width = 512;
   const height = 320;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+
+  if (!isOn) {
+    // Mode layar mati / standby: permukaan kaca gelap reflektif dengan indikator standby halus
+    const offGrad = ctx.createLinearGradient(0, 0, width, height);
+    offGrad.addColorStop(0, "#121210");
+    offGrad.addColorStop(0.55, "#0B0B0A");
+    offGrad.addColorStop(1, "#161614");
+    ctx.fillStyle = offGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Pantulan cahaya diagonal tipis pada kaca layar mati
+    ctx.save();
+    ctx.fillStyle = "rgba(236, 233, 225, 0.045)";
+    ctx.beginPath();
+    ctx.moveTo(width * 0.14, 0);
+    ctx.lineTo(width * 0.36, 0);
+    ctx.lineTo(width * 0.12, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(236, 233, 225, 0.025)";
+    ctx.beginPath();
+    ctx.moveTo(width * 0.44, 0);
+    ctx.lineTo(width * 0.51, 0);
+    ctx.lineTo(width * 0.27, height);
+    ctx.lineTo(width * 0.2, height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Bingkai halus tepi panel
+    ctx.strokeStyle = "rgba(236, 233, 225, 0.06)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2, 2, width - 4, height - 4);
+
+    // Lampu indikator standby redup di sudut kanan bawah
+    const ledX = width - 22;
+    const ledY = height - 18;
+    const glow = ctx.createRadialGradient(ledX, ledY, 1, ledX, ledY, 10);
+    glow.addColorStop(0, "rgba(181, 132, 63, 0.55)");
+    glow.addColorStop(1, "rgba(181, 132, 63, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(ledX, ledY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(214, 168, 96, 0.72)";
+    ctx.beginPath();
+    ctx.arc(ledX, ledY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+  }
 
   ctx.fillStyle = "#181816";
   ctx.fillRect(0, 0, width, height);
@@ -840,6 +911,10 @@ export function createLaptopScreenTexture(
     ctx.fillText(line, 24, 62 + idx * 28);
   });
 
+  // Kursor editor aktif di baris terakhir
+  ctx.fillStyle = "#B5843F";
+  ctx.fillRect(42, 62 + (lines.length - 1) * 28 - 12, 8, 15);
+
   return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
 }
 
@@ -847,7 +922,7 @@ export function createLaptopScreenTexture(
  * Tekstur kartu foto Polaroid vintage prosedural (kompatibel lintas signature pemanggil).
  */
 export function createPolaroidTexture(
-  firstArg?: THREE.WebGLRenderer | string | object | null,
+  firstArg?: THREE.WebGLRenderer | string | number | boolean | object | null,
   ...rest: unknown[]
 ): THREE.CanvasTexture {
   const renderer =
