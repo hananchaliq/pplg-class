@@ -1,0 +1,452 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  =============================================================================
+  SISTEM DESAIN "MONOKROM FILM JADUL" — XII PPLG 1 · MAKN Ende (pplg.uno)
+  3-Font System (Koran & Kamera Analog):
+  1. Display / Masthead & Judul: Old Standard TT (--font-serif / font-serif)
+  2. Body / Teks Bacaan & UI: Source Serif 4 (--font-sans / font-sans)
+  3. Metadata / Stamp / Mesin Tik: Special Elite (--font-mono / font-mono)
+  Catatan: Tanpa #000000 dan #ffffff murni.
+  =============================================================================
+*/
+:root {
+  --background: #ECE9E1;
+  --foreground: #1B1B1A;
+  --card: #F3F1EA;
+  --card-foreground: #1B1B1A;
+  --popover: #F3F1EA;
+  --popover-foreground: #1B1B1A;
+  --primary: #2A2A28;
+  --primary-foreground: #F3F1EA;
+  --secondary: #E2DED4;
+  --secondary-foreground: #1B1B1A;
+  --muted: #E2DED4;
+  --muted-foreground: #5C5A54;
+  --accent: #3D3D3A;
+  --accent-foreground: #F3F1EA;
+  --destructive: #4A4843;
+  --destructive-foreground: #F3F1EA;
+  --border: #C9C4B8;
+  --input: #C9C4B8;
+  --ring: #4A4843;
+  --chart-1: #2D6366;
+  --chart-2: #4E6E52;
+  --chart-3: #A95A42;
+  --chart-4: #B5843F;
+  --chart-5: #475B78;
+
+  --radius: 0.625rem;
+
+  /* Token Monokrom Kertas & Tinta */
+  --surface: #F3F1EA;
+  --ink-primary: #1B1B1A;
+  --ink-secondary: #5C5A54;
+  --ink-pen: #2A2A28;
+  --stamp-red: #3D3D3A;
+  --washi-sage: #D6D2C9;
+  --washi-rose: #CBC7BE;
+  --washi-gold: #DCD8CE;
+
+  --color-accent-warm: #2A2A28;
+  --color-accent-terracotta: #4A4843;
+  --color-accent-kelimutu: #5C5A54;
+  --color-paper-elevated: #F3F1EA;
+
+  /* Skala Ukuran Proporsional & Nyaman Dibaca */
+  --text-h1: clamp(2rem, 4vw + 0.5rem, 3.35rem);
+  --text-h2: clamp(1.625rem, 2.8vw + 0.5rem, 2.25rem);
+  --text-h3: clamp(1.25rem, 1.8vw + 0.5rem, 1.5rem);
+  --text-h4: clamp(1.0625rem, 0.8vw + 0.85rem, 1.25rem);
+  --text-story: clamp(0.975rem, 0.25vw + 0.9rem, 1.075rem);
+  --text-ui: 1rem;
+  --text-arsip: 0.75rem;
+  --text-tulis: 1rem;
+
+  /* Scrollbar Monokrom */
+  --scrollbar-track: #E2DED4;
+  --scrollbar-thumb: #A8A49B;
+  --scrollbar-thumb-hover: #5C5A54;
+  --scrollbar-border: #ECE9E1;
+}
+
+.dark {
+  /* Ruang Gelap Sepia Hangat (tidak hitam pekat) */
+  --background: #1C1916;
+  --foreground: #EBE3D3;
+  --card: #25211D;
+  --card-foreground: #EBE3D3;
+  --popover: #25211D;
+  --popover-foreground: #EBE3D3;
+  --primary: #EAE1CF;
+  --primary-foreground: #1C1916;
+  --secondary: #2E2924;
+  --secondary-foreground: #EBE3D3;
+  --muted: #332E28;
+  --muted-foreground: #B0A595;
+  --accent: #DCD2BF;
+  --accent-foreground: #1C1916;
+  --destructive: #B86B52;
+  --destructive-foreground: #F3F1EA;
+  --border: #3E3830;
+  --input: #3E3830;
+  --ring: #C2B49E;
+  --chart-1: #4B8D91;
+  --chart-2: #6F9674;
+  --chart-3: #C9765B;
+  --chart-4: #D4A157;
+  --chart-5: #6A83A6;
+
+  --surface: #25211D;
+  --ink-primary: #EBE3D3;
+  --ink-secondary: #B0A595;
+  --ink-pen: #E2D9C7;
+  --stamp-red: #B5A894;
+  --washi-sage: #312B24;
+  --washi-rose: #3A322A;
+  --washi-gold: #463B2E;
+
+  --color-accent-warm: #EBE3D3;
+  --color-accent-terracotta: #B5A894;
+  --color-accent-kelimutu: #8C8272;
+  --color-paper-elevated: #2A2520;
+
+  --scrollbar-track: #25211D;
+  --scrollbar-thumb: #5A4E40;
+  --scrollbar-thumb-hover: #8C8272;
+  --scrollbar-border: #1C1916;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  /* Sistem 3 Font: Old Standard TT + Source Serif 4 + Special Elite */
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Alias semantik */
+  --font-display: var(--font-serif);
+  --font-body: var(--font-sans);
+  --font-arsip: var(--font-mono);
+  --font-tulis: var(--font-hand);
+  --font-hand: var(--font-hand);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    overflow-x: clip;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(42, 42, 40, 0.045), transparent 46%),
+      radial-gradient(circle at 82% 86%, rgba(92, 90, 84, 0.04), transparent 46%);
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display,
+  .font-serif {
+    font-family: var(--font-serif);
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  nav a {
+    font-family: var(--font-sans);
+  }
+
+  .font-arsip,
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .font-tulis,
+  .font-hand {
+    font-family: var(--font-hand), var(--font-serif), cursive;
+  }
+}
+
+/* Skala Tipografi Editorial & Mudah Dibaca */
+.album-h1 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h1);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h2 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h2);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h3 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h3);
+  line-height: 1.25;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.album-h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h4);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.album-story {
+  font-family: var(--font-sans);
+  font-size: var(--text-story);
+  line-height: 1.65;
+  max-width: 65ch;
+  text-wrap: pretty;
+}
+
+/* Filter Foto Jadul Pucat & Pudar Hangat (bukan hitam-putih pekat; Admin tetap berwarna asli) */
+.public-film-photo {
+  filter: saturate(0.46) contrast(0.92) brightness(1.04) sepia(0.2);
+}
+
+/* Panel Kertas Monokrom untuk Overlay & Kartu */
+.album-paper-panel {
+  background-color: rgba(243, 241, 234, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  color: var(--foreground);
+  box-shadow:
+    0 10px 24px -8px rgba(27, 27, 26, 0.14),
+    0 2px 6px -1px rgba(27, 27, 26, 0.08);
+}
+
+.dark .album-paper-panel {
+  background-color: rgba(26, 26, 24, 0.96);
+  border-color: var(--border);
+  color: var(--foreground);
+  box-shadow:
+    0 12px 28px -8px rgba(18, 18, 17, 0.55),
+    0 3px 8px -2px rgba(18, 18, 17, 0.35);
+}
+
+/* Label Arsip Mesin Tik */
+.album-stamp {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  background-color: var(--secondary);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.washi-tape {
+  display: none;
+}
+
+.album-lined-paper {
+  background-color: var(--card);
+}
+
+.album-photo-print {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Bingkai Foto Cetak Kertas Perak */
+.vintage-photo-frame,
+.real-photo-paper {
+  position: relative;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 10px 24px -10px rgba(27, 27, 26, 0.14),
+    0 2px 6px -2px rgba(27, 27, 26, 0.08);
+  transition:
+    transform 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vintage-photo-frame:hover,
+.real-photo-paper:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 30px -10px rgba(27, 27, 26, 0.2),
+    0 4px 12px -3px rgba(27, 27, 26, 0.12);
+}
+
+.dark .vintage-photo-frame,
+.dark .real-photo-paper {
+  background-color: var(--card);
+  border-color: var(--border);
+  box-shadow:
+    0 12px 28px -10px rgba(18, 18, 17, 0.52),
+    0 4px 10px -2px rgba(18, 18, 17, 0.32);
+}
+
+/* Garis Pemisah Cetak Koran Ganda Monokrom */
+.ikat-divider {
+  height: 5px;
+  width: 100%;
+  border-top: 2px solid var(--foreground);
+  border-bottom: 1px solid var(--border);
+  opacity: 0.8;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid var(--scrollbar-border);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.photo-gloss-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.photo-gloss-sheen::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    rgba(243, 241, 234, 0) 24%,
+    rgba(243, 241, 234, 0.12) 48%,
+    rgba(243, 241, 234, 0) 76%
+  );
+  mix-blend-mode: screen;
+}
+
+@keyframes theme-radial-expand {
+  from {
+    clip-path: circle(0px at var(--theme-origin-x, 50%) var(--theme-origin-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--theme-max-r, 160vmax) at var(--theme-origin-x, 50%) var(--theme-origin-y, 50%));
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+  animation: theme-radial-expand 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
