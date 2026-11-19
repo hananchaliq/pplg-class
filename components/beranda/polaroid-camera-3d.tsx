@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { motion, AnimatePresence } from "motion/react";
 import { Camera, ChevronRight } from "lucide-react";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
 import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
@@ -108,21 +109,21 @@ function buildPolaroidCanvasTexture(
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
 
-  // Kertas Polaroid kecreaman vintage
-  ctx.fillStyle = "#F5EDD8";
+  // Kertas Polaroid matte kecreaman hangat (tidak terlalu putih silau saat terkena cahaya 3D)
+  ctx.fillStyle = "#EFE7D4";
   ctx.fillRect(0, 0, w, h);
 
-  // Tekstur serat halus kertas Polaroid
-  for (let i = 0; i < 420; i++) {
+  // Tekstur serat halus kertas cetak foto matte
+  for (let i = 0; i < 480; i++) {
     const px = (i * 173 + 29) % w;
     const py = (i * 251 + 61) % h;
     ctx.fillStyle =
-      i % 3 === 0 ? "rgba(107, 91, 75, 0.06)" : "rgba(45, 36, 28, 0.025)";
+      i % 3 === 0 ? "rgba(92, 76, 60, 0.055)" : "rgba(38, 30, 22, 0.025)";
     ctx.fillRect(px, py, 2, 1);
   }
 
-  // Bingkai luar kertas
-  ctx.strokeStyle = "#D4C29E";
+  // Bingkai luar kertas cetak
+  ctx.strokeStyle = "#C8B898";
   ctx.lineWidth = 4;
   ctx.strokeRect(2, 2, w - 4, h - 4);
 
@@ -144,14 +145,29 @@ function buildPolaroidCanvasTexture(
     const dx = photoX + (photoW - dw) / 2;
     const dy = photoY + (photoH - dh) / 2;
 
-    // Filter foto jadul pucat & pudar hangat
-    ctx.filter = "saturate(46%) contrast(92%) brightness(104%) sepia(20%)";
+    // Grading foto cetak film analog yang tajam, natural, tidak silau & nyaman dilihat lama
+    ctx.filter = "saturate(78%) contrast(106%) brightness(93%) sepia(10%)";
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.filter = "none";
 
-    // Lapisan tipis warna kertas cream agar senada
-    ctx.fillStyle = "rgba(239, 229, 206, 0.12)";
+    // Vignette tepi sangat halus + bayangan cekung bingkai cetak asli (tanpa lapisan putih silau)
+    const vig = ctx.createRadialGradient(
+      photoX + photoW / 2,
+      photoY + photoH / 2,
+      photoW * 0.28,
+      photoX + photoW / 2,
+      photoY + photoH / 2,
+      photoW * 0.78
+    );
+    vig.addColorStop(0, "rgba(26, 20, 14, 0)");
+    vig.addColorStop(1, "rgba(26, 20, 14, 0.14)");
+    ctx.fillStyle = vig;
     ctx.fillRect(photoX, photoY, photoW, photoH);
+
+    // Efek cekung tepi atas & kiri seperti kertas emulsi foto asli
+    ctx.fillStyle = "rgba(24, 18, 12, 0.22)";
+    ctx.fillRect(photoX, photoY, photoW, 3);
+    ctx.fillRect(photoX, photoY, 3, photoH);
   } else {
     // Fallback ilustrasi arsip bila foto eksternal gagal/CORS
     const grad = ctx.createLinearGradient(
@@ -180,11 +196,11 @@ function buildPolaroidCanvasTexture(
   ctx.restore();
 
   // Garis tepi dalam foto Polaroid
-  ctx.strokeStyle = "#B8A582";
+  ctx.strokeStyle = "#A99776";
   ctx.lineWidth = 2;
   ctx.strokeRect(photoX, photoY, photoW, photoH);
 
-  // Teks tulisan tangan/editorial pada dagu bawah Polaroid
+  // Teks tulisan editorial kontras tajam & nyaman dibaca pada dagu bawah Polaroid
   const caption = decodeHtmlEntities(
     moment?.caption || "Kenangan bersama keluarga besar XII PPLG 1 MAKN Ende"
   );
@@ -193,24 +209,24 @@ function buildPolaroidCanvasTexture(
   const frameCode = `FRAME #${String(seqIndex + 1).padStart(2, "0")}`;
 
   ctx.textAlign = "center";
-  ctx.fillStyle = "#261F18";
+  ctx.fillStyle = "#1A140F";
   ctx.font = 'bold 26px "Old Standard TT", Georgia, serif';
   const capLines = wrapCanvasText(ctx, caption, photoW - 12, 2);
   capLines.forEach((ln, idx) => {
     ctx.fillText(ln, w / 2, 622 + idx * 34);
   });
 
-  ctx.fillStyle = "#6B5B4B";
+  ctx.fillStyle = "#4B3E31";
   ctx.font = '16px "Special Elite", "Courier New", monospace';
   ctx.fillText(
     `${frameCode} · ${phaseLabel} · ${takenAt}`,
     w / 2,
-    h - 38
+    h - 36
   );
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   texture.needsUpdate = true;
   return texture;
 }
@@ -352,36 +368,36 @@ function createVintagePolaroidCameraModel(): {
     group.add(strip);
   });
 
-  // 5. Celah Slot Pengeluaran Foto Nyata (Cavity Gelap + Bibir Rol Atas & Bawah)
+  // 5. Celah Slot Pengeluaran Foto Nyata (Cavity Gelap Lega + Bibir Rol Atas & Bawah bebas tabrakan)
   const slotCavity = new THREE.Mesh(
-    new THREE.BoxGeometry(1.52, 0.056, 0.14),
+    new THREE.BoxGeometry(1.56, 0.09, 0.16),
     new THREE.MeshStandardMaterial({
       color: 0x0e0c0a,
       roughness: 0.98,
       metalness: 0.0,
     })
   );
-  slotCavity.position.set(0, -0.22, 0.935);
+  slotCavity.position.set(0, -0.215, 0.935);
   group.add(slotCavity);
 
-  // Bibir rol chrome atas & bibir penopang bawah tepat di tepi mulut slot
+  // Bibir rol chrome atas & bibir penopang bawah memberi celah vertikal 0.091 unit agar foto 0.012 tak terpotong
   const rollerLipTop = new THREE.Mesh(
-    new THREE.BoxGeometry(1.62, 0.032, 0.068),
+    new THREE.BoxGeometry(1.64, 0.028, 0.075),
     chromeMat
   );
-  rollerLipTop.position.set(0, -0.178, 0.975);
+  rollerLipTop.position.set(0, -0.156, 0.985);
   group.add(rollerLipTop);
 
   const rollerLipBottom = new THREE.Mesh(
-    new THREE.BoxGeometry(1.62, 0.028, 0.062),
+    new THREE.BoxGeometry(1.64, 0.026, 0.072),
     darkMetalMat
   );
-  rollerLipBottom.position.set(0, -0.262, 0.972);
+  rollerLipBottom.position.set(0, -0.274, 0.982);
   group.add(rollerLipBottom);
 
-  // Anchor eksak mulut celah pengeluaran film (di dalam grup model kamera)
+  // Anchor eksak mulut celah pengeluaran film tepat di depan bibir rol
   const slotAnchor = new THREE.Object3D();
-  slotAnchor.position.set(0, -0.22, 0.978);
+  slotAnchor.position.set(0, -0.215, 1.005);
   group.add(slotAnchor);
 
   // 6. Rakitan Lensa Bertingkat (Outer Collar + Chrome Ring + Inner Baffle + Glass)
@@ -558,8 +574,8 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 45);
-    camera.position.set(0, 0.95, 7.2);
-    camera.lookAt(0, 0.06, 0.25);
+    camera.position.set(0, 0.86, 7.25);
+    camera.lookAt(0, 0.24, 0.2);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -568,7 +584,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 0.94;
     renderer.localClippingEnabled = true;
     renderer.setPixelRatio(
       isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
@@ -591,20 +607,21 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     scene.environment = envTexture;
     pmremGenerator.dispose();
 
-    // Pencahayaan studio sepia hangat
-    const hemiLight = new THREE.HemisphereLight(0xfaf0dc, 0x463a2e, 1.35);
+    // Pencahayaan studio sepia seimbang (tanpa glare berlebih agar foto & bodi kamera tetap detail terbaca)
+    const hemiLight = new THREE.HemisphereLight(0xf5ecd8, 0x463a2e, 0.95);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff4df, 2.2);
-    keyLight.position.set(3.5, 5.2, 4.6);
+    const keyLight = new THREE.DirectionalLight(0xfff3dd, 1.42);
+    keyLight.position.set(4.2, 5.4, 3.6);
     if (!isSoftwareGl) {
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.set(1024, 1024);
       keyLight.shadow.bias = -0.0004;
+      keyLight.shadow.normalBias = 0.02;
     }
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xe5d7b9, 1.15);
+    const rimLight = new THREE.DirectionalLight(0xe2d4b7, 0.78);
     rimLight.position.set(-4.2, 2.8, -3.5);
     scene.add(rimLight);
 
@@ -612,14 +629,19 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     flashLight.position.set(-0.62, 1.32, 0.8);
     scene.add(flashLight);
 
-    // Alas meja studio berada di bawah kamera & jalur cetak Polaroid sehingga foto tak pernah menembus lantai
+    // Alas bayangan studio dipusatkan persis di bawah kamera (radius 2.15, z=-0.05) sehingga mustahil memotong foto saat zoom
+    const shadowPlaneMat = new THREE.ShadowMaterial({
+      opacity: 0.18,
+      depthWrite: false,
+    });
     const shadowPlane = new THREE.Mesh(
-      new THREE.CircleGeometry(3.4, 48),
-      new THREE.ShadowMaterial({ opacity: 0.2 })
+      new THREE.CircleGeometry(2.15, 48),
+      shadowPlaneMat
     );
     shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -0.58;
+    shadowPlane.position.set(0, -0.52, -0.05);
     shadowPlane.receiveShadow = true;
+    shadowPlane.renderOrder = -1;
     scene.add(shadowPlane);
 
     // Rakit Kamera Polaroid 3D di atas alas studio
@@ -630,35 +652,40 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       shutterButton,
       flashBulbMat,
     } = createVintagePolaroidCameraModel();
-    polaroidModel.position.set(0, -0.06, 0);
+    polaroidModel.position.set(0, -0.04, 0);
     cameraRig.add(polaroidModel);
     scene.add(cameraRig);
 
-    // Lembar Foto Polaroid + bidang potong eksak tepat di bibir slot model kamera
-    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.955);
-    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.955);
+    // Lembar Foto Polaroid + bidang potong tepat di dalam mulut slot gelap (z = 0.975)
+    const slotClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.975);
+    const localSlotPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.975);
     const slotClipList = [slotClipPlane];
     const emptyClipList: THREE.Plane[] = [];
 
     const CARD_H = 1.63;
+    const EJECT_SCALE = 0.92;
     const cardGeo = new THREE.BoxGeometry(1.36, CARD_H, 0.012);
     const edgeMat = new THREE.MeshStandardMaterial({
-      color: 0xf5edd8,
-      roughness: 0.65,
-      metalness: 0.02,
+      color: 0xe9dfc9,
+      roughness: 0.78,
+      metalness: 0.0,
+      envMapIntensity: 0.25,
       transparent: true,
       opacity: 0,
     });
     const backMat = new THREE.MeshStandardMaterial({
       color: 0x2d241c,
-      roughness: 0.85,
+      roughness: 0.88,
+      envMapIntensity: 0.2,
       transparent: true,
       opacity: 0,
     });
+    // Kertas foto matte-satin rendah pantulan agar isi gambar & teks caption bebas silau dan nyaman dibaca
     const frontMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.34,
-      metalness: 0.04,
+      color: 0xe6e1d7,
+      roughness: 0.88,
+      metalness: 0.0,
+      envMapIntensity: 0.18,
       transparent: true,
       opacity: 0,
     });
@@ -871,22 +898,19 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           slotAnchor.getWorldPosition(_slotWorldPos);
           slotAnchor.getWorldQuaternion(_slotWorldQuat);
 
-          // Sudut keluar: sejajar celah slot depan (~ -86°, nyaris mendatar dengan ujung luar sedikit naik saat selesai cetak)
-          const pitchRad = -1.5 + pVal * 0.14;
+          // Keluar lurus sejajar celah rol (-91.7° sedikit mendongak) sehingga tidak menabrak bibir rol atas maupun turun ke lantai
+          const pitchRad = -Math.PI / 2 - 0.03;
           _localTiltQuat.setFromAxisAngle(_xAxis, pitchRad);
           outQuat.copy(_slotWorldQuat).multiply(_localTiltQuat);
 
-          // Arah gerak kertas persis searah sumbu -Y kartu yang keluar keluar dari celah slot (+Z kamera)
+          // Arah dorong persis sejajar bidang lembar foto (sumbu -Y kartu menuju +Z mulut slot)
           _ejectDir.set(0, -1, 0).applyQuaternion(outQuat).normalize();
-          // Dorong sedikit ke atas (+0.08 saat p=1) agar foto terangkat anggun di atas alas studio tanpa menembus lantai
-          _ejectDir.y += 0.06 + pVal * 0.08;
-          _ejectDir.normalize();
 
-          // Saat p=0: tepi ujung depan (+CARD_H/2 dari pusat) persis masuk 0.02 di dalam mulut slot (terclip penuh)
-          // Saat p=1: tepi belakang (-CARD_H/2 dari pusat) telah melampaui 0.08 di depan bibir rol slot
+          // Jarak terukur persis berdasarkan ukuran kartu terskala: p=0 tersembunyi penuh di dalam slot, p=1 seluruh bingkai bebas dari rol
+          const halfLen = CARD_H * 0.5 * EJECT_SCALE;
           const distFromSlot = THREE.MathUtils.lerp(
-            -(CARD_H * 0.5) - 0.015,
-            CARD_H * 0.5 + 0.09,
+            -halfLen - 0.012,
+            halfLen + 0.085,
             pVal
           );
           outPos.copy(_slotWorldPos).addScaledVector(_ejectDir, distFromSlot);
@@ -903,7 +927,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Membidik momen & menekan rana...");
           }
         } else if (t < 3.05) {
-          // Fase cetak keluar lurus dari celah rol depan dengan bidang potong di dalam mulut slot model
+          // Fase cetak keluar lurus bersih dari mulut rol depan tanpa memotong tepi bawah/atas foto
           const p = easeOutCubic((t - 1.08) / (3.05 - 1.08));
           photoMesh.visible = true;
 
@@ -913,15 +937,14 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           setPhotoClipping(slotClipList);
 
           computeSlotEjectPose(p, photoMesh.position, photoMesh.quaternion);
-          const s = 0.92 + p * 0.05;
-          photoMesh.scale.set(s, s, s);
+          photoMesh.scale.set(EJECT_SCALE, EJECT_SCALE, EJECT_SCALE);
 
-          // Efek foto Polaroid perlahan matang warnanya saat keluar dari kamera
+          // Efek foto Polaroid perlahan matang warnanya hingga tingkat kecerahan nyaman (bebas silau)
           const dev = smoothstep(1.15, 2.75, t);
-          const shade = THREE.MathUtils.lerp(0.34, 1.0, dev);
-          frontMat.color.setRGB(shade, shade * 0.99, shade * 0.96);
+          const shade = THREE.MathUtils.lerp(0.32, 0.9, dev);
+          frontMat.color.setRGB(shade, shade * 0.98, shade * 0.94);
 
-          const fadeStart = smoothstep(1.08, 1.24, t);
+          const fadeStart = smoothstep(1.08, 1.22, t);
           frontMat.opacity = fadeStart;
           edgeMat.opacity = fadeStart;
           backMat.opacity = fadeStart;
@@ -931,26 +954,28 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
             setStagePhaseLabel("Mencetak lembar Polaroid kelas...");
           }
         } else if (t < 5.45) {
-          // Fase terlepas bebas dari slot & zoom mendekat tanpa terpotong
+          // Fase terangkat melengkung ke atas & zoom mendekat penuh di atas lantai (clearance lantai aman > 0.10 unit)
           setPhotoClipping(emptyClipList);
           const p = easeInOutCubic((t - 3.05) / 1.15);
           computeSlotEjectPose(1, _startEjectPos, _startEjectQuat);
 
-          _targetZoomPos.set(px * 0.08, 0.24 + py * 0.05, 3.32);
-          _targetZoomEuler.set(0.04, px * 0.12, 0.015, "XYZ");
+          _targetZoomPos.set(px * 0.08, 0.44 + py * 0.05, 3.18);
+          _targetZoomEuler.set(0.03, px * 0.12, 0.012, "XYZ");
           _targetZoomQuat.setFromEuler(_targetZoomEuler);
 
           photoMesh.visible = true;
           photoMesh.position.lerpVectors(_startEjectPos, _targetZoomPos, p);
+          // Busur angkat saat kartu berputar tegak agar sudut bawah kertas tak pernah mendekati alas studio
+          photoMesh.position.y += Math.sin(p * Math.PI) * 0.24;
           photoMesh.quaternion.slerpQuaternions(
             _startEjectQuat,
             _targetZoomQuat,
             p
           );
 
-          const zoomScale = THREE.MathUtils.lerp(0.97, 1.16, p);
+          const zoomScale = THREE.MathUtils.lerp(EJECT_SCALE, 1.05, p);
           photoMesh.scale.set(zoomScale, zoomScale, zoomScale);
-          frontMat.color.setRGB(1, 1, 1);
+          frontMat.color.setRGB(0.9, 0.882, 0.846);
           frontMat.opacity = 1;
           edgeMat.opacity = 1;
           backMat.opacity = 1;
@@ -967,12 +992,13 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
           photoMesh.visible = op > 0.01;
           photoMesh.position.set(
             px * 0.08,
-            0.24 + fadeOutP * 0.16,
-            3.32 + fadeOutP * 0.24
+            0.44 + fadeOutP * 0.14,
+            3.18 + fadeOutP * 0.22
           );
-          const driftScale = 1.16 + fadeOutP * 0.1;
+          const driftScale = 1.05 + fadeOutP * 0.08;
           photoMesh.scale.set(driftScale, driftScale, driftScale);
-          photoMesh.rotation.set(0.04, px * 0.12, 0.015);
+          photoMesh.rotation.set(0.03, px * 0.12, 0.012);
+          frontMat.color.setRGB(0.9, 0.882, 0.846);
           frontMat.opacity = op;
           edgeMat.opacity = op;
           backMat.opacity = op;
@@ -1061,34 +1087,93 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       onPointerLeave={handlePointerLeave}
       className="relative w-full overflow-visible"
     >
-      {/* Panggung WebGL 3D Terbuka Menyatu dengan Halaman (Tanpa Kontainer Kotak) */}
+      {/* Panggung WebGL 3D Terbuka atau Tumpukan Kertas Cetak Foto Asli 2D */}
       {is2DFallback ? (
-        <div className="relative flex h-[380px] sm:h-[460px] w-full flex-col items-center justify-center py-4">
-          <div className="relative mx-auto w-64 rounded-xl border-2 border-[#2D241C] bg-[#F5EDD8] p-3 pb-5 text-[#261F18] shadow-lg transition-all duration-700">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded border border-[#C9B794] bg-[#2D241C]">
-              {activeMoment?.image_url &&
-              !activeMoment.image_url.startsWith(
-                "/api/moment-illustration"
-              ) ? (
-                <img
-                  src={activeMoment.image_url}
-                  alt={activeCaption}
-                  referrerPolicy="no-referrer"
-                  className="public-film-photo size-full object-cover"
+        <div className="relative flex min-h-[400px] sm:min-h-[470px] w-full items-center justify-center py-8 px-4">
+          <div className="relative mx-auto w-[286px] sm:w-[336px]">
+            {/* Lembar foto tumpukan belakang kanan (kedalaman kertas cetak fisik) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 translate-x-3 translate-y-2 rotate-[4.5deg] rounded-[3px] border border-[#CBBBA0] bg-[#EAE0C8] shadow-[0_14px_30px_-12px_rgba(24,18,12,0.28)]"
+            />
+            {/* Lembar foto tumpukan belakang kiri */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -translate-x-3 translate-y-1.5 -rotate-[4deg] rounded-[3px] border border-[#D4C5AA] bg-[#F1E8D3] shadow-[0_16px_32px_-12px_rgba(24,18,12,0.3)]"
+            />
+
+            {/* Selotip kertas transparan tipis di sisi atas seperti tempelan foto asli */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-3.5 left-1/2 z-20 h-7 w-24 -translate-x-1/2 -rotate-2 border border-[#C8B99B]/60 bg-[#F5EDD6]/75 shadow-xs backdrop-blur-[1px]"
+            />
+
+            {/* Kertas Cetak Foto Polaroid Utama yang Otentik */}
+            <AnimatePresence mode="wait">
+              <motion.figure
+                key={`${activeMoment?.id ?? "fallback"}-${activeIdx}`}
+                initial={{ opacity: 0, y: 18, rotate: -2.2, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, rotate: -1.1, scale: 1 }}
+                exit={{ opacity: 0, y: -14, rotate: 1.5, scale: 0.98 }}
+                whileHover={{ rotate: 0, y: -4, scale: 1.015 }}
+                transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                className="relative z-10 rounded-[3px] border border-[#D2C3A6] bg-[#F6EFE0] p-3.5 pb-6 text-[#1E1712] shadow-[0_24px_48px_-16px_rgba(24,18,12,0.38),0_4px_12px_-4px_rgba(24,18,12,0.18),inset_0_1px_0_rgba(255,255,255,0.65)]"
+              >
+                {/* Tekstur serat kertas cetak sangat halus */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-[3px] opacity-30"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(rgba(82,66,48,0.16) 0.55px, transparent 0.55px)",
+                    backgroundSize: "9px 9px",
+                  }}
                 />
-              ) : (
-                <div className="flex size-full flex-col items-center justify-center p-4 text-center text-[#EFE5CE]">
-                  <p className="font-serif text-xl font-bold">UNO</p>
-                  <p className="font-mono text-[10px]">XII PPLG 1</p>
+
+                {/* Bidang Foto Emulsi Cekung dengan Bingkai Tipis Asli */}
+                <div className="relative aspect-[4/3.45] w-full overflow-hidden rounded-[2px] border border-[#B8A789] bg-[#241C16] shadow-[inset_0_2px_6px_rgba(0,0,0,0.28)]">
+                  {activeMoment?.image_url &&
+                  !activeMoment.image_url.startsWith(
+                    "/api/moment-illustration"
+                  ) ? (
+                    <img
+                      src={activeMoment.image_url}
+                      alt={activeCaption}
+                      referrerPolicy="no-referrer"
+                      className="public-film-photo size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full flex-col items-center justify-center p-4 text-center text-[#EFE5CE]">
+                      <p className="font-serif text-2xl font-bold">UNO</p>
+                      <p className="mt-1 font-mono text-[11px] tracking-widest">
+                        XII PPLG 1 · MAKN ENDE
+                      </p>
+                    </div>
+                  )}
+                  {/* Vignette tipis alami di tepi cetakan */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 shadow-[inset_0_0_24px_rgba(24,18,12,0.18)]"
+                  />
                 </div>
-              )}
-            </div>
-            <p className="mt-3 line-clamp-2 text-center font-serif text-sm font-bold text-[#261F18]">
-              {activeCaption}
-            </p>
-            <p className="mt-1 text-center font-mono text-[10px] text-[#6B5B4B]">
-              {activeDate}
-            </p>
+
+                {/* Dagu Bawah Kertas Polaroid dengan Tulisan Tangan & Cap Frame */}
+                <figcaption className="relative mt-4 px-1 text-center">
+                  <p className="line-clamp-2 font-hand text-[22px] sm:text-[24px] font-semibold leading-[1.2] text-[#1F1812]">
+                    {activeCaption}
+                  </p>
+                  <div className="mt-2.5 flex items-center justify-between border-t border-[#D8CBB2]/80 pt-2 font-mono text-[10px] tracking-[0.12em] text-[#5C4E3E]">
+                    <span>
+                      NO. {String(activeIdx + 1).padStart(2, "0")} ·{" "}
+                      {activeMoment?.phase
+                        ? `KLS ${activeMoment.phase}`
+                        : "XII PPLG 1"}
+                    </span>
+                    <span className="tabular-nums">{activeDate}</span>
+                  </div>
+                </figcaption>
+              </motion.figure>
+            </AnimatePresence>
           </div>
         </div>
       ) : (

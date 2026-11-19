@@ -723,13 +723,23 @@ function drawVintagePhotoFrame(
     const dx = lx + (w - dw) / 2;
     const dy = ly + (h - dh) / 2;
 
-    // Pucat ala foto cetak koran jadul (bukan hitam putih pekat)
-    ctx.filter = "saturate(44%) contrast(94%) brightness(104%) sepia(22%)";
+    // Grading cetak foto koran hangat yang seimbang: tajam, tidak silau, dan nyaman dilihat lama
+    ctx.filter = "saturate(74%) contrast(106%) brightness(95%) sepia(12%)";
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.filter = "none";
 
-    // Lapisan tipis warna kertas cream agar menyatu dengan kertas koran
-    ctx.fillStyle = "rgba(239, 229, 206, 0.12)";
+    // Vignette tepi sangat halus agar foto menyatu alami tanpa membuat wajah pucat/silau
+    const vig = ctx.createRadialGradient(
+      0,
+      0,
+      Math.min(w, h) * 0.32,
+      0,
+      0,
+      Math.max(w, h) * 0.72
+    );
+    vig.addColorStop(0, "rgba(30, 23, 18, 0)");
+    vig.addColorStop(1, "rgba(30, 23, 18, 0.14)");
+    ctx.fillStyle = vig;
     ctx.fillRect(lx, ly, w, h);
   } else {
     ctx.fillStyle = PAPER_WARM_ALT;

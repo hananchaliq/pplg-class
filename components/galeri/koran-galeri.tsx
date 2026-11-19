@@ -416,80 +416,101 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
           </div>
         </div>
 
-        {/* Panel INDEKS Rubrik per Fase */}
+        {/* Penanda Fase & Indeks Rubrik Terintegrasi di Kepala Koran */}
         <div
-          aria-label="Indeks Rubrik Koran"
-          className="no-scrollbar mt-3 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap"
+          aria-label="Penanda Fase & Indeks Rubrik Koran"
+          className="no-scrollbar mt-3 flex flex-nowrap items-center gap-x-1 gap-y-1.5 overflow-x-auto border-y border-[#C9B794]/80 py-2 dark:border-border/80 sm:flex-wrap"
         >
-          <span className="mr-1 inline-flex items-center gap-1 font-mono text-[11px] font-bold tracking-wider text-[#6B5B4B] dark:text-muted-foreground uppercase shrink-0">
+          <span className="mr-1.5 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.14em] text-[#5A4B3C] dark:text-muted-foreground uppercase shrink-0">
             <BookOpen className="size-3.5" />
-            BAB &amp; INDEKS:
+            PENANDA EDISI:
           </span>
 
           <button
             type="button"
             onClick={() => goToPage(0)}
-            className={`min-h-[32px] rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
+            className={`min-h-[30px] rounded px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
               currentPage === 0
-                ? "border-[#261F18] bg-[#2D241C] text-[#EFE5CE] dark:border-foreground dark:bg-primary dark:text-primary-foreground"
-                : "border-[#C9B794] bg-[#F7EEDB] text-[#261F18] hover:bg-[#E5D7B9] dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                ? "bg-[#2D241C] font-bold text-[#EFE5CE] dark:bg-primary dark:text-primary-foreground"
+                : "text-[#3D3124] hover:bg-[#E5D7B9]/80 dark:text-foreground/85 dark:hover:bg-muted"
             }`}
           >
-            Sampul (Hal. 1)
+            Sampul · Hal. 1
           </button>
+
+          <span aria-hidden="true" className="text-[#8A7864] select-none">
+            /
+          </span>
 
           {(
             [
-              { ph: "X" as MomentPhase, bab: "Bab I" },
-              { ph: "XI" as MomentPhase, bab: "Bab II" },
-              { ph: "XII" as MomentPhase, bab: "Bab III" },
+              { ph: "X" as MomentPhase, bab: "Bab I · Kelas X" },
+              { ph: "XI" as MomentPhase, bab: "Bab II · Kelas XI" },
+              { ph: "XII" as MomentPhase, bab: "Bab III · Kelas XII" },
             ]
-          ).map(({ ph, bab }) => {
+          ).map(({ ph, bab }, idx) => {
             const targetIdx = plan.phaseStartPages[ph];
+            const phaseCount = moments.filter(
+              (m) => String(m.phase || "XII").trim().toUpperCase() === ph
+            ).length;
             const isActiveRubric =
               activeSpec?.phase === ph ||
               (activePhase === ph && currentPage === targetIdx);
             return (
-              <button
-                key={ph}
-                type="button"
-                onClick={() => {
-                  onSelectPhase?.(ph);
-                  goToPage(targetIdx);
-                }}
-                className={`min-h-[32px] rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
-                  isActiveRubric
-                    ? "border-[#261F18] bg-[#2D241C] text-[#EFE5CE] dark:border-foreground dark:bg-primary dark:text-primary-foreground"
-                    : "border-[#C9B794] bg-[#F7EEDB] text-[#261F18] hover:bg-[#E5D7B9] dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
-                }`}
-              >
-                {bab}: Kelas {ph} (Hal. {targetIdx + 1})
-              </button>
+              <React.Fragment key={ph}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectPhase?.(ph);
+                    goToPage(targetIdx);
+                  }}
+                  className={`min-h-[30px] rounded px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
+                    isActiveRubric
+                      ? "bg-[#2D241C] font-bold text-[#EFE5CE] dark:bg-primary dark:text-primary-foreground"
+                      : "text-[#3D3124] hover:bg-[#E5D7B9]/80 dark:text-foreground/85 dark:hover:bg-muted"
+                  }`}
+                >
+                  {bab} ({phaseCount})
+                </button>
+                {idx < 2 && (
+                  <span aria-hidden="true" className="text-[#8A7864] select-none">
+                    ·
+                  </span>
+                )}
+              </React.Fragment>
             );
           })}
+
+          <span aria-hidden="true" className="text-[#8A7864] select-none">
+            /
+          </span>
 
           <button
             type="button"
             onClick={() => goToPage(plan.tocPageIndex)}
-            className={`min-h-[32px] rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
+            className={`min-h-[30px] rounded px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
               currentPage === plan.tocPageIndex
-                ? "border-[#261F18] bg-[#2D241C] text-[#EFE5CE] dark:border-foreground dark:bg-primary dark:text-primary-foreground"
-                : "border-[#C9B794] bg-[#F7EEDB] text-[#261F18] hover:bg-[#E5D7B9] dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                ? "bg-[#2D241C] font-bold text-[#EFE5CE] dark:bg-primary dark:text-primary-foreground"
+                : "text-[#3D3124] hover:bg-[#E5D7B9]/80 dark:text-foreground/85 dark:hover:bg-muted"
             }`}
           >
-            Indeks (Hal. {plan.tocPageIndex + 1})
+            Indeks
           </button>
+
+          <span aria-hidden="true" className="text-[#8A7864] select-none">
+            ·
+          </span>
 
           <button
             type="button"
             onClick={() => goToPage(plan.backCoverIndex)}
-            className={`min-h-[32px] rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
+            className={`min-h-[30px] rounded px-2.5 py-1 font-mono text-[11px] transition-colors whitespace-nowrap shrink-0 ${
               currentPage === plan.backCoverIndex
-                ? "border-[#261F18] bg-[#2D241C] text-[#EFE5CE] dark:border-foreground dark:bg-primary dark:text-primary-foreground"
-                : "border-[#C9B794] bg-[#F7EEDB] text-[#261F18] hover:bg-[#E5D7B9] dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                ? "bg-[#2D241C] font-bold text-[#EFE5CE] dark:bg-primary dark:text-primary-foreground"
+                : "text-[#3D3124] hover:bg-[#E5D7B9]/80 dark:text-foreground/85 dark:hover:bg-muted"
             }`}
           >
-            Tamat (Hal. {plan.backCoverIndex + 1})
+            Tamat
           </button>
         </div>
 
@@ -511,28 +532,28 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
             label="Galeri Kenangan Bersama — Koran XII PPLG 1"
             paper={{
               backColor: "#EFE5CE",
-              roughness: 0.78,
-              metalness: 0.03,
-              inkGloss: 0.1,
+              roughness: 0.88,
+              metalness: 0.01,
+              inkGloss: 0.03,
               grain: true,
-              grainStrength: 0.16,
-              showThrough: 0.08,
-              wrinkles: 0.95,
-              bulge: 0.85,
+              grainStrength: 0.14,
+              showThrough: 0.06,
+              wrinkles: 0.9,
+              bulge: 0.82,
             }}
             lighting={{
               ambient: {
-                sky: "#F5ECD8",
-                ground: "#D4C29E",
-                intensity: 1.55,
+                sky: "#EFE6D2",
+                ground: "#C9B794",
+                intensity: 1.15,
               },
               sun: {
-                color: "#F8F0DE",
-                intensity: 1.15,
-                position: [1.2, 1.4, 2.2],
+                color: "#F5ECD8",
+                intensity: 0.82,
+                position: [1.6, 1.8, 2.4],
               },
               shadows: true,
-              floorShadow: 0.18,
+              floorShadow: 0.16,
             }}
             motion={{
               reducedMotion: "auto",

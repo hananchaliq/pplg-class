@@ -36,24 +36,6 @@ const SPECIAL_NON_GALLERY_CATEGORIES = new Set([
   "Foto Bersama Kelas",
 ]);
 
-const PHASES: Array<{ id: MomentPhase; label: string; subtitle: string }> = [
-  {
-    id: "X",
-    label: "Kelas X",
-    subtitle: "Awal perjumpaan & orientasi madrasah",
-  },
-  {
-    id: "XI",
-    label: "Kelas XI",
-    subtitle: "Masa PKL, lomba & proyek rekayasa",
-  },
-  {
-    id: "XII",
-    label: "Kelas XII",
-    subtitle: "Ujian akhir & senja perpisahan",
-  },
-];
-
 export function GaleriClient({
   initialMoments,
 }: {
@@ -287,60 +269,11 @@ export function GaleriClient({
         </div>
       </div>
 
-      {/* Pilihan Timeline Rubrik (Kelas X, XI, XII) */}
-      <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-        {PHASES.map((p) => {
-          const active = activePhase === p.id;
-          const countInPhase = filteredMoments.filter(
-            (m) => String(m.phase || "XII").trim().toUpperCase() === p.id
-          ).length;
-          return (
-            <motion.button
-              key={p.id}
-              type="button"
-              whileHover={{ y: -3, scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 380, damping: 24 }}
-              onClick={() => {
-                setActivePhase(p.id);
-                setMomentPage(1);
-                koranRef.current?.goToPhase(p.id);
-              }}
-              className={`relative flex flex-col items-start rounded-xl border p-2.5 sm:p-4 text-left transition-colors ${
-                active
-                  ? "border-transparent bg-card shadow-sm"
-                  : "border-border bg-card/50 hover:bg-card"
-              }`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="galeri-phase-ring"
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
-                  className="pointer-events-none absolute inset-0 rounded-xl border-2 border-foreground"
-                  aria-hidden="true"
-                />
-              )}
-              <div className="relative z-10 flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                <span className="font-serif text-sm sm:text-lg font-bold text-foreground">
-                  {p.label}
-                </span>
-                <span className="w-fit rounded-md bg-muted px-2 py-0.5 font-mono text-[10px] sm:text-xs font-semibold text-muted-foreground">
-                  {countInPhase} foto
-                </span>
-              </div>
-              <span className="relative z-10 mt-1 hidden font-sans text-xs text-muted-foreground sm:block">
-                {p.subtitle}
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
-
       {/* Filter Kategori */}
       <div
         role="group"
         aria-label="Filter Kategori Momen"
-        className="no-scrollbar mt-4 flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 sm:flex-wrap"
+        className="no-scrollbar mt-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 sm:flex-wrap"
       >
         {SITE_CONTENT.momentCategories.map((cat) => {
           const active = activeCategory === cat;

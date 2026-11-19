@@ -270,9 +270,9 @@
   text-wrap: pretty;
 }
 
-/* Filter Foto Jadul Pucat & Pudar Hangat (bukan hitam-putih pekat; Admin tetap berwarna asli) */
+/* Filter Foto Film Hangat Nyaman Dibaca (tidak silau/pucat berlebih dan tidak terlalu gelap) */
 .public-film-photo {
-  filter: saturate(0.46) contrast(0.92) brightness(1.04) sepia(0.2);
+  filter: saturate(0.76) contrast(1.04) brightness(0.95) sepia(0.1);
 }
 
 /* Panel Kertas Monokrom untuk Overlay & Kartu */
@@ -405,9 +405,9 @@
   inset: 0;
   background: linear-gradient(
     125deg,
-    rgba(243, 241, 234, 0) 24%,
-    rgba(243, 241, 234, 0.12) 48%,
-    rgba(243, 241, 234, 0) 76%
+    rgba(243, 241, 234, 0) 26%,
+    rgba(243, 241, 234, 0.04) 48%,
+    rgba(243, 241, 234, 0) 74%
   );
   mix-blend-mode: screen;
 }
