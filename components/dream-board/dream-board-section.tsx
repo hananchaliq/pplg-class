@@ -12,20 +12,28 @@ import {
   getAlbumTulisFont,
 } from "@/lib/class-meta";
 import {
+  createSafeWebGLRenderer,
+  isSoftwareWebGL,
+  useVisualTier,
+} from "@/lib/visual-tier";
+import {
   Sparkles,
   Pin,
   MousePointerClick,
   ChevronLeft,
   ChevronRight,
   X,
-  Compass,
-  Heart,
   Shuffle,
   Edit3,
   RotateCcw,
   Save,
   Layers,
   MessageSquareHeart,
+  LayoutGrid,
+  Box,
+  Search,
+  Plus,
+  ArrowUpRight,
 } from "lucide-react";
 
 export type ExtendedStudentRecord = StudentRecord & {
@@ -444,11 +452,14 @@ export function DreamBoardSection({
     [poses, students]
   );
 
+  const { tier, isManualOverride } = useVisualTier();
+  const [viewMode, setViewMode] = React.useState<"bento" | "board3d">("bento");
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [boardFinish, setBoardFinish] = React.useState<
     "whiteboard" | "chalkboard"
   >("whiteboard");
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
-  const [zoomedIndex, setZoomedIndex] = React.useState<number | null>(null);
+  const [zoomedIndex, setZoomedIndex] = React.useState<number | null>(0);
   const [hoverScreenPos, setHoverScreenPos] = React.useState<{
     x: number;
     y: number;
@@ -464,6 +475,20 @@ export function DreamBoardSection({
   const [editCapsule, setEditCapsule] = React.useState("");
   const [editColor, setEditColor] = React.useState<string>(DEFAULT_PAPER_HEX);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
+  const [css3dFallback, setCss3dFallback] = React.useState(false);
+  const [cssTilt, setCssTilt] = React.useState<{ rx: number; ry: number }>({
+    rx: 0,
+    ry: 0,
+  });
+
+  // Sync with global 3D/2D Navbar button when user manually toggles it
+  const prevGlobalTierRef = React.useRef(tier);
+  React.useEffect(() => {
+    if (prevGlobalTierRef.current !== tier && isManualOverride) {
+      prevGlobalTierRef.current = tier;
+      setViewMode(tier === "hd" ? "board3d" : "bento");
+    }
+  }, [tier, isManualOverride]);
 
   // Refs synced for the Three.js loop
   const hoveredIndexRef = React.useRef<number | null>(null);
@@ -489,8 +514,8 @@ export function DreamBoardSection({
   }, [hoveredIndex]);
 
   React.useEffect(() => {
-    zoomedIndexRef.current = zoomedIndex;
-  }, [zoomedIndex]);
+    zoomedIndexRef.current = viewMode === "board3d" ? zoomedIndex : null;
+  }, [zoomedIndex, viewMode]);
 
   React.useEffect(() => {
     boardFinishRef.current = boardFinish;
@@ -514,12 +539,13 @@ export function DreamBoardSection({
       zoomedIndex: zoomedIndexRef.current,
       noteCount: poses.length,
       boardFinish,
+      viewMode,
       isStaticBoardLocked: true,
     });
     return () => {
       delete win.__dream_board_state;
     };
-  }, [poses.length, boardFinish]);
+  }, [poses.length, boardFinish, viewMode]);
 
   React.useEffect(() => {
     if (zoomedIndex === null || orderedStudents.length === 0) return undefined;
@@ -533,7 +559,9 @@ export function DreamBoardSection({
 
       if (e.key === "Escape") {
         setIsEditingModal(false);
-        setZoomedIndex(null);
+        if (viewMode === "board3d") {
+          setZoomedIndex(null);
+        }
       } else if (!isTyping && e.key === "ArrowRight") {
         setIsEditingModal(false);
         setZoomedIndex((prev) =>
@@ -550,26 +578,21 @@ export function DreamBoardSection({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [zoomedIndex, orderedStudents.length]);
+  }, [zoomedIndex, orderedStudents.length, viewMode]);
 
   const noteCount = orderedStudents.length;
   React.useEffect(() => {
+    if (viewMode !== "board3d") {
+      window.dispatchEvent(new CustomEvent("app:scene-ready"));
+      return undefined;
+    }
     const container = mountRef.current;
-    if (!container || noteCount === 0) return undefined;
+    if (!container || noteCount === 0) {
+      window.dispatchEvent(new CustomEvent("app:scene-ready"));
+      return undefined;
+    }
 
-    const isSoftwareGl = (() => {
-      try {
-        const probe = document.createElement("canvas").getContext("webgl2");
-        if (!probe) return true;
-        const ext = probe.getExtension("WEBGL_debug_renderer_info");
-        const param = ext ? ext.UNMASKED_RENDERER_WEBGL : probe.RENDERER;
-        const gpu = String(probe.getParameter(param));
-        probe.getExtension("WEBGL_lose_context")?.loseContext();
-        return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
-      } catch {
-        return true;
-      }
-    })();
+    const isSoftwareGl = isSoftwareWebGL();
 
     const segs = 16;
     const width = container.clientWidth || 960;
@@ -580,17 +603,17 @@ export function DreamBoardSection({
     camera.position.set(0, -0.12, 12.65);
     camera.lookAt(0, -0.12, 0);
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: !isSoftwareGl,
-        alpha: true,
-        powerPreference: "high-performance",
-        preserveDrawingBuffer: true,
-      });
-    } catch {
+    const safeRenderer = createSafeWebGLRenderer({
+      antialias: !isSoftwareGl,
+      alpha: true,
+    });
+    if (!safeRenderer) {
+      setCss3dFallback(true);
+      window.dispatchEvent(new CustomEvent("app:scene-ready"));
       return undefined;
     }
+    setCss3dFallback(false);
+    const renderer = safeRenderer;
 
     renderer.setSize(width, height);
     renderer.setPixelRatio(
@@ -1057,6 +1080,7 @@ export function DreamBoardSection({
         }
       });
     };
+    syncNotesContentRef.current(orderedStudents, poses, zoomColorOverride);
 
     // High-Performance Raycasting for Hover & Click on the 22 3D Notes
     const raycaster = new THREE.Raycaster();
@@ -1388,20 +1412,49 @@ export function DreamBoardSection({
       renderer.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteCount]);
+  }, [noteCount, viewMode]);
 
   const hoveredStudent =
     hoveredIndex !== null ? (orderedStudents[hoveredIndex] ?? null) : null;
+  const activeSpotlightIdx =
+    zoomedIndex !== null && zoomedIndex < orderedStudents.length
+      ? zoomedIndex
+      : 0;
+  const spotlightStudent =
+    orderedStudents[activeSpotlightIdx] ?? orderedStudents[0] ?? null;
+  const spotlightPose =
+    poses[activeSpotlightIdx] ?? poses[0] ?? null;
   const zoomedStudent =
-    zoomedIndex !== null ? (orderedStudents[zoomedIndex] ?? null) : null;
+    viewMode === "board3d" && zoomedIndex !== null
+      ? (orderedStudents[zoomedIndex] ?? null)
+      : null;
   const zoomedPose =
-    zoomedIndex !== null ? (poses[zoomedIndex] ?? null) : null;
+    viewMode === "board3d" && zoomedIndex !== null
+      ? (poses[zoomedIndex] ?? null)
+      : null;
+
+  const filteredIndexedStudents = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return orderedStudents
+      .map((student, idx) => ({ student, idx, pose: poses[idx] }))
+      .filter(({ student }) => {
+        if (!q) return true;
+        return (
+          student.name.toLowerCase().includes(q) ||
+          (student.nickname || "").toLowerCase().includes(q) ||
+          student.dream_title.toLowerCase().includes(q) ||
+          student.dream_reason.toLowerCase().includes(q)
+        );
+      });
+  }, [orderedStudents, poses, searchQuery]);
 
   const handleCycleZoomPaperColor = () => {
-    if (!zoomedStudent) return;
+    const target = zoomedStudent ?? spotlightStudent;
+    const targetPose = zoomedPose ?? spotlightPose;
+    if (!target) return;
     const currentHex =
-      zoomColorOverride[zoomedStudent.id] ||
-      zoomedPose?.paperColorHex ||
+      zoomColorOverride[target.id] ||
+      targetPose?.paperColorHex ||
       DEFAULT_PAPER_HEX;
     const currentIdx = DREAM_PAPER_PALETTE.findIndex(
       (p) => p.hex.toLowerCase() === currentHex.toLowerCase()
@@ -1412,9 +1465,9 @@ export function DreamBoardSection({
 
     setZoomColorOverride((prev) => ({
       ...prev,
-      [zoomedStudent.id]: nextHex,
+      [target.id]: nextHex,
     }));
-    updatePaperColorRef.current(zoomedStudent.id, nextHex);
+    updatePaperColorRef.current(target.id, nextHex);
   };
 
   const handleToggleBoardFinish = () => {
@@ -1425,592 +1478,769 @@ export function DreamBoardSection({
   };
 
   const activePaperHex =
-    zoomedStudent && zoomedPose
-      ? zoomColorOverride[zoomedStudent.id] || zoomedPose.paperColorHex
+    spotlightStudent && spotlightPose
+      ? zoomColorOverride[spotlightStudent.id] || spotlightPose.paperColorHex
       : DEFAULT_PAPER_HEX;
   const activePaperName =
     DREAM_PAPER_PALETTE.find(
       (p) => p.hex.toLowerCase() === activePaperHex.toLowerCase()
     )?.name ??
-    zoomedPose?.paperColorName ??
-    "Pastel";
+    spotlightPose?.paperColorName ??
+    "Krem Klasik";
 
   return (
     <section
       id="papan-cita-cita"
       aria-labelledby="heading-papan-cita-cita"
-      className="mx-auto max-w-[1320px] px-3 py-6 sm:px-6 sm:py-8 lg:px-8"
+      className="mx-auto max-w-[1320px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
     >
-      <div className="rounded-3xl border border-border bg-card/90 p-4 shadow-md backdrop-blur-md sm:p-6 lg:p-8">
-        {/* Compact Responsive Section Header — Monokrom Film Jadul */}
-        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              <Sparkles className="size-3.5 shrink-0" strokeWidth={1.5} />
-              <span className="truncate">
-                Papan Impian 3D · XII PPLG 1
-              </span>
-            </p>
-            <h1
-              id="heading-papan-cita-cita"
-              className="mt-1 font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl lg:text-[28px]"
-            >
-              Papan Cita-Cita &amp; Harapan ({orderedStudents.length} Siswa)
-            </h1>
-            <p className="mt-1 max-w-xl text-xs text-muted-foreground">
-              Klik lembar kertas cita-cita untuk membaca alasan dan mengirim doa semangat.
-            </p>
-          </div>
-
-          {/* Kontrol Papan Cita-Cita */}
-          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] sm:gap-2">
-            <motion.button
-              whileHover={{ y: -1.5, scale: 1.02 }}
-              whileTap={{ scale: 0.96 }}
-              type="button"
-              onClick={handleToggleBoardFinish}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-foreground transition-colors hover:bg-muted"
-            >
-              <Layers
-                className="size-3.5 shrink-0 text-primary"
-                strokeWidth={1.5}
-              />
-              <span>
-                {boardFinish === "whiteboard"
-                  ? "Papan Putih"
-                  : "Papan Hijau"}
-              </span>
-            </motion.button>
-
-            <span className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-background/70 px-3 text-foreground">
-              <Pin
-                className="size-3.5 shrink-0 text-muted-foreground"
-                strokeWidth={1.5}
-              />
-              <span>{orderedStudents.length} Kertas</span>
-            </span>
-
-            {onOpenSubmitDreamModal && (
-              <motion.button
-                whileHover={{ y: -1.5, scale: 1.03 }}
-                whileTap={{ scale: 0.96 }}
-                type="button"
-                onClick={onOpenSubmitDreamModal}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3.5 font-sans text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90"
-              >
-                <Sparkles className="size-3.5 shrink-0" />
-                <span>Tempel Cita-Cita</span>
-              </motion.button>
-            )}
-
-            {zoomedStudent ? (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.95 }}
-                type="button"
-                onClick={() => {
-                  setIsEditingModal(false);
-                  setZoomedIndex(null);
-                }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-background transition-opacity hover:opacity-90"
-              >
-                <X className="size-3.5 shrink-0" />
-                <span>Tutup</span>
-              </motion.button>
-            ) : (
-              <span className="hidden h-9 items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-foreground sm:inline-flex">
-                <MousePointerClick className="size-3.5" strokeWidth={1.5} />
-                <span>Klik: Fokus</span>
-              </span>
-            )}
-          </div>
+      {/* Top Editorial Header & High-Contrast Control Bar */}
+      <div className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            ARSIP IMPIAN · XII PPLG 1 · MAKN ENDE
+          </p>
+          <h1
+            id="heading-papan-cita-cita"
+            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.08]"
+          >
+            Papan Cita-Cita &amp; Harapan.
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Catatan target masa depan angkatan UNO. Pilih kartu catatan untuk
+            membaca alasan lengkap atau kirim doa semangat untuk sahabatmu.
+          </p>
         </div>
 
-        {/* Main 3D Board Viewport Container — Bright Warm Classroom Sunlit Wall */}
-        <div className="relative mt-4 h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#FFFDF7] via-[#FBF2DC] to-[#EFE1C2] shadow-inner sm:mt-5 sm:h-[550px] sm:rounded-[24px] lg:h-[600px] dark:from-[#2C241C] dark:via-[#241D16] dark:to-[#30271E]">
-          {/* Warm Classroom Sunlit Glow Underlay */}
-          <svg
-            viewBox="0 0 960 560"
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-90 dark:opacity-55"
-          >
-            <defs>
-              <radialGradient id="boardStudioGlow" cx="50%" cy="44%" r="56%">
-                <stop offset="0%" stopColor="#FEF3C7" stopOpacity="0.65" />
-                <stop offset="58%" stopColor="#FDE68A" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#F5EFE2" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <rect width="960" height="560" fill="url(#boardStudioGlow)" />
-          </svg>
+        {/* High-Contrast Interactive Controls (Search + Bento/3D Toggle + Create Button) */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative flex-1 sm:w-60 sm:flex-initial">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama atau cita-cita..."
+              aria-label="Cari nama siswa atau cita-cita"
+              className="h-10 w-full rounded-xl border border-border bg-card pr-3 pl-9 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
+            />
+          </div>
 
-          {/* Interactive Three.js 3D Canvas */}
           <div
-            ref={mountRef}
-            className="relative z-[2] h-full w-full"
-            aria-label="Kanvas 3D Papan Tulis Cita-Cita Siswa XII PPLG 1"
-          />
-
-          {orderedStudents.length === 0 && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center">
-              <div className="max-w-md rounded-2xl border border-border bg-card/95 p-6 text-card-foreground shadow-lg">
-                <p className="font-serif text-lg font-bold">
-                  Papan Cita-Cita Masih Kosong (0 Data)
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed opacity-80">
-                  Belum ada data siswa atau cita-cita di database Supabase.
-                  Silakan tambahkan data siswa melalui Dasbor Admin terlebih
-                  dahulu.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Subtle Backdrop on the right side only when in State 3 (Click & Zoom) */}
-          {zoomedStudent && (
-            <div
+            role="group"
+            aria-label="Pilih mode tampilan papan cita-cita"
+            className="inline-flex h-10 items-center rounded-xl border border-border bg-card p-1"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode("bento")}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${
+                viewMode === "bento"
+                  ? "bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="size-3.5" />
+              <span>Bento Board</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
-                setIsEditingModal(false);
+                setViewMode("board3d");
                 setZoomedIndex(null);
               }}
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-t from-[#241E18]/28 via-transparent to-transparent sm:bg-gradient-to-r sm:from-transparent sm:via-transparent sm:to-[#241E18]/28 transition-opacity duration-300"
-            />
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${
+                viewMode === "board3d"
+                  ? "bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Box className="size-3.5" />
+              <span>Papan 3D</span>
+            </button>
+          </div>
+
+          {onOpenSubmitDreamModal && (
+            <button
+              type="button"
+              onClick={onOpenSubmitDreamModal}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#141413] px-4 text-xs font-semibold text-[#F3F1EA] shadow-xs transition hover:opacity-90 dark:bg-[#F3F1EA] dark:text-[#141413]"
+            >
+              <Plus className="size-4" />
+              <span>Tempel Cita-Cita</span>
+            </button>
           )}
-
-          {/* STATE 2: COMPACT FLOATING HOVER PROMPT */}
-          <AnimatePresence>
-            {hoveredStudent && !zoomedStudent && hoverScreenPos && (
-              <motion.div
-                key={`hover-tip-${hoveredStudent.id}`}
-                initial={{ opacity: 0, scale: 0.9, y: 4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.14 }}
-                data-testid="floating-hover-prompt"
-                style={{
-                  left: `${hoverScreenPos.x}px`,
-                  top: `${hoverScreenPos.y}px`,
-                }}
-                className="pointer-events-none absolute z-20 max-w-[90%] -translate-x-1/2 -translate-y-full"
-              >
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 px-3 py-1.5 font-sans text-xs font-semibold text-card-foreground shadow-md backdrop-blur-md">
-                  <span>Klik untuk baca catatan {hoveredStudent.name} →</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* STATE 3: LEMBAR CATATAN IMPIAN BERSIH & EDITORIAL */}
-          <AnimatePresence>
-            {zoomedStudent && zoomedPose && (
-              <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-2 sm:items-center sm:justify-end sm:p-4 lg:pr-6">
-                <motion.article
-                  key={`zoom-card-${zoomedStudent.id}`}
-                  initial={{ opacity: 0, x: 24, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
-                  role="dialog"
-                  aria-modal="false"
-                  data-testid="dream-note-detail-modal"
-                  aria-label={`Lembar cita-cita ${zoomedStudent.name}`}
-                  style={{
-                    borderTopColor: activePaperHex,
-                  }}
-                  className="pointer-events-auto flex max-h-[65%] w-full flex-col overflow-hidden rounded-xl border border-border border-t-[5px] bg-card text-card-foreground shadow-[0_20px_45px_-12px_rgba(18,18,17,0.45)] sm:max-h-[86%] sm:max-w-[356px] lg:max-w-[372px]"
-                >
-                {/* Header Kartu Indeks Bersih */}
-                <div className="flex shrink-0 items-start justify-between gap-2.5 border-b border-border px-3.5 py-2.5 sm:px-4 sm:py-3.5">
-                  <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-                    <img
-                      src={zoomedStudent.avatar_url}
-                      alt={zoomedStudent.name}
-                      width={40}
-                      height={40}
-                      referrerPolicy="no-referrer"
-                      className="public-film-photo size-9 sm:size-10 shrink-0 rounded-lg border border-border object-cover shadow-2xs"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-mono text-[11px] font-bold text-muted-foreground">
-                        ABSEN #{String(zoomedStudent.roll_no).padStart(2, "0")} ·{" "}
-                        {zoomedStudent.role}
-                      </p>
-                      <h3 className="truncate font-serif text-sm sm:text-base font-bold leading-snug text-foreground">
-                        {zoomedStudent.name}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={handleCycleZoomPaperColor}
-                      title={`Warna kertas: ${activePaperName} (Klik untuk ganti)`}
-                      className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition hover:text-foreground"
-                    >
-                      <Shuffle className="size-3.5" />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isEditingModal) {
-                            setEditTitle(zoomedStudent.dream_title);
-                            setEditReason(zoomedStudent.dream_reason);
-                            setEditDesc(zoomedStudent.dream_description);
-                            setEditCapsule(
-                              zoomedStudent.capsule_message ||
-                                `Kapsul Waktu 2027 — Sampai bertemu lagi sebagai ${zoomedStudent.dream_title}!`
-                            );
-                            setEditColor(
-                              zoomColorOverride[zoomedStudent.id] ||
-                                zoomedStudent.dream_paper_color ||
-                                zoomedPose.paperColorHex
-                            );
-                          }
-                          setIsEditingModal((v) => !v);
-                        }}
-                        aria-label="Edit catatan mimpi"
-                        className="inline-flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition hover:opacity-90"
-                      >
-                        <Edit3 className="size-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditingModal(false);
-                        setZoomedIndex(null);
-                      }}
-                      aria-label="Tutup lembar catatan cita-cita"
-                      className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-secondary text-foreground transition hover:bg-muted"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Isi Lembar Catatan Tulisan Tangan */}
-                <div className="flex-1 overflow-y-auto px-3.5 py-2.5 sm:px-4 sm:py-3.5 space-y-2.5 sm:space-y-3.5">
-                  {statusNotice && (
-                    <p className="rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground">
-                      {statusNotice}
-                    </p>
-                  )}
-                  {isAdmin && isEditingModal ? (
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        if (!onUpdateStudentDream || isSavingEdit) return;
-                        try {
-                          setIsSavingEdit(true);
-                          await onUpdateStudentDream(zoomedStudent.id, {
-                            dream_title: editTitle,
-                            dream_reason: editReason,
-                            dream_description: editDesc,
-                            dream_paper_color: editColor,
-                            capsule_message: editCapsule,
-                          });
-                          setZoomColorOverride((prev) => ({
-                            ...prev,
-                            [zoomedStudent.id]: editColor,
-                          }));
-                          updatePaperColorRef.current(
-                            zoomedStudent.id,
-                            editColor
-                          );
-                          setIsEditingModal(false);
-                          setStatusNotice(
-                            `Catatan mimpi ${zoomedStudent.name} berhasil disimpan!`
-                          );
-                        } catch {
-                          setStatusNotice(
-                            "Gagal menyimpan perubahan catatan mimpi."
-                          );
-                        } finally {
-                          setIsSavingEdit(false);
-                        }
-                      }}
-                      className="space-y-2.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-serif text-xs font-bold text-foreground">
-                          Sunting Catatan Impian
-                        </span>
-                        {onResetStudentDream && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await onResetStudentDream(zoomedStudent.id);
-                                setZoomColorOverride((prev) => {
-                                  const next = { ...prev };
-                                  delete next[zoomedStudent.id];
-                                  return next;
-                                });
-                                setIsEditingModal(false);
-                              } catch {
-                                setStatusNotice("Gagal mereset catatan mimpi.");
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
-                          >
-                            <RotateCcw className="size-3" />
-                            <span>Reset</span>
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="h-9 w-full rounded-lg border border-border bg-background px-2.5 font-sans text-sm font-semibold text-foreground"
-                      />
-                      <textarea
-                        rows={3}
-                        value={editReason}
-                        onChange={(e) => setEditReason(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-background p-2.5 font-sans text-sm leading-relaxed text-foreground"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSavingEdit}
-                        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"
-                      >
-                        <Save className="size-3.5" />
-                        <span>Simpan Perubahan</span>
-                      </button>
-                    </form>
-                  ) : (
-                    <>
-                      {/* Cita-Cita Utama dengan Tulisan Tangan Caveat Indah */}
-                      <div>
-                        <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                          CITA-CITA UTAMA:
-                        </p>
-                        <p className="mt-1 font-hand text-2xl sm:text-[26px] leading-snug font-bold text-foreground">
-                          &ldquo;{zoomedStudent.dream_title}&rdquo;
-                        </p>
-                      </div>
-
-                      {/* Kutipan Cerita di Atas Garis Buku (Caveat Tulisan Tangan) */}
-                      <div className="border-y border-dashed border-border py-2.5 sm:py-3">
-                        <p className="font-hand text-lg sm:text-xl leading-relaxed font-semibold text-foreground">
-                          &ldquo;{zoomedStudent.dream_reason}&rdquo;
-                        </p>
-                        {zoomedStudent.dream_description && (
-                          <p className="mt-1.5 sm:mt-2 font-sans text-xs sm:text-sm leading-[1.6] text-muted-foreground">
-                            — {zoomedStudent.dream_description}
-                          </p>
-                        )}
-                      </div>
-
-                      {onOpenCheerModal && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenCheerModal(zoomedStudent)}
-                          className="inline-flex min-h-[38px] sm:min-h-[40px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
-                        >
-                          <MessageSquareHeart className="size-3.5" />
-                          <span>
-                            Tulis Doa untuk{" "}
-                            {zoomedStudent.nickname ||
-                              zoomedStudent.name.split(" ")[0]}
-                          </span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Bar Navigasi Bawah Bersih */}
-                <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-secondary/70 px-3.5 py-2 sm:px-4 sm:py-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingModal(false);
-                      setZoomedIndex((prev) =>
-                        prev === null
-                          ? 0
-                          : (prev - 1 + orderedStudents.length) %
-                            orderedStudents.length
-                      );
-                    }}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
-                  >
-                    <ChevronLeft className="size-3.5" />
-                    <span>Sebelumnya</span>
-                  </button>
-
-                  <span className="font-mono text-xs font-bold tabular-nums text-muted-foreground">
-                    Lembar {String(zoomedStudent.roll_no).padStart(2, "0")} /{" "}
-                    {orderedStudents.length}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingModal(false);
-                      setZoomedIndex((prev) =>
-                        prev === null
-                          ? 0
-                          : (prev + 1) % orderedStudents.length
-                      );
-                    }}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
-                  >
-                    <span>Berikutnya</span>
-                    <ChevronRight className="size-3.5" />
-                  </button>
-                </div>
-                </motion.article>
-              </div>
-            )}
-          </AnimatePresence>
         </div>
+      </div>
 
-        {/* Quick Selector Strip dengan Tipografi Bersih & Prev/Next */}
-        <div className="mt-4 rounded-xl border border-border bg-card/90 p-3 sm:p-3.5 shadow-xs backdrop-blur-md">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="font-serif text-sm sm:text-base font-bold text-foreground">
-              Pintasan Kertas Cita-Cita ({orderedStudents.length})
-            </span>
-            <div className="flex items-center gap-2">
-              {(() => {
-                const totalPages = Math.ceil(orderedStudents.length / 6);
-                const currentPage =
-                  zoomedIndex !== null ? Math.floor(zoomedIndex / 6) : 0;
-                return (
-                  <>
-                    <span className="font-mono text-xs font-bold tabular-nums text-muted-foreground">
-                      Hal {currentPage + 1} / {Math.max(1, totalPages)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        aria-label="Halaman pintasan sebelumnya"
-                        onClick={() => {
-                          const prevPage = Math.max(0, currentPage - 1);
-                          setZoomedIndex(prevPage * 6);
-                        }}
-                        disabled={currentPage === 0}
-                        className="inline-flex size-7 items-center justify-center rounded-md border border-border text-foreground transition hover:bg-muted disabled:opacity-30"
-                      >
-                        <ChevronLeft className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Halaman pintasan berikutnya"
-                        onClick={() => {
-                          const nextPage = Math.min(
-                            totalPages - 1,
-                            currentPage + 1
-                          );
-                          setZoomedIndex(nextPage * 6);
-                        }}
-                        disabled={currentPage >= totalPages - 1}
-                        className="inline-flex size-7 items-center justify-center rounded-md border border-border text-foreground transition hover:bg-muted disabled:opacity-30"
-                      >
-                        <ChevronRight className="size-3.5" />
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
+      {/* Main 12-Column Asymmetric Bento Grid (Inspired by iDraft & Nexus References) */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+        {/* LEFT COLUMN (4 Cols): High-Contrast Dark Overview Card + Spotlight Reader Card */}
+        <div className="space-y-5 lg:col-span-4 lg:sticky lg:top-24">
+          {/* Card 1: Dark Overview Bento Card (iDraft "Overall Information" Style) */}
+          <div className="rounded-3xl border border-[#2A2926] bg-[#141413] p-6 text-[#F3F1EA] shadow-lg">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-serif text-base font-bold tracking-tight text-[#F3F1EA]">
+                Ringkasan Impian
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-widest text-[#A8A49B]">
+                XII PPLG 1 · &apos;27
+              </span>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-4 border-b border-white/10 pb-5">
+              <div className=" flex items-baseline gap-2.5">
+                <span className="font-mono text-4xl font-bold tabular-nums tracking-tight text-[#F3F1EA]">
+                  {orderedStudents.length}
+                </span>
+                <span className="text-xs leading-tight text-[#A8A49B]">
+                  Kertas impian
+                  <br />
+                  tertempel
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2.5 border-l border-white/10 pl-4">
+                <span className="font-mono text-4xl font-bold tabular-nums tracking-tight text-[#F3F1EA]">
+                  {filteredIndexedStudents.length}
+                </span>
+                <span className="text-xs leading-tight text-[#A8A49B]">
+                  Catatan
+                  <br />
+                  ditampilkan
+                </span>
+              </div>
+            </div>
+
+            {/* 3 Sub-cards inside the Dark Card (Matching iDraft 28/14/11 Sub-cards) */}
+            <div className="mt-5 grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl bg-[#22211F] px-3 py-3.5 text-center border border-white/8">
+                <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA]">
+                  {orderedStudents.length}
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-[#A8A49B]">
+                  Siswa UNO
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#22211F] px-3 py-3.5 text-center border border-white/8">
+                <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA]">
+                  2027
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-[#A8A49B]">
+                  Target Lulus
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#F3F1EA] px-3 py-3.5 text-center text-[#141413]">
+                <p className="font-mono text-xl font-bold tabular-nums">
+                  #{String(spotlightStudent?.roll_no ?? 1).padStart(2, "0")}
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold opacity-75">
+                  Sorotan Aktif
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-1 gap-2 xs:grid-cols-2 sm:grid-cols-3">
-            {(() => {
-              const currentPage =
-                zoomedIndex !== null ? Math.floor(zoomedIndex / 6) : 0;
-              return orderedStudents
-                .slice(currentPage * 6, (currentPage + 1) * 6)
-                .map((st, idxOnPage) => {
-                  const idx = currentPage * 6 + idxOnPage;
-                  const pose = poses[idx];
-                  const isZoomed = zoomedIndex === idx;
-                  const isHovered = hoveredIndex === idx;
-                  return (
-                    <motion.button
-                      key={st.id}
+          {/* Card 2: Active Spotlight Note Reader Card */}
+          {spotlightStudent && (
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <img
+                    src={spotlightStudent.avatar_url}
+                    alt={spotlightStudent.name}
+                    width={44}
+                    height={44}
+                    referrerPolicy="no-referrer"
+                    className="public-film-photo size-11 shrink-0 rounded-xl border border-border object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                      ABSEN #{String(spotlightStudent.roll_no).padStart(2, "0")}{" "}
+                      · {spotlightStudent.role}
+                    </p>
+                    <h2 className="truncate font-serif text-lg font-bold text-foreground">
+                      {spotlightStudent.name}
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCycleZoomPaperColor}
+                    title={`Warna kertas: ${activePaperName}`}
+                    className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-secondary/70 text-muted-foreground transition hover:text-foreground"
+                  >
+                    <Shuffle className="size-3.5" />
+                  </button>
+                  {isAdmin && (
+                    <button
                       type="button"
-                      whileHover={{ y: -3, scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      transition={{ type: "spring", stiffness: 360, damping: 24 }}
-                      data-testid={`dream-note-btn-${st.roll_no}`}
-                      onMouseEnter={() => {
-                        if (zoomedIndex === null) {
-                          setHoveredIndex(idx);
-                          setHoverScreenPos({ x: 480, y: 180 });
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        if (hoveredIndex === idx) {
-                          setHoveredIndex(null);
-                          setHoverScreenPos(null);
-                        }
-                      }}
                       onClick={() => {
-                        setIsEditingModal(false);
-                        zoomedIndexRef.current = idx;
-                        setZoomedIndex(idx);
-                        setHoveredIndex(null);
-                        setHoverScreenPos(null);
-                        mountRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "center",
-                        });
+                        if (!isEditingModal) {
+                          setEditTitle(spotlightStudent.dream_title);
+                          setEditReason(spotlightStudent.dream_reason);
+                          setEditDesc(spotlightStudent.dream_description);
+                          setEditCapsule(
+                            spotlightStudent.capsule_message ||
+                              `Kapsul Waktu 2027 — Sampai bertemu lagi sebagai ${spotlightStudent.dream_title}!`
+                          );
+                          setEditColor(activePaperHex);
+                        }
+                        setIsEditingModal((v) => !v);
                       }}
-                      style={{
-                        borderLeftColor: pose?.pinColorHex ?? "#5C5A54",
-                      }}
-                      className={`group flex items-center justify-between gap-2 rounded-lg border border-border border-l-[4px] px-2.5 py-2 sm:px-3 text-left transition-colors ${
-                        isZoomed
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : isHovered
-                            ? "bg-muted shadow-xs"
-                            : "bg-background/85 hover:bg-muted/70"
-                      }`}
+                      aria-label="Sunting catatan mimpi"
+                      className="inline-flex size-8 items-center justify-center rounded-lg bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            aria-hidden="true"
-                            style={{ backgroundColor: pose?.pinColorHex ?? "#5C5A54" }}
-                            className="size-2 shrink-0 rounded-full"
-                          />
-                          <span className="shrink-0 font-mono text-[11px] font-bold opacity-75">
-                            #{String(st.roll_no).padStart(2, "0")}
+                      <Edit3 className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {statusNotice && (
+                <p className="mt-3 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground">
+                  {statusNotice}
+                </p>
+              )}
+
+              {isAdmin && isEditingModal ? (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!onUpdateStudentDream || isSavingEdit) return;
+                    try {
+                      setIsSavingEdit(true);
+                      await onUpdateStudentDream(spotlightStudent.id, {
+                        dream_title: editTitle,
+                        dream_reason: editReason,
+                        dream_description: editDesc,
+                        dream_paper_color: editColor,
+                        capsule_message: editCapsule,
+                      });
+                      setZoomColorOverride((prev) => ({
+                        ...prev,
+                        [spotlightStudent.id]: editColor,
+                      }));
+                      updatePaperColorRef.current(
+                        spotlightStudent.id,
+                        editColor
+                      );
+                      setIsEditingModal(false);
+                      setStatusNotice(
+                        `Catatan mimpi ${spotlightStudent.name} berhasil disimpan!`
+                      );
+                    } catch {
+                      setStatusNotice(
+                        "Gagal menyimpan perubahan catatan mimpi."
+                      );
+                    } finally {
+                      setIsSavingEdit(false);
+                    }
+                  }}
+                  className="mt-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif text-xs font-bold text-foreground">
+                      Sunting Catatan Impian
+                    </span>
+                    {onResetStudentDream && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await onResetStudentDream(spotlightStudent.id);
+                            setZoomColorOverride((prev) => {
+                              const next = { ...prev };
+                              delete next[spotlightStudent.id];
+                              return next;
+                            });
+                            setIsEditingModal(false);
+                          } catch {
+                            setStatusNotice("Gagal mereset catatan mimpi.");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                      >
+                        <RotateCcw className="size-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                  />
+                  <textarea
+                    rows={3}
+                    value={editReason}
+                    onChange={(e) => setEditReason(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background p-3 text-sm leading-relaxed text-foreground"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#141413] px-3 text-xs font-semibold text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                  >
+                    <Save className="size-3.5" />
+                    <span>Simpan Perubahan</span>
+                  </button>
+                </form>
+              ) : (
+                <>
+                  {/* Highlighted Paper Quote Box */}
+                  <div
+                    style={{ backgroundColor: activePaperHex }}
+                    className="mt-4 rounded-2xl border border-[#1B1B1A]/15 p-4 text-[#1B1B1A] shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-[#1B1B1A]/65">
+                      <span>CITA-CITA UTAMA</span>
+                      <span>KERTAS {activePaperName.toUpperCase()}</span>
+                    </div>
+                    <p className="mt-1.5 font-serif text-xl font-bold leading-snug text-[#1B1B1A]">
+                      &ldquo;{spotlightStudent.dream_title}&rdquo;
+                    </p>
+                    <p className="mt-2 border-t border-[#1B1B1A]/15 pt-2 text-xs leading-relaxed text-[#1B1B1A]/85">
+                      &ldquo;{spotlightStudent.dream_reason}&rdquo;
+                    </p>
+                  </div>
+
+                  {spotlightStudent.dream_description && (
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                      {spotlightStudent.dream_description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex items-center gap-2">
+                    {onOpenCheerModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCheerModal(spotlightStudent)}
+                        className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#141413] px-4 text-xs font-semibold text-[#F3F1EA] transition hover:opacity-90 dark:bg-[#F3F1EA] dark:text-[#141413]"
+                      >
+                        <MessageSquareHeart className="size-3.5" />
+                        <span>
+                          Tulis Doa untuk{" "}
+                          {spotlightStudent.nickname ||
+                            spotlightStudent.name.split(" ")[0]}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Prev / Next Navigation Bar */}
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingModal(false);
+                    setZoomedIndex(
+                      (activeSpotlightIdx - 1 + orderedStudents.length) %
+                        Math.max(1, orderedStudents.length)
+                    );
+                  }}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  <span>Sebelumnya</span>
+                </button>
+                <span className="font-mono text-xs font-bold tabular-nums text-muted-foreground">
+                  {String(activeSpotlightIdx + 1).padStart(2, "0")} /{" "}
+                  {String(orderedStudents.length).padStart(2, "0")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingModal(false);
+                    setZoomedIndex(
+                      (activeSpotlightIdx + 1) %
+                        Math.max(1, orderedStudents.length)
+                    );
+                  }}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                >
+                  <span>Berikutnya</span>
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN (8 Cols): Interactive Bento Board OR Optional 3D Classroom Board */}
+        <div className="lg:col-span-8">
+          {viewMode === "bento" ? (
+            <div className="space-y-4">
+              {/* Subheader Bar (iDraft "Task In process (3)" style) */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-serif text-lg font-bold text-foreground sm:text-xl">
+                    Kertas Cita-Cita Siswa ({filteredIndexedStudents.length})
+                  </h2>
+                </div>
+                <span className="font-mono text-xs text-muted-foreground">
+                  Klik kartu untuk sorot · Tombol sudut untuk kirim doa
+                </span>
+              </div>
+
+              {filteredIndexedStudents.length === 0 ? (
+                <div className="rounded-3xl border border-border bg-card p-10 text-center">
+                  <p className="font-serif text-lg font-bold text-foreground">
+                    Tidak ada kertas cita-cita yang cocok
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Coba kata kunci pencarian lain atau tempel kertas cita-cita
+                    baru.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {filteredIndexedStudents.map(({ student: st, idx, pose }) => {
+                    const isSelected = activeSpotlightIdx === idx;
+                    const paperHex =
+                      zoomColorOverride[st.id] ||
+                      st.dream_paper_color ||
+                      pose?.paperColorHex ||
+                      DEFAULT_PAPER_HEX;
+                    const paperLabel =
+                      DREAM_PAPER_PALETTE.find(
+                        (p) => p.hex.toLowerCase() === paperHex.toLowerCase()
+                      )?.name ?? "Krem Klasik";
+
+                    return (
+                      <motion.article
+                        key={st.id}
+                        whileHover={{ y: -2 }}
+                        transition={{ duration: 0.18 }}
+                        data-testid={`dream-note-btn-${st.roll_no}`}
+                        onClick={() => {
+                          setIsEditingModal(false);
+                          setZoomedIndex(idx);
+                        }}
+                        className={`group relative flex cursor-pointer flex-col justify-between rounded-3xl border p-5 transition-all ${
+                          isSelected
+                            ? "border-[#141413] bg-card ring-2 ring-[#141413] shadow-md dark:border-[#F3F1EA] dark:ring-[#F3F1EA]"
+                            : "border-border bg-card/95 shadow-2xs hover:border-foreground/45 hover:shadow-sm"
+                        }`}
+                      >
+                        {/* Top Bar: Number Swatch + Student Identity + Action Corner */}
+                        <div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span
+                                style={{ backgroundColor: paperHex }}
+                                className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[#1B1B1A]/15 font-mono text-xs font-bold tabular-nums text-[#1B1B1A] shadow-2xs"
+                              >
+                                #{String(st.roll_no).padStart(2, "0")}
+                              </span>
+                              <div className="min-w-0">
+                                <h3 className="truncate font-serif text-base font-bold text-foreground">
+                                  {st.name}
+                                </h3>
+                                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                                  {st.nickname || st.name.split(" ")[0]} ·{" "}
+                                  {st.role}
+                                </p>
+                              </div>
+                            </div>
+
+                            {onOpenCheerModal && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenCheerModal(st);
+                                }}
+                                title={`Kirim doa semangat untuk ${st.name}`}
+                                aria-label={`Kirim doa semangat untuk ${st.name}`}
+                                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#141413] text-[#F3F1EA] transition hover:scale-105 dark:bg-[#F3F1EA] dark:text-[#141413]"
+                              >
+                                <MessageSquareHeart className="size-4" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Middle Body: Dream Title & Reason */}
+                          <div className="mt-4">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                              TARGET MASA DEPAN
+                            </p>
+                            <p className="mt-1 font-serif text-xl font-bold leading-snug text-foreground">
+                              &ldquo;{st.dream_title}&rdquo;
+                            </p>
+                            <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                              {st.dream_reason}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Bottom Metadata Footer */}
+                        <div className="mt-5 flex items-center justify-between border-t border-border/80 pt-3 text-xs">
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            Kertas {paperLabel}
                           </span>
-                          <span className="truncate font-serif text-xs sm:text-sm font-bold">
-                            {st.name}
+                          <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                            <span>{isSelected ? "Sedang Disorot" : "Baca Detail"}</span>
+                            <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                           </span>
                         </div>
-                        <p className="mt-0.5 truncate font-sans text-xs sm:text-sm font-medium leading-snug opacity-90">
-                          {st.dream_title}
+                      </motion.article>
+                    );
+                  })}
+
+                  {/* Dashed "+ Tempel Cita-Cita Baru" Bento Card (Matching iDraft "+ Add task" Card) */}
+                  {onOpenSubmitDreamModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenSubmitDreamModal}
+                      className="group flex min-h-[210px] flex-col items-center justify-center gap-2.5 rounded-3xl border-2 border-dashed border-border bg-card/45 p-6 text-center transition hover:border-foreground hover:bg-card"
+                    >
+                      <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#141413] text-[#F3F1EA] transition group-hover:scale-105 dark:bg-[#F3F1EA] dark:text-[#141413]">
+                        <Plus className="size-5" />
+                      </span>
+                      <div>
+                        <p className="font-serif text-base font-bold text-foreground">
+                          + Tempel Cita-Cita Baru
+                        </p>
+                        <p className="mt-0.5 max-w-[220px] text-xs text-muted-foreground">
+                          Tulis atau perbarui kertas impianmu di papan kelas XII
+                          PPLG 1
                         </p>
                       </div>
-                      <Pin
-                        className="size-3.5 shrink-0 opacity-45 transition-transform group-hover:rotate-12 group-hover:opacity-100"
-                        strokeWidth={1.5}
-                      />
-                    </motion.button>
-                  );
-                });
-            })()}
-          </div>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* OPTIONAL 3D BOARD VIEWPORT */
+            <div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-serif text-base font-bold text-foreground">
+                    Simulasi Papan Kelas 3D
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Klik kertas catatan di papan tulis 3D untuk fokus membaca.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleBoardFinish}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 font-mono text-xs text-foreground hover:bg-muted"
+                  >
+                    <Layers className="size-3.5" />
+                    <span>
+                      {boardFinish === "whiteboard"
+                        ? "Papan Putih"
+                        : "Papan Hijau"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("bento")}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#141413] px-3 text-xs font-semibold text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                  >
+                    <LayoutGrid className="size-3.5" />
+                    <span>Kembali ke Bento</span>
+                  </button>
+                </div>
+              </div>
 
-          <div className="mt-2.5 border-t border-border pt-2 text-center">
-            <span className="block truncate font-sans text-xs sm:text-sm font-semibold text-foreground">
-              {hoveredStudent
-                ? `${hoveredStudent.name} · ${hoveredStudent.dream_title}`
-                : zoomedStudent
-                  ? `Sedang membaca lembar catatan: ${zoomedStudent.name} · ${zoomedStudent.dream_title}`
-                  : "Klik kertas catatan di papan 3D atau nama sahabat di atas untuk fokus membaca"}
-            </span>
-          </div>
+              <div
+                onPointerMove={(e) => {
+                  if (!css3dFallback) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                  const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+                  setCssTilt({
+                    rx: -ny * 4.5,
+                    ry: nx * 5.5,
+                  });
+                }}
+                onPointerLeave={() => {
+                  if (css3dFallback) {
+                    setCssTilt({ rx: 0, ry: 0 });
+                    setHoveredIndex(null);
+                  }
+                }}
+                style={{ perspective: "1200px" }}
+                className="relative h-[460px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#FFFDF7] via-[#FBF2DC] to-[#EFE1C2] shadow-inner sm:h-[520px] dark:from-[#2C241C] dark:via-[#241D16] dark:to-[#30271E]"
+              >
+                <div
+                  ref={mountRef}
+                  className={`relative z-[2] h-full w-full ${
+                    css3dFallback ? "hidden" : "block"
+                  }`}
+                  aria-label="Kanvas 3D Papan Tulis Cita-Cita Siswa XII PPLG 1"
+                />
+
+                {css3dFallback && (
+                  <div className="relative z-[3] flex h-full w-full items-center justify-center p-3 sm:p-5">
+                    {/* Interactive 3D Perspective Classroom Board Engine */}
+                    <div
+                      style={{
+                        transformStyle: "preserve-3d",
+                        transform: `rotateX(${cssTilt.rx}deg) rotateY(${cssTilt.ry}deg)`,
+                        transition: "transform 160ms ease-out",
+                      }}
+                      className={`relative flex h-full w-full flex-col justify-between rounded-2xl border-[10px] sm:border-[14px] border-[#9C602E] p-3 sm:p-5 shadow-[0_24px_48px_rgba(24,18,12,0.32),inset_0_2px_10px_rgba(0,0,0,0.22)] ${
+                        boardFinish === "whiteboard"
+                          ? "bg-[#F9FBFE] text-[#1E293B]"
+                          : "bg-[#18432F] text-[#F8F3E2]"
+                      }`}
+                    >
+                      {/* String Lights & Magnetic Pins Header on the 3D Board */}
+                      <div
+                        style={{ transform: "translateZ(16px)" }}
+                        className="relative flex items-center justify-between border-b border-current/15 pb-2"
+                      >
+                        <span className="inline-flex size-4 rounded-full bg-blue-600 shadow-md ring-2 ring-white/50" />
+                        <div className="flex flex-col items-center text-center">
+                          <div className="mb-1 flex items-center gap-2.5">
+                            {Array.from({ length: 9 }).map((_, bIdx) => (
+                              <span
+                                key={bIdx}
+                                className="inline-block size-2 rounded-full bg-[#FFE69C] shadow-[0_0_8px_#F59E0B]"
+                              />
+                            ))}
+                          </div>
+                          <p className="font-serif text-[11px] sm:text-xs font-bold tracking-wide opacity-90">
+                            XII PPLG 1 — MAKN Ende · Papan Impian &amp; Harapan Masa Depan
+                          </p>
+                        </div>
+                        <span className="inline-flex size-4 rounded-full bg-rose-600 shadow-md ring-2 ring-white/50" />
+                      </div>
+
+                      {/* 3D Pinned Sticky Notes Grid inside the 3D Board */}
+                      <div
+                        style={{ transformStyle: "preserve-3d" }}
+                        className="no-scrollbar my-2 grid flex-1 grid-cols-2 gap-2.5 overflow-y-auto p-1.5 sm:grid-cols-3 md:grid-cols-4"
+                      >
+                        {orderedStudents.map((st, idx) => {
+                          const pose = poses[idx];
+                          const isZoom = activeSpotlightIdx === idx;
+                          const isHov = hoveredIndex === idx;
+                          const paperHex =
+                            zoomColorOverride[st.id] ||
+                            st.dream_paper_color ||
+                            pose?.paperColorHex ||
+                            DEFAULT_PAPER_HEX;
+                          const pinHex = pose?.pinColorHex || "#E11D48";
+                          const rotDeg = ((pose?.rotZRad ?? 0) * 180) / Math.PI;
+                          const shortName =
+                            st.nickname || st.name.split(" ")[0] || st.name;
+
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onMouseEnter={() => setHoveredIndex(idx)}
+                              onMouseLeave={() => setHoveredIndex(null)}
+                              onClick={() => {
+                                setIsEditingModal(false);
+                                setZoomedIndex(idx);
+                              }}
+                              style={{
+                                backgroundColor: paperHex,
+                                transform: isZoom
+                                  ? "translateZ(42px) scale(1.06) rotateZ(0deg)"
+                                  : isHov
+                                    ? "translateZ(26px) scale(1.04) rotateZ(0deg)"
+                                    : `translateZ(10px) rotateZ(${rotDeg.toFixed(1)}deg)`,
+                                transition:
+                                  "transform 220ms cubic-bezier(0.22,1,0.36,1), box-shadow 220ms ease",
+                              }}
+                              className={`group relative flex flex-col justify-between rounded-xl border border-[#1B1B1A]/15 p-2.5 text-left text-[#1B1B1A] ${
+                                isZoom
+                                  ? "ring-2 ring-[#141413] shadow-[0_18px_32px_rgba(0,0,0,0.32)]"
+                                  : "shadow-[0_8px_16px_rgba(0,0,0,0.18)] hover:shadow-[0_14px_24px_rgba(0,0,0,0.26)]"
+                              }`}
+                            >
+                              {/* 3D Pushpin Head */}
+                              <span
+                                style={{ backgroundColor: pinHex }}
+                                className="mx-auto -mt-1 mb-1 inline-block size-3 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.35)] ring-1 ring-white/60"
+                              />
+                              <div>
+                                <p className="truncate font-mono text-[10px] font-bold text-[#1E2633]">
+                                  #{String(st.roll_no).padStart(2, "0")} ·{" "}
+                                  {shortName}
+                                </p>
+                                <div
+                                  style={{ backgroundColor: pinHex }}
+                                  className="my-1 h-0.5 w-10 rounded-full opacity-75"
+                                />
+                                <p className="line-clamp-2 font-serif text-xs font-bold leading-snug text-[#1B1B1A]">
+                                  {st.dream_title}
+                                </p>
+                              </div>
+                              <p className="mt-1.5 truncate font-mono text-[9px] uppercase tracking-wider text-[#52493F]">
+                                {st.role}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 3D Aluminum Marker Tray + Blue Eraser + 4 Colored Markers */}
+                      <div
+                        style={{ transform: "translateZ(20px)" }}
+                        className="mx-auto flex w-4/5 max-w-md items-center justify-between rounded-lg border border-slate-400/60 bg-gradient-to-b from-slate-200 to-slate-300 px-3 py-1 shadow-md"
+                      >
+                        {/* Blue Eraser */}
+                        <span className="inline-block h-2.5 w-10 rounded-xs border-b-2 border-slate-800 bg-blue-600 shadow-2xs" />
+                        {/* 4 Markers */}
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-1.5 w-8 overflow-hidden rounded-full bg-white shadow-2xs">
+                            <span className="h-full w-2.5 bg-blue-600" />
+                          </span>
+                          <span className="inline-flex h-1.5 w-8 overflow-hidden rounded-full bg-white shadow-2xs">
+                            <span className="h-full w-2.5 bg-red-600" />
+                          </span>
+                          <span className="inline-flex h-1.5 w-8 overflow-hidden rounded-full bg-white shadow-2xs">
+                            <span className="h-full w-2.5 bg-green-600" />
+                          </span>
+                          <span className="inline-flex h-1.5 w-8 overflow-hidden rounded-full bg-white shadow-2xs">
+                            <span className="h-full w-2.5 bg-amber-600" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <AnimatePresence>
+                  {hoveredStudent && !zoomedStudent && hoverScreenPos && !css3dFallback && (
+                    <motion.div
+                      key={`hover-tip-${hoveredStudent.id}`}
+                      initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.14 }}
+                      data-testid="floating-hover-prompt"
+                      style={{
+                        left: `${hoverScreenPos.x}px`,
+                        top: `${hoverScreenPos.y}px`,
+                      }}
+                      className="pointer-events-none absolute z-20 max-w-[90%] -translate-x-1/2 -translate-y-full"
+                    >
+                      <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 px-3 py-1.5 font-sans text-xs font-semibold text-card-foreground shadow-md backdrop-blur-md">
+                        <span>
+                          Klik untuk sorot catatan {hoveredStudent.name} →
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -2018,3 +2248,4 @@ export function DreamBoardSection({
 }
 
 export const ClassDreamBoard3D = DreamBoardSection;
+

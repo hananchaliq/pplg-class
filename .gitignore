@@ -5,3 +5,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# AI Studio & local assets
+.ai-studio/
+public/assets/

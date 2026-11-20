@@ -99,7 +99,7 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const { tier, webglSupported, setManualTier } = useVisualTier();
+  const { tier, setManualTier } = useVisualTier();
   const {
     playing,
     trackIndex,
@@ -340,7 +340,6 @@ export function Navbar() {
               whileHover={{ scale: 1.04, y: -1 }}
               whileTap={{ scale: 0.94 }}
               transition={{ type: "spring", stiffness: 420, damping: 24 }}
-              disabled={!webglSupported && tier === "simple"}
               onClick={() => setManualTier(tier === "hd" ? "simple" : "hd")}
               aria-label={
                 tier === "hd"
@@ -352,7 +351,7 @@ export function Navbar() {
                   ? "Mode 3D Aktif — Klik untuk Mode 2D"
                   : "Mode 2D — Klik untuk Mode 3D"
               }
-              className={`inline-flex min-h-[32px] items-center gap-1 rounded-lg border px-2.5 py-1 font-mono text-xs transition-colors whitespace-nowrap disabled:opacity-50 ${
+              className={`inline-flex min-h-[32px] items-center gap-1 rounded-lg border px-2.5 py-1 font-mono text-xs transition-colors whitespace-nowrap ${
                 tier === "hd"
                   ? "border-foreground/35 bg-secondary text-foreground hover:bg-muted"
                   : "border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"

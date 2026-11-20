@@ -10,10 +10,7 @@ import { teacherToLanyardMember } from "@/lib/domain-logic";
 import { SITE_CONTENT } from "@/lib/content";
 import { useLivePublicData } from "@/lib/use-public-data";
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
-import {
-  SplitLineHeading,
-  DrawnHairlineRule,
-} from "@/components/ui/motion-primitives";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
 import type { TeacherGroup, TeacherRow } from "@/lib/types";
 
 export function GuruClient({
@@ -83,27 +80,28 @@ export function GuruClient({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: MOTION_DURATION.medium, ease: MOTION_EASE.editorial }}
-      className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10"
     >
-      {/* Header Halaman Guru */}
-      <header className="mx-auto max-w-2xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Penghormatan &amp; Terima Kasih · {teachers.length} Pendidik MAKN Ende
-        </p>
-        <SplitLineHeading
-          as="h1"
-          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
-        >
-          Guru Pembimbing &amp; Wali Kelas XII PPLG 1
-        </SplitLineHeading>
-        <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
-          Apresiasi tulus untuk Bapak dan Ibu Guru yang membimbing langkah kami selama tiga tahun di madrasah.
+      {/* Header Halaman Guru — High-Contrast Editorial Split */}
+      <header className="flex flex-col justify-between gap-4 border-b border-border pb-6 lg:flex-row lg:items-end">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            PENGHORMATAN PENDIDIK · {teachers.length} GURU MAKN ENDE
+          </p>
+          <SplitLineHeading
+            as="h1"
+            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.65rem] [text-wrap:balance]"
+          >
+            Guru Pembimbing &amp; Wali Kelas.
+          </SplitLineHeading>
+        </div>
+        <p className="max-w-md font-sans text-xs leading-relaxed text-muted-foreground lg:text-right sm:text-sm">
+          Apresiasi tulus untuk Bapak dan Ibu Guru yang membimbing langkah kami
+          selama tiga tahun di madrasah.
         </p>
       </header>
 
-      <DrawnHairlineRule className="mx-auto mt-5 max-w-xs" />
-
-      {/* Kartu Khusus Wali Kelas di Atas */}
+      {/* Bento Row: Dark Homeroom Spotlight Card + Quote Cards */}
       {homeroomTeacher && homeroomCard && (
         <motion.section
           initial={{ opacity: 0, y: 12 }}
@@ -114,75 +112,86 @@ export function GuruClient({
             ease: MOTION_EASE.editorial,
           }}
           aria-labelledby="homeroom-heading"
-          className="mt-6 sm:mt-8 overflow-hidden rounded-xl border border-foreground/40 bg-card shadow-md"
+          className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12"
         >
-          <div className="ikat-divider" aria-hidden="true" />
-          <div className="grid grid-cols-1 items-center gap-5 p-4 sm:gap-6 sm:p-8 lg:grid-cols-12">
-            {/* Visual Kartu ID Gantung Wali Kelas */}
-            <div className="flex flex-col items-center text-center lg:col-span-4">
-              <motion.div
-                whileHover={{ y: -3, rotate: -1 }}
-                transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                className="relative flex w-full max-w-[230px] sm:max-w-[240px] flex-col items-center overflow-hidden rounded-xl border border-[#8E6D2F]/70 bg-gradient-to-b from-[#295458] via-[#214245] to-[#1A3336] p-4 text-[#F3ECDD] shadow-xl"
-              >
-                <div
-                  aria-hidden="true"
-                  className="mb-2.5 h-2 w-11 rounded-full bg-[#142729] ring-1 ring-[#D8B467]/60"
-                />
-                <div className="relative size-22 sm:size-24 overflow-hidden rounded-full border-4 border-[#D8B467] bg-[#2D585C] shadow-md">
-                  {homeroomCard.image ? (
-                    <img
-                      src={homeroomCard.image}
-                      alt={homeroomTeacher.full_name}
-                      referrerPolicy="no-referrer"
-                      className="public-film-photo size-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <span className="mt-2.5 inline-block border border-[#D8B467]/65 bg-[#36686C] px-3 py-0.5 font-mono text-[10px] uppercase tracking-widest text-[#F7EFDD]">
-                  WALI KELAS XII PPLG 1
-                </span>
+          {/* Left Dark Anchor Card for Wali Kelas */}
+          <div className="flex flex-col justify-between rounded-3xl border border-[#2A2926] bg-[#141413] p-6 text-[#F3F1EA] shadow-lg lg:col-span-5">
+            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-[#A8A49B]">
+              <span>WALI KELAS XII PPLG 1</span>
+              <span>PEMBIMBING UTAMA</span>
+            </div>
+
+            <div className="mt-5 flex items-center gap-4">
+              <div className="relative size-20 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-[#22211F]">
+                {homeroomCard.image ? (
+                  <img
+                    src={homeroomCard.image}
+                    alt={homeroomTeacher.full_name}
+                    referrerPolicy="no-referrer"
+                    className="public-film-photo size-full object-cover"
+                  />
+                ) : null}
+              </div>
+              <div className="min-w-0">
                 <h2
                   id="homeroom-heading"
-                  className="mt-1.5 font-serif text-lg font-bold text-[#F7EFDD]"
+                  className="font-serif text-xl font-bold text-[#F3F1EA] sm:text-2xl"
                 >
                   {homeroomTeacher.full_name}
                 </h2>
-                <p className="mt-0.5 text-xs text-[#D6CEBC]">
+                <p className="mt-1 font-mono text-xs text-[#A8A49B]">
                   {homeroomTeacher.title}
                 </p>
-              </motion.div>
+              </div>
             </div>
 
-            <div className="flex flex-col justify-between space-y-4 lg:col-span-8">
-              <motion.div
-                whileHover={{ x: 3 }}
-                transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                className="rounded-xl border border-border bg-background/80 p-4 sm:p-5 transition-shadow hover:shadow-xs"
-              >
-                <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                  Pesan Wali Kelas
+            <div className="mt-5 grid grid-cols-3 gap-2.5 border-t border-white/10 pt-4">
+              <div className="rounded-2xl bg-[#22211F] p-2.5 text-center border border-white/8">
+                <p className="font-mono text-lg font-bold tabular-nums text-[#F3F1EA]">
+                  {teachers.length}
                 </p>
-                <blockquote className="mt-2 font-serif text-base sm:text-lg font-medium italic leading-relaxed text-foreground">
-                  &ldquo;{homeroomTeacher.message}&rdquo;
-                </blockquote>
-              </motion.div>
+                <p className="text-[10px] text-[#A8A49B]">Total Guru</p>
+              </div>
+              <div className="rounded-2xl bg-[#22211F] p-2.5 text-center border border-white/8">
+                <p className="font-mono text-lg font-bold tabular-nums text-[#F3F1EA]">
+                  3 Thn
+                </p>
+                <p className="text-[10px] text-[#A8A49B]">Bimbingan</p>
+              </div>
+              <div className="rounded-2xl bg-[#F3F1EA] p-2.5 text-center text-[#141413]">
+                <p className="font-mono text-lg font-bold tabular-nums">
+                  UNO
+                </p>
+                <p className="text-[10px] font-semibold opacity-80">Keluarga</p>
+              </div>
+            </div>
+          </div>
 
-              <motion.div
-                whileHover={{ x: 3 }}
-                transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                className="flex items-start gap-3 rounded-xl border border-border bg-muted/60 p-4 transition-shadow hover:shadow-xs"
-              >
-                <HeartHandshake className="mt-0.5 size-4 shrink-0 text-foreground" />
-                <div>
-                  <p className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">
-                    Catatan Keluarga XII PPLG 1:
-                  </p>
-                  <p className="mt-1 font-sans text-xs sm:text-sm leading-relaxed text-foreground/90">
-                    &ldquo;Terima kasih {homeroomTeacher.full_name} telah menjadi orang tua kedua kami di madrasah dan membimbing kami dengan tulus.&rdquo;
-                  </p>
-                </div>
-              </motion.div>
+          {/* Right Light Bento Cards: Message & Family Tribute */}
+          <div className="flex flex-col justify-between gap-4 lg:col-span-7">
+            <div className="flex-1 rounded-3xl border border-border bg-card p-6 shadow-xs">
+              <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                PESAN WALI KELAS UNTUK ANGKATAN &apos;27
+              </p>
+              <blockquote className="mt-2.5 font-serif text-lg font-bold italic leading-relaxed text-foreground sm:text-xl">
+                &ldquo;{homeroomTeacher.message}&rdquo;
+              </blockquote>
+            </div>
+
+            <div className="flex items-start gap-3.5 rounded-3xl border border-border bg-card/85 p-5 shadow-2xs">
+              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]">
+                <HeartHandshake className="size-4" />
+              </span>
+              <div>
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
+                  CATATAN KELUARGA XII PPLG 1
+                </p>
+                <p className="mt-1 font-sans text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                  &ldquo;Terima kasih {homeroomTeacher.full_name} telah menjadi
+                  orang tua kedua kami di madrasah dan membimbing kami dengan
+                  tulus.&rdquo;
+                </p>
+              </div>
             </div>
           </div>
         </motion.section>

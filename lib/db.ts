@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ensureDatabaseSchema, getConfiguredDatabaseUrl } from "@/lib/db-schema";
 import { maskTimeCapsuleForPublic, sanitizeText, type SubmitPayload } from "@/lib/domain-logic";
 import {
+  DEFAULT_LOCAL_MEDIA_FALLBACK,
   applyYearbookMediaToStudents,
   approvePendingBlobSubmission,
   createPendingBlobSubmission,
@@ -183,16 +184,21 @@ function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] 
 /**
  * Ambil seluruh media foto (Hero 3D, Yearbook / ID Card, Galeri, Karya) & data kelas
  * langsung dari Vercel Blob (manifest.json + pending-manifest.json) melalui lib/media-store.ts,
- * dengan sinkronisasi opsional dari Supabase bila tersedia.
+ * serta otomatis menginisialisasi / menyinkronkan data yang sudah ada ke `manifest.json` di Vercel Blob.
  */
 async function fetchAllFromStorage(options?: {
   includePendingMedia?: boolean;
+  forceSyncToBlob?: boolean;
 }): Promise<DatabaseSnapshot> {
-  const [rawManifestRes, mediaRes, pendingRes] = await Promise.all([
-    readRawMediaManifest(),
+  const rawManifestRes = await readRawMediaManifest({
+    forceRefresh: options?.forceSyncToBlob,
+  });
+
+  const [mediaRes, pendingRes] = await Promise.all([
     getMediaManifest({
       includePending: options?.includePendingMedia ?? false,
       includeFallbackIfEmpty: !options?.includePendingMedia,
+      preloadedManifest: rawManifestRes,
     }),
     options?.includePendingMedia
       ? readPendingMediaManifest()
@@ -226,6 +232,18 @@ async function fetchAllFromStorage(options?: {
 
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
+    // Jika Vercel Blob sudah terhubung namun manifest.json belum dibuat di store, otomatis buat manifest.json
+    if (
+      isVercelBlobConfigured() &&
+      (!rawManifestRes.existsInBlob || options?.forceSyncToBlob)
+    ) {
+      const initialItems =
+        rawManifestRes.manifest.items.length > 0
+          ? rawManifestRes.manifest.items
+          : DEFAULT_LOCAL_MEDIA_FALLBACK;
+      await writeMediaManifest(initialItems, blobRecords).catch(() => {});
+    }
+
     return {
       students: syncedBlobStudents,
       teachers: blobRecords.teachers,
@@ -317,6 +335,17 @@ async function fetchAllFromStorage(options?: {
       votRes.error;
 
     if (firstError) {
+      if (
+        isVercelBlobConfigured() &&
+        (!rawManifestRes.existsInBlob || options?.forceSyncToBlob)
+      ) {
+        const initialItems =
+          rawManifestRes.manifest.items.length > 0
+            ? rawManifestRes.manifest.items
+            : DEFAULT_LOCAL_MEDIA_FALLBACK;
+        await writeMediaManifest(initialItems, blobRecords).catch(() => {});
+      }
+
       return {
         students: syncedBlobStudents,
         teachers: blobRecords.teachers,
@@ -511,6 +540,38 @@ async function fetchAllFromStorage(options?: {
             : (rawSetData?.value as { graduation_date?: string } | null)
                 ?.graduation_date) || DEFAULT_GRADUATION_DATE;
 
+    // Otomatis sinkronkan data siswa, guru, cita-cita, dan rekaman kelas ke manifest.json di Vercel Blob
+    // bila manifest.json belum ada di Vercel Blob atau bila ada data baru dari database yang belum tercatat di Blob.
+    const needsAutoBlobSync =
+      isVercelBlobConfigured() &&
+      (options?.forceSyncToBlob ||
+        !rawManifestRes.existsInBlob ||
+        blobRecords.students.length < students.length ||
+        blobRecords.dreams.length < dreams.length ||
+        blobRecords.teachers.length < teachers.length);
+
+    if (needsAutoBlobSync) {
+      const syncedRecords: BlobClassRecords = {
+        students,
+        teachers,
+        dreams,
+        dreamCheers,
+        memoryEntries,
+        rawTimeCapsules,
+        thanksList,
+        works,
+        polls,
+        settings: {
+          graduation_date: gradDateFromDb,
+        },
+      };
+      const itemsToPersist =
+        rawManifestRes.manifest.items.length > 0
+          ? rawManifestRes.manifest.items
+          : DEFAULT_LOCAL_MEDIA_FALLBACK;
+      await writeMediaManifest(itemsToPersist, syncedRecords).catch(() => {});
+    }
+
     return {
       students,
       teachers,
@@ -551,6 +612,35 @@ async function fetchAllFromStorage(options?: {
       updatedAt: Date.now(),
     };
   }
+}
+
+/**
+ * Paksa sinkronisasi penuh seluruh data siswa, cita-cita, guru, dan media ke manifest.json di Vercel Blob.
+ */
+export async function syncAllDataToVercelBlob() {
+  const snapshot = await fetchAllFromStorage({
+    includePendingMedia: true,
+    forceSyncToBlob: true,
+  });
+  const raw = await readRawMediaManifest();
+  const syncedRecords: BlobClassRecords = {
+    students: snapshot.students,
+    teachers: snapshot.teachers,
+    dreams: snapshot.dreams,
+    dreamCheers: snapshot.dreamCheers,
+    memoryEntries: snapshot.memoryEntries,
+    rawTimeCapsules: snapshot.rawTimeCapsules,
+    thanksList: snapshot.thanksList,
+    works: snapshot.works,
+    polls: snapshot.polls,
+    settings: snapshot.settings,
+  };
+  const itemsToPersist =
+    raw.manifest.items.length > 0
+      ? raw.manifest.items
+      : DEFAULT_LOCAL_MEDIA_FALLBACK;
+  const saved = await writeMediaManifest(itemsToPersist, syncedRecords);
+  return saved;
 }
 
 /**

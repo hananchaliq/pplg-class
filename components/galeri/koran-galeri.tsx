@@ -104,7 +104,7 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
     { moments, activeCategory, activePhase, onSelectPhase, onShowAllGrid },
     ref
   ) {
-    const { tier, reducedMotion, webglSupported } = useVisualTier();
+    const { tier, reducedMotion, webglSupported, setManualTier } = useVisualTier();
     const leafRef = React.useRef<LeafThroughVanillaHandle | null>(null);
     const containerRef = React.useRef<HTMLDivElement | null>(null);
     const wingLeftRef = React.useRef<HTMLDivElement | null>(null);
@@ -118,11 +118,23 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
     const [isTabHidden, setIsTabHidden] = React.useState(false);
     const [corsWarningCount, setCorsWarningCount] = React.useState(0);
     const [renderedCount, setRenderedCount] = React.useState(0);
+    const [cssKoranTilt, setCssKoranTilt] = React.useState<{
+      rx: number;
+      ry: number;
+    }>({ rx: 4.5, ry: 0 });
 
-    const isPlain =
-      manualPlain !== null
-        ? manualPlain
-        : tier === "simple" || reducedMotion || !webglSupported;
+    // Sync local override when global navbar 3D button changes
+    const prevTierRef = React.useRef(tier);
+    React.useEffect(() => {
+      if (prevTierRef.current !== tier) {
+        prevTierRef.current = tier;
+        setManualPlain(null);
+      }
+    }, [tier]);
+
+    const is3DPaperDesired =
+      manualPlain !== null ? !manualPlain : tier === "hd";
+    const isPlain = !is3DPaperDesired || !webglSupported;
 
     const plan = React.useMemo(
       () => buildNewspaperPlan(moments, activeCategory),
@@ -435,11 +447,15 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setManualPlain(!isPlain)}
-              aria-pressed={isPlain}
+              onClick={() => {
+                const next3D = !is3DPaperDesired;
+                setManualPlain(!next3D);
+                setManualTier(next3D ? "hd" : "simple");
+              }}
+              aria-pressed={is3DPaperDesired}
               className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#C9B794] bg-[#F7EEDB] px-3 py-1.5 font-sans text-xs font-semibold text-[#261F18] transition-colors hover:bg-[#E5D7B9] dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
             >
-              {isPlain ? (
+              {!is3DPaperDesired ? (
                 <>
                   <Layers className="size-3.5" />
                   <span>Mode Kertas 3D</span>
@@ -567,39 +583,69 @@ export const KoranGaleri = React.forwardRef<KoranGaleriHandle, KoranGaleriProps>
         <div
           ref={stageCardRef}
           data-leafthrough="true"
+          onPointerMove={(e) => {
+            if (!is3DPaperDesired || !isPlain) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+            setCssKoranTilt({ rx: 5 - ny * 3.5, ry: nx * 4.5 });
+          }}
+          onPointerLeave={() => {
+            if (is3DPaperDesired && isPlain) {
+              setCssKoranTilt({ rx: 4.5, ry: 0 });
+            }
+          }}
+          style={{
+            perspective: "1400px",
+          }}
           className="relative mt-4 rounded-xl border border-[#B29E7C] bg-[#C5B495] shadow-[inset_0_2px_16px_rgba(38,31,24,0.14)] px-2 py-4 sm:px-6 sm:py-6 dark:border-border dark:bg-secondary/55 dark:shadow-none"
         >
-          <DynamicLeafThrough
-            magazineRef={leafRef}
-            pages={leafPages}
-            startPage={0}
-            layout="auto"
-            pageAspect={NEWSPAPER_HEIGHT / NEWSPAPER_WIDTH}
-            plain={isPlain}
-            bleed={!isPlain}
-            preload={4}
-            maxPixelRatio={2}
-            label="Galeri Kenangan Bersama — Koran XII PPLG 1"
-            paper={KORAN_PAPER_OPTIONS}
-            lighting={KORAN_LIGHTING_OPTIONS}
-            motion={KORAN_MOTION_OPTIONS}
-            interaction={KORAN_INTERACTION_OPTIONS}
-            onReady={() => {
-              window.dispatchEvent(new CustomEvent("app:scene-ready"));
-            }}
-            onPageChange={(detail) => {
-              setCurrentPage(detail.page);
-              setVisiblePages(detail.visiblePages);
-              const spec = plan.pages[detail.page];
-              if (spec?.phase && spec.phase !== activePhase) {
-                onSelectPhase?.(spec.phase);
-              }
-            }}
-            style={{
-              width: "100%",
-              height: "clamp(430px, 68vh, 690px)",
-            }}
-          />
+          <div
+            style={
+              is3DPaperDesired && isPlain
+                ? {
+                    transformStyle: "preserve-3d",
+                    transform: `rotateX(${cssKoranTilt.rx}deg) rotateY(${cssKoranTilt.ry}deg)`,
+                    transition: "transform 180ms ease-out",
+                    boxShadow:
+                      "0 24px 44px rgba(38,31,24,0.32), 0 6px 0 #DFD3B8, 0 10px 0 #C8B898",
+                    borderRadius: "10px",
+                  }
+                : undefined
+            }
+          >
+            <DynamicLeafThrough
+              magazineRef={leafRef}
+              pages={leafPages}
+              startPage={0}
+              layout="auto"
+              pageAspect={NEWSPAPER_HEIGHT / NEWSPAPER_WIDTH}
+              plain={isPlain}
+              bleed={!isPlain}
+              preload={4}
+              maxPixelRatio={2}
+              label="Galeri Kenangan Bersama — Koran XII PPLG 1"
+              paper={KORAN_PAPER_OPTIONS}
+              lighting={KORAN_LIGHTING_OPTIONS}
+              motion={KORAN_MOTION_OPTIONS}
+              interaction={KORAN_INTERACTION_OPTIONS}
+              onReady={() => {
+                window.dispatchEvent(new CustomEvent("app:scene-ready"));
+              }}
+              onPageChange={(detail) => {
+                setCurrentPage(detail.page);
+                setVisiblePages(detail.visiblePages);
+                const spec = plan.pages[detail.page];
+                if (spec?.phase && spec.phase !== activePhase) {
+                  onSelectPhase?.(spec.phase);
+                }
+              }}
+              style={{
+                width: "100%",
+                height: "clamp(430px, 68vh, 690px)",
+              }}
+            />
+          </div>
         </div>
 
         {/* Navigasi Halaman Koran Bawah */}

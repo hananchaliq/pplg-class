@@ -208,96 +208,123 @@ export function AnggotaClient({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: MOTION_DURATION.medium, ease: MOTION_EASE.editorial }}
-      className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10"
     >
-      {/* Header Halaman Anggota */}
-      <header className="mx-auto max-w-2xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Keluarga Besar XII PPLG 1 · MAKN Ende
-        </p>
-        <SplitLineHeading
-          as="h1"
-          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
-        >
-          {`${activeStudents.length} Siswa Aktif & ${movedStudents.length} Sahabat Istimewa`}
-        </SplitLineHeading>
-        <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
-          Klik kartu untuk membalik profil, tarik untuk efek pegas, atau tulis pesan ke buku kenangannya.
-        </p>
-      </header>
+      {/* High-Contrast Bento Header: Editorial Title + Dark Overview Card */}
+      <header className="grid grid-cols-1 gap-5 border-b border-border pb-6 lg:grid-cols-12 lg:items-end">
+        <div className="lg:col-span-7">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            ARSIP ANGGOTA · XII PPLG 1 · MAKN ENDE
+          </p>
+          <SplitLineHeading
+            as="h1"
+            className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.65rem] lg:leading-[1.08] [text-wrap:balance]"
+          >
+            {`${activeStudents.length} Siswa Aktif & ${movedStudents.length} Sahabat Istimewa.`}
+          </SplitLineHeading>
+          <p className="mt-2 max-w-2xl font-sans text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            Klik kartu untuk membalik profil, tarik untuk efek pegas pada gagang
+            besi, atau tulis pesan langsung ke buku kenangan sahabatmu.
+          </p>
 
-      {/* Filter Tab untuk 1 Gagang Besi: Horizontal Swipe di Mobile, Wrap di Desktop */}
-      <div
-        role="tablist"
-        aria-label="Filter Barisan Siswa pada Gagang Besi"
-        className="no-scrollbar mx-auto mt-5 flex max-w-3xl flex-nowrap items-center justify-start gap-1.5 overflow-x-auto rounded-xl border border-border bg-card p-1.5 shadow-2xs sm:mt-6 sm:flex-wrap sm:justify-center"
-      >
-        {(
-          [
-            {
-              id: "family",
-              label: `Semua (${students.length})`,
-              isCrown: true,
-            },
-            {
-              id: "all",
-              label: `Aktif (${activeStudents.length})`,
-              isCrown: false,
-            },
-            {
-              id: "L",
-              label: `Putra (${maleStudentsCount})`,
-              isCrown: false,
-            },
-            {
-              id: "P",
-              label: `Putri (${femaleStudentsCount})`,
-              isCrown: false,
-            },
-            {
-              id: "moved",
-              label: `Sahabat Istimewa (${movedStudents.length})`,
-              isCrown: true,
-            },
-          ] as const
-        ).map((tab) => {
-          const active = filter === tab.id;
-          return (
-            <motion.button
-              whileHover={{ y: -1.5 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 380, damping: 24 }}
-              key={tab.id}
-              role="tab"
-              type="button"
-              aria-selected={active}
-              onClick={() => setFilter(tab.id)}
-              className={`relative inline-flex min-h-[38px] shrink-0 sm:flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
-                active
-                  ? "text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="anggota-filter-pill"
-                  transition={MOTION_EASE.springNav}
-                  className="absolute inset-0 rounded-lg bg-primary shadow-2xs"
-                  aria-hidden="true"
-                />
-              )}
-              <span className="relative z-10 inline-flex items-center gap-1.5">
-                {tab.isCrown ? (
-                  <Crown className="size-3.5" />
-                ) : (
-                  <Users className="size-3.5" />
-                )}
-                <span>{tab.label}</span>
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
+          {/* Filter Tab untuk 1 Gagang Besi */}
+          <div
+            role="tablist"
+            aria-label="Filter Barisan Siswa pada Gagang Besi"
+            className="no-scrollbar mt-5 inline-flex max-w-full flex-nowrap items-center justify-start gap-1.5 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 shadow-2xs sm:flex-wrap"
+          >
+            {(
+              [
+                {
+                  id: "family",
+                  label: `Semua (${students.length})`,
+                  isCrown: true,
+                },
+                {
+                  id: "all",
+                  label: `Aktif (${activeStudents.length})`,
+                  isCrown: false,
+                },
+                {
+                  id: "L",
+                  label: `Putra (${maleStudentsCount})`,
+                  isCrown: false,
+                },
+                {
+                  id: "P",
+                  label: `Putri (${femaleStudentsCount})`,
+                  isCrown: false,
+                },
+                {
+                  id: "moved",
+                  label: `Sahabat Istimewa (${movedStudents.length})`,
+                  isCrown: true,
+                },
+              ] as const
+            ).map((tab) => {
+              const active = filter === tab.id;
+              return (
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 24 }}
+                  key={tab.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={active}
+                  onClick={() => setFilter(tab.id)}
+                  className={`relative inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
+                    active
+                      ? "bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <span className="relative z-10 inline-flex items-center gap-1.5">
+                    {tab.isCrown ? (
+                      <Crown className="size-3.5" />
+                    ) : (
+                      <Users className="size-3.5" />
+                    )}
+                    <span>{tab.label}</span>
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Dark Bento Scoreboard Card (iDraft Style) */}
+        <div className="lg:col-span-5">
+          <div className="rounded-3xl border border-[#2A2926] bg-[#141413] p-5 text-[#F3F1EA] shadow-md">
+            <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-widest text-[#A8A49B]">
+              <span>KOMPOSISI ANGKATAN</span>
+              <span>UNO · &apos;24–&apos;27</span>
+            </div>
+            <div className="mt-3.5 grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl border border-white/8 bg-[#22211F] p-3 text-center">
+                <p className="font-mono text-2xl font-bold tabular-nums text-[#F3F1EA]">
+                  {activeStudents.length}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#A8A49B]">Siswa Aktif</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-[#22211F] p-3 text-center">
+                <p className="font-mono text-2xl font-bold tabular-nums text-[#F3F1EA]">
+                  {maleStudentsCount}L · {femaleStudentsCount}P
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#A8A49B]">Putra/Putri</p>
+              </div>
+              <div className="rounded-2xl bg-[#F3F1EA] p-3 text-center text-[#141413]">
+                <p className="font-mono text-2xl font-bold tabular-nums">
+                  {movedStudents.length}
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold opacity-80">
+                  Sahabat
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Keterangan Singkat Saat Tab Sahabat Istimewa Dipilih */}
       <AnimatePresence>

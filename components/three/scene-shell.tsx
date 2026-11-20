@@ -3,7 +3,12 @@
 import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { getAdaptiveDpr, isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
+import {
+  createSafeWebGLRenderer,
+  getAdaptiveDpr,
+  isSoftwareWebGL,
+  useVisualTier,
+} from "@/lib/visual-tier";
 
 export interface SceneShellContext {
   scene: THREE.Scene;
@@ -32,6 +37,8 @@ export interface SceneShellProps {
   ariaLabel: string;
   /** Warm background color hex */
   clearColor?: string;
+  /** Callback when WebGL cannot be initialized on the client browser */
+  onWebglUnavailable?: () => void;
   /** Optional HTML overlay rendered alongside the isolated canvas mount */
   children?: React.ReactNode;
 }
@@ -132,17 +139,20 @@ export function SceneShell({
   className = "relative w-full h-[540px] sm:h-[620px]",
   ariaLabel,
   clearColor = "#161614",
+  onWebglUnavailable,
   children,
 }: SceneShellProps) {
   const mountRef = React.useRef<HTMLDivElement | null>(null);
   const setupRef = React.useRef(onSetup);
+  const unavailableRef = React.useRef(onWebglUnavailable);
   const { downgradeToSimple } = useVisualTier();
   const downgradeRef = React.useRef(downgradeToSimple);
 
   React.useEffect(() => {
     setupRef.current = onSetup;
+    unavailableRef.current = onWebglUnavailable;
     downgradeRef.current = downgradeToSimple;
-  }, [onSetup, downgradeToSimple]);
+  }, [onSetup, onWebglUnavailable, downgradeToSimple]);
 
   const setProgress = React.useCallback(
     (pct: number, label?: string) => {
@@ -198,16 +208,21 @@ export function SceneShell({
     camera.position.set(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
     camera.lookAt(0, 0, 0);
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: !isSoftwareGl,
-        powerPreference: "high-performance",
-      });
-    } catch {
+    const safeRenderer = createSafeWebGLRenderer({
+      antialias: !isSoftwareGl,
+      alpha: false,
+    });
+    if (!safeRenderer) {
+      try {
+        window.dispatchEvent(new CustomEvent("app:scene-ready"));
+      } catch {
+        // Ignore
+      }
+      unavailableRef.current?.();
       downgradeRef.current("webgl-init-failed");
       return;
     }
+    const renderer = safeRenderer;
 
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

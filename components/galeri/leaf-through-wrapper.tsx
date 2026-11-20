@@ -72,9 +72,23 @@ export default function LeafThroughWrapper({
     const container = containerRef.current;
     if (!container) return;
 
-    const magazine = new LeafThrough(container, {
-      ...initialOptionsRef.current,
-    });
+    let magazine: LeafThrough | null = null;
+    try {
+      magazine = new LeafThrough(container, {
+        ...initialOptionsRef.current,
+      });
+    } catch {
+      try {
+        container.innerHTML = "";
+        magazine = new LeafThrough(container, {
+          ...initialOptionsRef.current,
+          plain: true,
+        });
+      } catch (err) {
+        callbacksRef.current.onError?.(err);
+        return;
+      }
+    }
     magazineInstanceRef.current = magazine;
 
     const handlePageChange = (event: CustomEvent<PageChangeDetail>) => {
@@ -103,11 +117,15 @@ export default function LeafThroughWrapper({
     magazine.addEventListener("error", handleError);
 
     return () => {
-      magazine.removeEventListener("pagechange", handlePageChange);
-      magazine.removeEventListener("ready", handleReady);
-      magazine.removeEventListener("pageload", handlePageLoad);
-      magazine.removeEventListener("error", handleError);
-      magazine.dispose();
+      magazine?.removeEventListener("pagechange", handlePageChange);
+      magazine?.removeEventListener("ready", handleReady);
+      magazine?.removeEventListener("pageload", handlePageLoad);
+      magazine?.removeEventListener("error", handleError);
+      try {
+        magazine?.dispose();
+      } catch {
+        // Ignore dispose error if WebGL context was already lost
+      }
       magazineInstanceRef.current = null;
     };
   }, []);
@@ -123,23 +141,47 @@ export default function LeafThroughWrapper({
     const magazine = magazineInstanceRef.current;
     if (!magazine) return;
 
-    magazine.update({
-      pages: options.pages,
-      layout: options.layout,
-      spreadQuery: options.spreadQuery,
-      pageAspect: options.pageAspect,
-      loop: options.loop,
-      bleed: options.bleed,
-      paper: options.paper,
-      lighting: options.lighting,
-      motion: options.motion,
-      interaction: options.interaction,
-      maxPixelRatio: options.maxPixelRatio,
-      preload: options.preload,
-      plain: options.plain,
-      label: options.label,
-      formatPageLabel: options.formatPageLabel,
-    });
+    try {
+      magazine.update({
+        pages: options.pages,
+        layout: options.layout,
+        spreadQuery: options.spreadQuery,
+        pageAspect: options.pageAspect,
+        loop: options.loop,
+        bleed: options.bleed,
+        paper: options.paper,
+        lighting: options.lighting,
+        motion: options.motion,
+        interaction: options.interaction,
+        maxPixelRatio: options.maxPixelRatio,
+        preload: options.preload,
+        plain: options.plain,
+        label: options.label,
+        formatPageLabel: options.formatPageLabel,
+      });
+    } catch {
+      try {
+        magazine.update({
+          pages: options.pages,
+          layout: options.layout,
+          spreadQuery: options.spreadQuery,
+          pageAspect: options.pageAspect,
+          loop: options.loop,
+          bleed: false,
+          paper: options.paper,
+          lighting: options.lighting,
+          motion: options.motion,
+          interaction: options.interaction,
+          maxPixelRatio: options.maxPixelRatio,
+          preload: options.preload,
+          plain: true,
+          label: options.label,
+          formatPageLabel: options.formatPageLabel,
+        });
+      } catch {
+        // Ignore fallback update failure
+      }
+    }
   }, [
     options.pages,
     options.layout,

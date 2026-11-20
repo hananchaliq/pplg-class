@@ -1,6 +1,0 @@
-{
-  "summary":  "Rencana implementasi untuk Prioritas 1 (Perbaikan alur upload, submit publik base64 -> Vercel Blob via uploadMediaToBlob, sinkronisasi ACC/Tolak di manifest.json dengan deleteMediaFromBlob, dan verifikasi ketat BLOB_READ_WRITE_TOKEN) serta Prioritas 2 (Optimasi kecepatan layar loading titik-titik dengan safety timeout 2.5 detik tanpa mengubah visual, ditambah optimasi performa 3D adaptive DPR, IntersectionObserver pause, memoization tekstur, dan lazy-load next/dynamic).",
-  "updatedAt":  "2026-11-20T01:48:32.075001992Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}

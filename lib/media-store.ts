@@ -417,64 +417,172 @@ async function writeLocalFallbackPendingManifest(
   }
 }
 
-/**
- * Membaca file manifest.json langsung dari Vercel Blob (list({ prefix: 'manifest.json' }) + fetch no-store).
- */
-export async function readRawMediaManifest(): Promise<{
+let cachedManifestBlobUrl: string | null = null;
+let cachedRawManifestResult: {
   manifest: MediaManifest;
   storage: "vercel-blob" | "local-fallback";
+  existsInBlob: boolean;
+  expiresAt: number;
+} | null = null;
+let inFlightManifestPromise: Promise<{
+  manifest: MediaManifest;
+  storage: "vercel-blob" | "local-fallback";
+  existsInBlob: boolean;
+}> | null = null;
+
+const MANIFEST_CACHE_TTL_MS = 3500;
+
+/**
+ * Membaca file manifest.json langsung dari Vercel Blob (list({ prefix: 'manifest.json' }) + fetch no-store),
+ * dengan deduplikasi request konkuren agar tidak memboroskan kuota Advanced Operations Vercel Blob.
+ */
+export async function readRawMediaManifest(options?: {
+  forceRefresh?: boolean;
+}): Promise<{
+  manifest: MediaManifest;
+  storage: "vercel-blob" | "local-fallback";
+  existsInBlob: boolean;
 }> {
   const token = getBlobToken();
   if (!token) {
     const local = await readLocalFallbackManifest();
-    return { manifest: local, storage: "local-fallback" };
-  }
-
-  const { blobs } = await list({ prefix: MANIFEST_PATHNAME, limit: 20, token });
-  const exactManifestBlob =
-    blobs.find((b) => b.pathname === MANIFEST_PATHNAME) ??
-    blobs.find((b) => b.pathname.endsWith(`/${MANIFEST_PATHNAME}`));
-
-  if (!exactManifestBlob?.url) {
     return {
-      manifest: {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        items: [],
-      },
-      storage: "vercel-blob",
+      manifest: local,
+      storage: "local-fallback",
+      existsInBlob: local.items.length > 0 || Boolean(local.records),
     };
   }
 
-  const res = await fetch(
-    `${exactManifestBlob.url}${exactManifestBlob.url.includes("?") ? "&" : "?"}t=${Date.now()}`,
-    {
-      cache: "no-store",
-      next: { tags: ["media-manifest"] },
-    }
-  );
-  if (!res.ok) {
-    throw new Error(
-      `Gagal mengunduh manifest.json dari Vercel Blob (HTTP ${res.status}).`
-    );
+  const now = Date.now();
+  if (
+    !options?.forceRefresh &&
+    cachedRawManifestResult &&
+    cachedRawManifestResult.expiresAt > now
+  ) {
+    return {
+      manifest: cachedRawManifestResult.manifest,
+      storage: cachedRawManifestResult.storage,
+      existsInBlob: cachedRawManifestResult.existsInBlob,
+    };
   }
 
-  const parsed = (await res.json()) as Partial<MediaManifest>;
-  const items = Array.isArray(parsed.items)
-    ? parsed.items.map((it) => ({
-        ...it,
-        blobUrl: it.blobUrl || it.url,
-      }))
-    : [];
-  return {
-    manifest: {
-      version: 1,
-      updatedAt: parsed.updatedAt || new Date().toISOString(),
-      items,
-      ...(parsed.records ? { records: parsed.records } : {}),
-    },
-    storage: "vercel-blob",
-  };
+  if (!options?.forceRefresh && inFlightManifestPromise) {
+    return inFlightManifestPromise;
+  }
+
+  inFlightManifestPromise = (async () => {
+    try {
+      let targetUrl = cachedManifestBlobUrl;
+
+      if (!targetUrl || options?.forceRefresh) {
+        const { blobs } = await list({
+          prefix: MANIFEST_PATHNAME,
+          limit: 20,
+          token,
+        });
+        const exactManifestBlob =
+          blobs.find((b) => b.pathname === MANIFEST_PATHNAME) ??
+          blobs.find((b) => b.pathname.endsWith(`/${MANIFEST_PATHNAME}`));
+        targetUrl = exactManifestBlob?.url || null;
+        cachedManifestBlobUrl = targetUrl;
+      }
+
+      if (!targetUrl) {
+        const emptyResult = {
+          manifest: {
+            version: 1 as const,
+            updatedAt: new Date().toISOString(),
+            items: [],
+          },
+          storage: "vercel-blob" as const,
+          existsInBlob: false,
+        };
+        cachedRawManifestResult = {
+          ...emptyResult,
+          expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
+        };
+        return emptyResult;
+      }
+
+      let res = await fetch(
+        `${targetUrl}${targetUrl.includes("?") ? "&" : "?"}t=${Date.now()}`,
+        {
+          cache: "no-store",
+          next: { tags: ["media-manifest"] },
+        }
+      );
+
+      // Jika URL lama berubah atau terhapus di store, jalankan list() ulang sekali
+      if (res.status === 404) {
+        cachedManifestBlobUrl = null;
+        const { blobs } = await list({
+          prefix: MANIFEST_PATHNAME,
+          limit: 20,
+          token,
+        });
+        const exactManifestBlob =
+          blobs.find((b) => b.pathname === MANIFEST_PATHNAME) ??
+          blobs.find((b) => b.pathname.endsWith(`/${MANIFEST_PATHNAME}`));
+        if (!exactManifestBlob?.url) {
+          const emptyResult = {
+            manifest: {
+              version: 1 as const,
+              updatedAt: new Date().toISOString(),
+              items: [],
+            },
+            storage: "vercel-blob" as const,
+            existsInBlob: false,
+          };
+          cachedRawManifestResult = {
+            ...emptyResult,
+            expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
+          };
+          return emptyResult;
+        }
+        cachedManifestBlobUrl = exactManifestBlob.url;
+        res = await fetch(
+          `${exactManifestBlob.url}${exactManifestBlob.url.includes("?") ? "&" : "?"}t=${Date.now()}`,
+          {
+            cache: "no-store",
+            next: { tags: ["media-manifest"] },
+          }
+        );
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          `Gagal mengunduh manifest.json dari Vercel Blob (HTTP ${res.status}).`
+        );
+      }
+
+      const parsed = (await res.json()) as Partial<MediaManifest>;
+      const items = Array.isArray(parsed.items)
+        ? parsed.items.map((it) => ({
+            ...it,
+            blobUrl: it.blobUrl || it.url,
+          }))
+        : [];
+      const loadedResult = {
+        manifest: {
+          version: 1 as const,
+          updatedAt: parsed.updatedAt || new Date().toISOString(),
+          items,
+          ...(parsed.records ? { records: parsed.records } : {}),
+        },
+        storage: "vercel-blob" as const,
+        existsInBlob: true,
+      };
+      cachedRawManifestResult = {
+        ...loadedResult,
+        expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
+      };
+      return loadedResult;
+    } finally {
+      inFlightManifestPromise = null;
+    }
+  })();
+
+  return inFlightManifestPromise;
 }
 
 /**
@@ -487,9 +595,14 @@ export async function writeMediaManifest(
 ): Promise<MediaManifest> {
   const token = getBlobToken();
   const current = await readRawMediaManifest().catch(
-    (): { manifest: MediaManifest; storage: "local-fallback" } => ({
+    (): {
+      manifest: MediaManifest;
+      storage: "local-fallback";
+      existsInBlob: boolean;
+    } => ({
       manifest: { version: 1, updatedAt: "", items: [] },
       storage: "local-fallback",
+      existsInBlob: false,
     })
   );
 
@@ -513,14 +626,26 @@ export async function writeMediaManifest(
     return manifest;
   }
 
-  await put(MANIFEST_PATHNAME, JSON.stringify(manifest, null, 2), {
-    access: "public",
-    contentType: "application/json",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    cacheControlMaxAge: 0,
-    token,
-  });
+  const uploaded = await put(
+    MANIFEST_PATHNAME,
+    JSON.stringify(manifest, null, 2),
+    {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      cacheControlMaxAge: 0,
+      token,
+    }
+  );
+
+  cachedManifestBlobUrl = uploaded.url;
+  cachedRawManifestResult = {
+    manifest,
+    storage: "vercel-blob",
+    existsInBlob: true,
+    expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
+  };
 
   return manifest;
 }
@@ -1023,12 +1148,17 @@ export async function getMediaManifest(options?: {
   includeFallbackIfEmpty?: boolean;
   includePending?: boolean;
   channel?: MediaChannel;
+  preloadedManifest?: {
+    manifest: MediaManifest;
+    storage: "vercel-blob" | "local-fallback";
+  };
 }): Promise<{
   items: MediaItem[];
   storage: "vercel-blob" | "local-fallback";
   isFallback: boolean;
 }> {
-  const { manifest, storage } = await readRawMediaManifest();
+  const { manifest, storage } =
+    options?.preloadedManifest ?? (await readRawMediaManifest());
   const useFallback = options?.includeFallbackIfEmpty !== false;
 
   let baseItems = manifest.items;

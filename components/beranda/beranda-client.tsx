@@ -3,7 +3,6 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { ArrowRight, BookOpen, Calendar, Users } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
 import { usePageFlipSound } from "@/lib/page-flip-audio";
@@ -17,7 +16,6 @@ import {
 } from "@/lib/motion-tokens";
 import {
   CountUpNumber,
-  DrawnHairlineRule,
   EditorialLinkButton,
   MonochromeShimmer,
   SplitLineHeading,
@@ -211,76 +209,110 @@ export function BerandaClient({
   return (
     <div
       ref={pageRootRef}
-      className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6 sm:py-10"
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10"
     >
-      {/* HERO: Editorial Tipografi + Model 3D Kamera Polaroid Jadul Cetak Foto */}
+      {/* HERO: High-Contrast Editorial Bento + Model 3D Kamera Polaroid Jadul */}
       <section
         aria-labelledby="hero-title"
-        className="grid grid-cols-1 items-center gap-6 sm:gap-10 lg:grid-cols-12"
+        className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12"
       >
-        {/* Kolom Kiri: Editorial Tipografi & Countdown */}
+        {/* Kolom Kiri: Editorial Tipografi & Dark Bento Scoreboard (iDraft Style) */}
         <div className="flex flex-col items-start lg:col-span-5">
-          <p className="hero-reveal font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            NO. 01 / {SITE_CONTENT.hero.eyebrow}
+          <p className="hero-reveal font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            NO. 01 · {SITE_CONTENT.hero.eyebrow}
           </p>
 
           <SplitLineHeading
             as="h1"
             id="hero-title"
-            className="mt-2.5 font-serif text-4xl font-bold leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl [text-wrap:balance]"
+            className="mt-2 font-serif text-4xl font-bold leading-[1.04] tracking-tight text-foreground sm:text-5xl lg:text-6xl [text-wrap:balance]"
           >
             {SITE_CONTENT.hero.title}
           </SplitLineHeading>
 
-          <p className="hero-reveal mt-2 font-serif text-base italic text-muted-foreground sm:text-lg">
-            {SITE_CONTENT.hero.subtitle} — {SITE_CONTENT.school.schoolName}
+          <p className="hero-reveal mt-2.5 font-serif text-base italic text-muted-foreground sm:text-lg">
+            {SITE_CONTENT.hero.subtitle} · {SITE_CONTENT.school.schoolName}
           </p>
 
           {homeroomTeacherName ? (
-            <p className="hero-reveal mt-2 font-mono text-xs text-muted-foreground">
+            <p className="hero-reveal mt-1.5 font-mono text-xs text-muted-foreground">
               Wali Kelas Pembimbing · {homeroomTeacherName}
             </p>
           ) : null}
 
-          <p className="hero-reveal mt-3.5 font-sans text-sm leading-[1.65] text-foreground/90 sm:text-base">
+          <p className="hero-reveal mt-3 font-sans text-sm leading-[1.65] text-foreground/90 sm:text-base">
             {SITE_CONTENT.school.tagline}
           </p>
 
-          {/* Kartu Countdown Kelulusan */}
-          <motion.div
-            whileHover={{ y: -3, scale: 1.01 }}
-            transition={{ type: "spring", stiffness: 360, damping: 24 }}
-            className="hero-reveal mt-5 w-full rounded-xl border border-border bg-card p-4 shadow-xs transition-shadow hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          {/* High-Contrast Dark Scoreboard & Countdown Bento Card (Inspired by iDraft "Overall Information" & Apex Countdown) */}
+          <div className="hero-reveal mt-6 w-full rounded-3xl border border-[#2A2926] bg-[#141413] p-5 text-[#F3F1EA] shadow-lg sm:p-6">
+            <div className="flex items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#A8A49B]">
               <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-foreground" />
+                <Calendar className="size-3.5 text-[#F3F1EA]" />
                 <span>{SITE_CONTENT.hero.countdownLabel}</span>
               </div>
-              <span
-                aria-hidden="true"
-                className="inline-block size-2 rounded-full bg-primary animate-pulse"
-              />
+              <span>ANGKATAN &apos;27</span>
             </div>
-            <p className="mt-1.5 font-serif text-xl font-bold text-foreground sm:text-2xl">
-              {daysLeft === null ? (
-                "Menghitung hari kebersamaan..."
-              ) : daysLeft > 0 ? (
-                <>
-                  {SITE_CONTENT.hero.countdownPrefix}{" "}
-                  <span className="font-mono text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
-                    <CountUpNumber value={daysLeft} />
-                  </span>{" "}
-                  {SITE_CONTENT.hero.countdownSuffix}
-                </>
-              ) : (
-                SITE_CONTENT.hero.countdownPassed
-              )}
-            </p>
-          </motion.div>
 
-          {/* Tombol Aksi Utama (Sapuan Isi + Pegas + Magnetik Halus Desktop) */}
-          <div className="hero-reveal mt-5 sm:mt-6 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="mt-3 flex items-baseline justify-between gap-4 border-b border-white/10 pb-4">
+              {daysLeft === null ? (
+                <p className="font-serif text-xl font-bold text-[#F3F1EA]">
+                  Menghitung hari kebersamaan...
+                </p>
+              ) : daysLeft > 0 ? (
+                <div className="flex items-baseline gap-3">
+                  <span className="font-mono text-4xl font-bold tabular-nums tracking-tight text-[#F3F1EA] sm:text-5xl">
+                    <CountUpNumber value={daysLeft} />
+                  </span>
+                  <div className="text-xs leading-snug text-[#A8A49B]">
+                    <p className="font-semibold text-[#F3F1EA]">
+                      {SITE_CONTENT.hero.countdownSuffix}
+                    </p>
+                    <p>Menuju pelepasan kelas XII PPLG 1</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="font-serif text-xl font-bold text-[#F3F1EA]">
+                  {SITE_CONTENT.hero.countdownPassed}
+                </p>
+              )}
+            </div>
+
+            {/* 3 Inner Sub-cards inside Dark Bento Card (Matching iDraft 28/14/11 layout) */}
+            <div className="mt-4 grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl border border-white/8 bg-[#22211F] px-3 py-3 text-center">
+                <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA] sm:text-2xl">
+                  <CountUpNumber
+                    value={stats.activeStudents + stats.movedStudents}
+                  />
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-[#A8A49B]">
+                  Keluarga Kelas
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-[#22211F] px-3 py-3 text-center">
+                <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA] sm:text-2xl">
+                  <CountUpNumber value={stats.totalMoments} />
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-[#A8A49B]">
+                  Foto Momen
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#F3F1EA] px-3 py-3 text-center text-[#141413]">
+                <p className="font-mono text-xl font-bold tabular-nums sm:text-2xl">
+                  <CountUpNumber
+                    value={stats.totalDreams + stats.totalWorks}
+                  />
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold opacity-80">
+                  Mimpi &amp; Karya
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tombol Aksi Utama */}
+          <div className="hero-reveal mt-5 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
             <EditorialLinkButton
               href="/galeri"
               variant="primary"
@@ -309,126 +341,160 @@ export function BerandaClient({
         </div>
       </section>
 
-      {/* Baris Angka Statistik Arsip */}
+      {/* High-Contrast Architectural Editorial Ribbon (Inspired by Nexus Feature Strip) */}
       <section
         aria-label="Ringkasan Kelas XII PPLG 1"
-        className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 rounded-xl border border-border bg-card p-3 sm:grid-cols-4 sm:p-5"
+        className="mt-10 rounded-2xl border border-[#2A2926] bg-[#141413] px-5 py-4 text-[#F3F1EA] shadow-sm"
       >
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={MOTION_EASE.springTactile}
-          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
-        >
-          <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            <CountUpNumber value={stats.activeStudents} />{" "}
-            <span className="font-sans text-xs font-normal text-muted-foreground">
-              (+{stats.movedStudents} sahabat)
-            </span>
-          </p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            Anggota Keluarga Kelas
-          </p>
-        </motion.div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:divide-x sm:divide-white/12">
+          <div className="sm:px-3 first:sm:pl-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+              01 · ANGGOTA KELAS
+            </p>
+            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+              <CountUpNumber value={stats.activeStudents} /> Aktif · +
+              {stats.movedStudents} Sahabat
+            </p>
+          </div>
 
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={MOTION_EASE.springTactile}
-          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
-        >
-          <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            <CountUpNumber value={stats.totalTeachers} />
-          </p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            Pendidik &amp; Wali Kelas
-          </p>
-        </motion.div>
+          <div className="sm:px-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+              02 · PENDIDIK MAKN
+            </p>
+            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+              <CountUpNumber value={stats.totalTeachers} /> Guru Pembimbing
+            </p>
+          </div>
 
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={MOTION_EASE.springTactile}
-          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
-        >
-          <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            <CountUpNumber value={stats.totalMoments} />
-          </p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            Foto Momen Kelas X–XII
-          </p>
-        </motion.div>
+          <div className="sm:px-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+              03 · ARSIP KORAN
+            </p>
+            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+              <CountUpNumber value={stats.totalMoments} /> Dokumentasi X–XII
+            </p>
+          </div>
 
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={MOTION_EASE.springTactile}
-          className="rounded-lg p-2 transition-colors hover:bg-muted/40"
-        >
-          <p className="font-serif text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-            <CountUpNumber value={stats.totalWorks} />
-          </p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            Karya Siswa &amp; {stats.totalDreams} Cita-Cita
-          </p>
-        </motion.div>
+          <div className="sm:px-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+              04 · MASA DEPAN
+            </p>
+            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+              <CountUpNumber value={stats.totalDreams} /> Mimpi ·{" "}
+              <CountUpNumber value={stats.totalWorks} /> Karya
+            </p>
+          </div>
+        </div>
       </section>
 
-      <DrawnHairlineRule className="my-12" />
-
-      {/* PETA HALAMAN KENANGAN */}
+      {/* PETA HALAMAN KENANGAN — Asymmetric High-Contrast Bento Directory */}
       <React.Suspense fallback={null}>
-        <section aria-labelledby="map-heading" className="map-grid-section">
-          <div className="mx-auto max-w-xl text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Indeks Ruang · XII PPLG 1
-            </p>
-            <SplitLineHeading
-              as="h2"
-              id="map-heading"
-              className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-            >
-              Enam Sudut Cerita Kita
-            </SplitLineHeading>
-            <p className="mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
+        <section aria-labelledby="map-heading" className="map-grid-section mt-12">
+          <div className="flex flex-col justify-between gap-3 border-b border-border pb-5 sm:flex-row sm:items-end">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                INDEKS RUANG · XII PPLG 1 · MAKN ENDE
+              </p>
+              <SplitLineHeading
+                as="h2"
+                id="map-heading"
+                className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+              >
+                Enam Sudut Cerita Kita.
+              </SplitLineHeading>
+            </div>
+            <p className="max-w-md font-sans text-xs leading-relaxed text-muted-foreground sm:text-right sm:text-sm">
               {SITE_CONTENT.school.subTagline}
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {dynamicMapCards.map((card, idx) => (
-              <TiltRevealCard
-                key={card.href}
-                delay={idx * MOTION_STAGGER.base}
-                className="h-full"
-              >
-                <a
-                  href={card.href}
-                  onClick={(e) => handleNavigate(e, card.href)}
-                  className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-foreground/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-12">
+            {dynamicMapCards.map((card, idx) => {
+              // Asymmetric Bento spans & dark anchor contrast (inspired by iDraft & Nexus)
+              const spanClass =
+                idx === 0 || idx === 3
+                  ? "md:col-span-7"
+                  : idx === 1 || idx === 2
+                    ? "md:col-span-5"
+                    : "md:col-span-6";
+              const isDarkCard = idx === 0 || idx === 3;
+
+              return (
+                <TiltRevealCard
+                  key={card.href}
+                  delay={idx * MOTION_STAGGER.base}
+                  className={spanClass}
                 >
-                  <div>
-                    <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                      <span className="font-bold text-foreground transition-transform duration-200 group-hover:translate-x-0.5">
-                        NO. {card.index}
-                      </span>
-                      <span>{card.meta}</span>
+                  <a
+                    href={card.href}
+                    onClick={(e) => handleNavigate(e, card.href)}
+                    className={`group flex h-full min-h-[210px] flex-col justify-between rounded-3xl border p-6 transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
+                      isDarkCard
+                        ? "border-[#2A2926] bg-[#141413] text-[#F3F1EA] shadow-md hover:border-[#F3F1EA]/40"
+                        : "border-border bg-card text-foreground shadow-2xs hover:border-foreground/50 hover:shadow-md"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`inline-flex h-8 items-center rounded-xl px-3 font-mono text-xs font-bold tabular-nums ${
+                            isDarkCard
+                              ? "bg-[#22211F] text-[#F3F1EA] border border-white/10"
+                              : "bg-secondary text-foreground border border-border"
+                          }`}
+                        >
+                          {card.index}
+                        </span>
+                        <span
+                          className={`font-mono text-[11px] uppercase tracking-wider ${
+                            isDarkCard
+                              ? "text-[#A8A49B]"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {card.meta}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex items-start justify-between gap-3">
+                        <h3 className="font-serif text-2xl font-bold tracking-tight">
+                          {card.title}
+                        </h3>
+                        <span
+                          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-1 ${
+                            isDarkCard
+                              ? "bg-[#F3F1EA] text-[#141413]"
+                              : "bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"
+                          }`}
+                        >
+                          <ArrowRight className="size-4" />
+                        </span>
+                      </div>
+
+                      <p
+                        className={`mt-1.5 font-mono text-xs font-semibold ${
+                          isDarkCard
+                            ? "text-[#D6D2C9]"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {card.subtitle}
+                      </p>
                     </div>
 
-                    <div className="mt-2.5 flex items-center justify-between gap-2">
-                      <h3 className="editorial-underline font-serif text-lg font-bold text-foreground">
-                        {card.title}
-                      </h3>
-                      <ArrowRight className="size-4 shrink-0 text-foreground transition-transform duration-200 group-hover:translate-x-1.5" />
-                    </div>
-
-                    <p className="mt-1 font-sans text-xs font-semibold text-muted-foreground">
-                      {card.subtitle}
-                    </p>
-
-                    <p className="mt-2 line-clamp-2 font-sans text-xs leading-relaxed text-card-foreground/85">
+                    <p
+                      className={`mt-4 border-t pt-3.5 font-sans text-xs leading-relaxed ${
+                        isDarkCard
+                          ? "border-white/10 text-[#A8A49B]"
+                          : "border-border/80 text-card-foreground/85"
+                      }`}
+                    >
                       {card.description}
                     </p>
-                  </div>
-                </a>
-              </TiltRevealCard>
-            ))}
+                  </a>
+                </TiltRevealCard>
+              );
+            })}
           </div>
         </section>
       </React.Suspense>

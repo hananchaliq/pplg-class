@@ -15,6 +15,7 @@ import {
   deleteTeacherAdmin,
   getAdminDashboardData,
   moderateItem,
+  syncAllDataToVercelBlob,
   updateSiteSettings,
   upsertStudentAdmin,
   upsertTeacherAdmin,
@@ -248,6 +249,13 @@ export async function POST(req: NextRequest) {
       revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok, data });
+    }
+
+    if (action === "sync_blob") {
+      await syncAllDataToVercelBlob();
+      revalidateAllRoutes();
+      const data = await getAdminDashboardData();
+      return NextResponse.json({ ok: true, data });
     }
 
     return NextResponse.json(

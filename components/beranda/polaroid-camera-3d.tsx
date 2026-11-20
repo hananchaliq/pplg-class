@@ -7,7 +7,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { Camera, ChevronRight } from "lucide-react";
 import { gsap } from "@/lib/gsap-utils";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
-import { getAdaptiveDpr, isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
+import {
+  createSafeWebGLRenderer,
+  getAdaptiveDpr,
+  isSoftwareWebGL,
+  useVisualTier,
+} from "@/lib/visual-tier";
 import { disposeSceneGraph } from "@/components/three/scene-shell";
 import { MOTION_EASE } from "@/lib/motion-tokens";
 import type { MomentRow } from "@/lib/types";
@@ -587,20 +592,36 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
   const [stagePhaseLabel, setStagePhaseLabel] = React.useState(
     "Mengokang lensa 35mm..."
   );
+  const [webglUnavailable, setWebglUnavailable] = React.useState(false);
+  const [cssCameraTilt, setCssCameraTilt] = React.useState<{
+    rx: number;
+    ry: number;
+  }>({ rx: 0, ry: 0 });
+  const [isFlashPulse, setIsFlashPulse] = React.useState(false);
 
-  const is2DFallback = tier === "simple" || reducedMotion || !webglSupported;
+  const is2DFallback =
+    tier === "simple" || (reducedMotion && !webglSupported) || webglUnavailable;
 
-  // Fallback siklus 2D otomatis bila dalam mode Simple / Reduced Motion
+  // Fallback siklus otomatis bila dalam mode Simple / CSS 3D Fallback
   React.useEffect(() => {
     if (!is2DFallback || realMoments.length <= 1) return;
+    setStagePhaseLabel(
+      tier === "hd"
+        ? "Kamera Polaroid 3D Siap Mencetak"
+        : "Tumpukan Cetak Polaroid"
+    );
     const id = window.setInterval(() => {
+      if (tier === "hd") {
+        setIsFlashPulse(true);
+        window.setTimeout(() => setIsFlashPulse(false), 260);
+      }
       setActiveIdx((prev) => (prev + 1) % realMoments.length);
     }, 4800);
     return () => window.clearInterval(id);
-  }, [is2DFallback, realMoments.length]);
+  }, [is2DFallback, realMoments.length, tier]);
 
   React.useEffect(() => {
-    if (is2DFallback) return;
+    if (tier === "simple") return;
     const container = mountRef.current;
     if (!container) return;
 
@@ -631,11 +652,17 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     };
     applyResponsiveCameraFraming(width, height);
 
-    const renderer = new THREE.WebGLRenderer({
+    const safeRenderer = createSafeWebGLRenderer({
       antialias: !isSoftwareGl,
       alpha: true,
-      powerPreference: "high-performance",
     });
+    if (!safeRenderer) {
+      setWebglUnavailable(true);
+      window.dispatchEvent(new CustomEvent("app:scene-ready"));
+      return;
+    }
+    setWebglUnavailable(false);
+    const renderer = safeRenderer;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.94;
@@ -1296,7 +1323,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [is2DFallback]);
+  }, [is2DFallback, tier]);
 
   React.useEffect(() => {
     if (!is2DFallback) {
@@ -1346,13 +1373,104 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
   return (
     <div
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
+      onPointerMove={(e) => {
+        handlePointerMove(e);
+        if (is2DFallback && tier === "hd") {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+          setCssCameraTilt({ rx: -ny * 6, ry: nx * 8 });
+        }
+      }}
+      onPointerLeave={() => {
+        handlePointerLeave();
+        setCssCameraTilt({ rx: 0, ry: 0 });
+      }}
       className="relative w-full overflow-visible"
     >
       {is2DFallback ? (
-        <div className="relative flex min-h-[400px] sm:min-h-[470px] w-full items-center justify-center py-8 px-4">
-          <div className="relative mx-auto w-[286px] sm:w-[336px]">
+        <div
+          style={{ perspective: "1100px" }}
+          className="relative flex min-h-[420px] sm:min-h-[490px] w-full flex-col items-center justify-center py-6 px-4"
+        >
+          {/* Sculpted 3D Vintage Polaroid Camera Rig when in 3D mode (tier === "hd") */}
+          {tier === "hd" && (
+            <div
+              style={{
+                transformStyle: "preserve-3d",
+                transform: `rotateX(${cssCameraTilt.rx}deg) rotateY(${cssCameraTilt.ry}deg) translateZ(16px)`,
+                transition: "transform 180ms ease-out",
+              }}
+              className="relative z-20 -mb-5 flex w-[260px] sm:w-[300px] flex-col items-center rounded-2xl border-2 border-[#C8B898] bg-gradient-to-b from-[#F4EBD6] via-[#EAE0C8] to-[#D8C9AA] p-3.5 shadow-[0_20px_40px_rgba(24,18,12,0.32),inset_0_2px_0_rgba(255,255,255,0.75)]"
+            >
+              {/* Camera Top Row: Flash Unit + Rainbow Stripe + Viewfinder + Red Shutter Button */}
+              <div className="flex w-full items-center justify-between px-1">
+                {/* Flash Unit */}
+                <div
+                  className={`flex h-7 w-14 items-center justify-center rounded-md border border-[#5A4B3C] bg-[#2D241C] transition-shadow ${
+                    isFlashPulse
+                      ? "bg-[#FFF3D6] shadow-[0_0_24px_#FFDCA0]"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className={`h-3.5 w-9 rounded-xs ${
+                      isFlashPulse ? "bg-white" : "bg-[#FFF3D6]/75"
+                    }`}
+                  />
+                </div>
+
+                {/* Classic 35mm Lens Barrel */}
+                <div
+                  style={{ transform: "translateZ(20px)" }}
+                  className="relative flex size-14 items-center justify-center rounded-full border-4 border-[#DAD4C6] bg-[#221C16] shadow-[0_8px_18px_rgba(0,0,0,0.45)]"
+                >
+                  <div className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-[#2B3E47] via-[#162228] to-[#0D1418]">
+                    <span className="size-2.5 -translate-x-1 -translate-y-1 rounded-full bg-white/45 blur-[0.5px]" />
+                  </div>
+                </div>
+
+                {/* Red Tactile Shutter Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFlashPulse(true);
+                    window.setTimeout(() => setIsFlashPulse(false), 260);
+                    handleNextPhoto();
+                  }}
+                  title="Tekan tombol shutter kamera untuk mencetak foto berikutnya"
+                  aria-label="Tombol shutter kamera Polaroid 3D"
+                  className="flex size-9 items-center justify-center rounded-full border-2 border-[#DAD4C6] bg-[#B5523D] shadow-[0_4px_10px_rgba(0,0,0,0.35)] transition active:scale-90"
+                >
+                  <span className="size-4 rounded-full bg-[#D16650]" />
+                </button>
+              </div>
+
+              {/* Camera Lower Base & Photo Ejection Slot */}
+              <div className="mt-2.5 flex w-full flex-col items-center rounded-lg bg-[#2D241C] px-3 py-2 shadow-inner">
+                <div className="mb-1 flex items-center gap-1">
+                  <span className="h-1 w-4 rounded-full bg-[#E11D48]" />
+                  <span className="h-1 w-4 rounded-full bg-[#F59E0B]" />
+                  <span className="h-1 w-4 rounded-full bg-[#16A34A]" />
+                  <span className="h-1 w-4 rounded-full bg-[#2563EB]" />
+                </div>
+                <div className="h-2 w-11/12 rounded-full border border-black/60 bg-[#120E0A] shadow-inner" />
+              </div>
+            </div>
+          )}
+
+          <div
+            style={
+              tier === "hd"
+                ? {
+                    transformStyle: "preserve-3d",
+                    transform: `rotateX(${cssCameraTilt.rx * 0.8 + 4}deg) rotateY(${cssCameraTilt.ry * 0.8}deg) translateZ(28px)`,
+                    transition: "transform 180ms ease-out",
+                  }
+                : undefined
+            }
+            className="relative mx-auto w-[286px] sm:w-[336px]"
+          >
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 translate-x-3 translate-y-2 rotate-[4.5deg] rounded-[3px] border border-[#CBBBA0] bg-[#EAE0C8] shadow-[0_14px_30px_-12px_rgba(24,18,12,0.28)]"
@@ -1361,17 +1479,23 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -translate-x-3 translate-y-1.5 -rotate-[4deg] rounded-[3px] border border-[#D4C5AA] bg-[#F1E8D3] shadow-[0_16px_32px_-12px_rgba(24,18,12,0.3)]"
             />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-3.5 left-1/2 z-20 h-7 w-24 -translate-x-1/2 -rotate-2 border border-[#C8B99B]/60 bg-[#F5EDD6]/75 shadow-xs backdrop-blur-[1px]"
-            />
+            {tier !== "hd" && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-3.5 left-1/2 z-20 h-7 w-24 -translate-x-1/2 -rotate-2 border border-[#C8B99B]/60 bg-[#F5EDD6]/75 shadow-xs backdrop-blur-[1px]"
+              />
+            )}
 
             <AnimatePresence mode="wait">
               <motion.figure
                 key={`${activeMoment?.id ?? "fallback"}-${activeIdx}`}
-                initial={{ opacity: 0, y: 16, rotate: -2.2, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, rotate: -1.1, scale: 1 }}
-                exit={{ opacity: 0, y: -12, rotate: 1.4, scale: 0.98 }}
+                initial={
+                  tier === "hd"
+                    ? { opacity: 0, y: -48, rotateX: 18, scale: 0.9 }
+                    : { opacity: 0, y: 16, rotate: -2.2, scale: 0.97 }
+                }
+                animate={{ opacity: 1, y: 0, rotateX: 0, rotate: -1.1, scale: 1 }}
+                exit={{ opacity: 0, y: 16, rotate: 1.4, scale: 0.96 }}
                 whileHover={{ rotate: 0, y: -4, scale: 1.015 }}
                 transition={MOTION_EASE.springTactile}
                 className="relative z-10 rounded-[3px] border border-[#D2C3A6] bg-[#F6EFE0] p-3.5 pb-6 text-[#1E1712] shadow-[0_24px_48px_-16px_rgba(24,18,12,0.38),0_4px_12px_-4px_rgba(24,18,12,0.18),inset_0_1px_0_rgba(255,255,255,0.65)]"

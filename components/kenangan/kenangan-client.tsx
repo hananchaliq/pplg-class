@@ -149,22 +149,38 @@ export function KenanganClient({
   const moments = liveData?.moments ?? initialMoments;
 
   const { playPageFlip } = usePageFlipSound();
-  const { tier, webglSupported, setManualTier, isClientReady } = useVisualTier();
+  const { tier, setManualTier, isClientReady } = useVisualTier();
   const { pushToast } = useEditorialToast();
   const [activeTab, setActiveTab] = React.useState<KenanganTab>("buku");
   // Buku Kenangan dimulai dalam keadaan TERTUTUP (sampul depan XII PPLG 1 + 1 Foto Bersama) baik 3D maupun 2D
   const [isBookOpen, setIsBookOpen] = React.useState(false);
   const [spreadIndex, setSpreadIndex] = React.useState(0);
   const [flipDirection, setFlipDirection] = React.useState<1 | -1>(1);
-  // Override lokal agar pengguna mobile (default 2D ringan) dapat menekan "Aktifkan 3D" langsung di buku
+  // Override lokal agar pengguna dapat menekan "Aktifkan 3D" langsung di buku
   const [bookForce3D, setBookForce3D] = React.useState<boolean | null>(null);
+  const [webglBookFailed, setWebglBookFailed] = React.useState(false);
+  const [cssBookTilt, setCssBookTilt] = React.useState<{
+    rx: number;
+    ry: number;
+  }>({ rx: 6, ry: 0 });
   const touchSwipeStartRef = React.useRef<number | null>(null);
 
-  const is3DBookActive = React.useMemo(() => {
-    if (!isClientReady || !webglSupported) return false;
+  // Sync local override when global navbar 3D button is toggled
+  const prevTierRef = React.useRef(tier);
+  React.useEffect(() => {
+    if (prevTierRef.current !== tier) {
+      prevTierRef.current = tier;
+      setBookForce3D(null);
+    }
+  }, [tier]);
+
+  const is3DRigDesired = React.useMemo(() => {
+    if (!isClientReady) return false;
     if (bookForce3D !== null) return bookForce3D;
     return tier === "hd";
-  }, [isClientReady, webglSupported, bookForce3D, tier]);
+  }, [isClientReady, bookForce3D, tier]);
+
+  const is3DBookActive = is3DRigDesired && !webglBookFailed;
 
   const navigateSpread = React.useCallback(
     (nextIndex: number) => {
@@ -800,27 +816,25 @@ export function KenanganClient({
                 <span>Daftar Isi (Hal. 5–6)</span>
               </motion.button>
 
-              {webglSupported && (
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => {
-                    const next3D = !is3DBookActive;
-                    setBookForce3D(next3D);
-                    setManualTier(next3D ? "hd" : "simple");
-                  }}
-                  aria-pressed={is3DBookActive}
-                  className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 font-mono text-xs font-semibold whitespace-nowrap transition-colors ${
-                    is3DBookActive
-                      ? "border-foreground/50 bg-secondary text-foreground hover:bg-muted"
-                      : "border-border bg-background text-foreground hover:bg-muted"
-                  }`}
-                >
-                  <Box className="size-3.5 text-foreground" />
-                  <span>{is3DBookActive ? "Mode 2D Ringan" : "Aktifkan 3D"}</span>
-                </motion.button>
-              )}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  const next3D = !is3DRigDesired;
+                  setBookForce3D(next3D);
+                  setManualTier(next3D ? "hd" : "simple");
+                }}
+                aria-pressed={is3DRigDesired}
+                className={`inline-flex min-h-[40px] sm:min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-2 font-mono text-xs font-semibold whitespace-nowrap transition-colors ${
+                  is3DRigDesired
+                    ? "border-foreground/50 bg-secondary text-foreground hover:bg-muted"
+                    : "border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                <Box className="size-3.5 text-foreground" />
+                <span>{is3DRigDesired ? "Mode 2D Ringan" : "Aktifkan 3D"}</span>
+              </motion.button>
             </div>
 
             <div className="flex w-full items-center gap-1.5 sm:gap-2 lg:w-auto">
@@ -888,12 +902,13 @@ export function KenanganClient({
             </div>
           </div>
 
-          {/* Buku Kenangan: 3D Vertex-Shader Book-Flip di Desktop/Opt-In, atau 2D Lipatan Kertas Lengkung Halus di Mobile */}
+          {/* Buku Kenangan: 3D Vertex-Shader Book-Flip di Desktop/Opt-In, atau CSS 3D Hardcover Perspective / 2D Lipatan Kertas Lengkung Halus */}
           {is3DBookActive ? (
             <BukuKenanganSceneHD
               spreads={spreads}
               isBookOpen={isBookOpen}
               activeSpreadIndex={spreadIndex}
+              onWebglUnavailable={() => setWebglBookFailed(true)}
               coverPhotoUrl={coverPhotoMoment?.image_url}
               coverCaption={
                 coverPhotoMoment?.caption ||
@@ -909,6 +924,18 @@ export function KenanganClient({
             />
           ) : (
             <div
+              onPointerMove={(e) => {
+                if (!is3DRigDesired) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+                setCssBookTilt({ rx: 7 - ny * 4.5, ry: nx * 6 });
+              }}
+              onPointerLeave={() => {
+                if (is3DRigDesired) {
+                  setCssBookTilt({ rx: 6, ry: 0 });
+                }
+              }}
               onTouchStart={(e) => {
                 touchSwipeStartRef.current = e.touches[0]?.clientX ?? null;
               }}
@@ -930,8 +957,21 @@ export function KenanganClient({
                   navigateSpread(spreadIndex - 1);
                 }
               }}
-              style={{ perspective: "1800px" }}
-              className="relative overflow-hidden rounded-2xl border-2 border-[#C9C4B8] bg-[#ECE9E1] text-[#1B1B1A] shadow-lg"
+              style={{
+                perspective: "1800px",
+                transformStyle: "preserve-3d",
+                ...(is3DRigDesired
+                  ? {
+                      transform: `rotateX(${cssBookTilt.rx}deg) rotateY(${cssBookTilt.ry}deg)`,
+                      transition: "transform 180ms ease-out",
+                    }
+                  : {}),
+              }}
+              className={`relative overflow-hidden rounded-2xl border-2 border-[#C9C4B8] bg-[#ECE9E1] text-[#1B1B1A] ${
+                is3DRigDesired
+                  ? "ring-4 ring-[#3D3124] shadow-[0_28px_56px_rgba(0,0,0,0.42),0_10px_0_#C9B794,0_14px_0_#2D241C]"
+                  : "shadow-lg"
+              }`}
             >
               <AnimatePresence mode="wait" initial={false}>
                 {!isBookOpen ? (
@@ -1380,23 +1420,22 @@ export function KenanganClient({
                   </motion.div>
                 )}
               </AnimatePresence>
-              {/* Petunjuk geser di mode 2D mobile */}
+              {/* Petunjuk geser di mode 2D / CSS 3D */}
               {isBookOpen && (
                 <div className="flex items-center justify-between border-t border-[#C9C4B8] bg-[#E6E2D7] px-4 py-2 font-mono text-[10px] text-[#5C5A54]">
                   <span>Geser kiri/kanan untuk membalik lembar</span>
-                  {webglSupported && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBookForce3D(true);
-                        setManualTier("hd");
-                      }}
-                      className="inline-flex items-center gap-1 font-bold text-[#1B1B1A] underline underline-offset-2"
-                    >
-                      <Box className="size-3" />
-                      <span>Aktifkan 3D</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next3D = !is3DRigDesired;
+                      setBookForce3D(next3D);
+                      setManualTier(next3D ? "hd" : "simple");
+                    }}
+                    className="inline-flex items-center gap-1 font-bold text-[#1B1B1A] underline underline-offset-2"
+                  >
+                    <Box className="size-3" />
+                    <span>{is3DRigDesired ? "Mode 2D Ringan" : "Aktifkan 3D"}</span>
+                  </button>
                 </div>
               )}
             </div>

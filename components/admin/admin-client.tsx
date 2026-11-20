@@ -1026,15 +1026,42 @@ export function AdminClient() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
             Media Storage:{" "}
             <strong className="text-foreground">
               {data.blobConnected
-                ? "Vercel Blob Aktif"
+                ? "Vercel Blob Aktif (manifest.json)"
                 : "Mode Fallback Lokal (Set BLOB_READ_WRITE_TOKEN)"}
             </strong>
           </span>
+          <button
+            type="button"
+            onClick={async () => {
+              setFeedback("Menyinkronkan seluruh data ke manifest.json di Vercel Blob...");
+              try {
+                const res = await adminPost({ action: "sync_blob" });
+                const json = await res.json();
+                if (res.ok && json.ok) {
+                  setData(json.data);
+                  notifyPublicDataUpdated();
+                  setFeedback(
+                    "Seluruh data siswa, cita-cita, guru, dan media berhasil disinkronkan ke manifest.json di Vercel Blob!"
+                  );
+                } else {
+                  setFeedback(
+                    json.error || "Gagal menyinkronkan data ke Vercel Blob."
+                  );
+                }
+              } catch {
+                setFeedback("Gagal menghubungi server untuk sinkronisasi Vercel Blob.");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#141413] px-3 py-2 text-xs font-semibold text-[#F3F1EA] transition hover:opacity-90 dark:bg-[#F3F1EA] dark:text-[#141413]"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span>Sinkronkan ke Vercel Blob</span>
+          </button>
           <button
             type="button"
             onClick={handleLogout}

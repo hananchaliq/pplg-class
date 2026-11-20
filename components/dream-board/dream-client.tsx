@@ -80,11 +80,19 @@ export function DreamBoardClient({
       const matched =
         dreams.find(
           (d) => d.id === st.dream_id || d.student_id === st.id
-        ) ?? null;
-      if (matched) {
-        setCheerTargetDream(matched);
-        setCheerFeedback(null);
-      }
+        ) ?? {
+          id: st.dream_id || st.id,
+          student_id: st.id,
+          student_name: st.name,
+          student_nickname: st.nickname || st.name.split(" ")[0] || "Sahabat",
+          dream: st.dream_title,
+          reason: st.dream_reason,
+          paper_color: st.dream_paper_color || "#FFF7D6",
+          status: "approved" as const,
+          cheers: [],
+        };
+      setCheerTargetDream(matched);
+      setCheerFeedback(null);
     },
     [dreams]
   );

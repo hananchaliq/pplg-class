@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as THREE from "three";
 
 export type VisualTier = "hd" | "simple";
 
@@ -29,37 +30,139 @@ const VisualTierContext = React.createContext<VisualTierContextValue>({
 const STORAGE_KEY = "xii_pplg1_visual_tier";
 const COOKIE_KEY = "xii_pplg1_visual_tier";
 
-function detectWebGLSupport(): boolean {
+let cachedWebGLSupport: boolean | null = null;
+let cachedSoftwareWebGL: boolean | null = null;
+
+export function detectWebGLSupport(): boolean {
   if (typeof window === "undefined") return false;
+  if (cachedWebGLSupport !== null) return cachedWebGLSupport;
   try {
     const canvas = document.createElement("canvas");
+    const attrs: WebGLContextAttributes = {
+      failIfMajorPerformanceCaveat: false,
+    };
     const gl =
+      canvas.getContext("webgl2", attrs) ||
+      canvas.getContext("webgl", attrs) ||
+      canvas.getContext("experimental-webgl", attrs) ||
       canvas.getContext("webgl2") ||
       canvas.getContext("webgl") ||
       canvas.getContext("experimental-webgl");
-    if (!gl) return false;
-    const loseExt = (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context");
-    loseExt?.loseContext();
+    if (!gl) {
+      cachedWebGLSupport = false;
+      return false;
+    }
+    try {
+      const ext = (gl as WebGLRenderingContext).getExtension(
+        "WEBGL_debug_renderer_info"
+      );
+      const param = ext
+        ? ext.UNMASKED_RENDERER_WEBGL
+        : (gl as WebGLRenderingContext).RENDERER;
+      const gpu = String((gl as WebGLRenderingContext).getParameter(param));
+      cachedSoftwareWebGL =
+        /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+    } catch {
+      cachedSoftwareWebGL = false;
+    }
+    cachedWebGLSupport = true;
     return true;
   } catch {
+    cachedWebGLSupport = false;
     return false;
   }
 }
 
 export function isSoftwareWebGL(): boolean {
   if (typeof window === "undefined") return true;
+  if (cachedSoftwareWebGL !== null) return cachedSoftwareWebGL;
+  const supported = detectWebGLSupport();
+  if (!supported) return true;
+  return cachedSoftwareWebGL ?? false;
+}
+
+export interface SafeWebGLRendererOptions {
+  antialias?: boolean;
+  alpha?: boolean;
+  preserveDrawingBuffer?: boolean;
+}
+
+/**
+ * Progressive WebGLRenderer factory that tries multiple context configurations
+ * (WebGL2 high-performance -> default -> low-caveat -> manual WebGL1/experimental context)
+ * so 3D models never crash on strict or integrated GPU drivers.
+ */
+export function createSafeWebGLRenderer(
+  options: SafeWebGLRendererOptions = {}
+): THREE.WebGLRenderer | null {
+  if (typeof window === "undefined") return null;
+  const wantAlpha = options.alpha ?? false;
+  const wantAntialias = options.antialias ?? true;
+  const wantPreserve = options.preserveDrawingBuffer ?? false;
+
+  const attempts: THREE.WebGLRendererParameters[] = [
+    {
+      antialias: wantAntialias,
+      alpha: wantAlpha,
+      powerPreference: "high-performance",
+      preserveDrawingBuffer: wantPreserve,
+    },
+    {
+      antialias: false,
+      alpha: wantAlpha,
+      powerPreference: "default",
+      preserveDrawingBuffer: false,
+    },
+    {
+      antialias: false,
+      alpha: wantAlpha,
+      failIfMajorPerformanceCaveat: false,
+    },
+  ];
+
+  for (const params of attempts) {
+    try {
+      const renderer = new THREE.WebGLRenderer(params);
+      if (renderer && renderer.getContext()) {
+        cachedWebGLSupport = true;
+        return renderer;
+      }
+      renderer?.dispose();
+    } catch {
+      // Continue to next fallback attempt
+    }
+  }
+
+  // Final manual canvas + context fallback (supports WebGL1 / experimental-webgl)
   try {
     const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
-    if (!gl) return true;
-    const ext = gl.getExtension("WEBGL_debug_renderer_info");
-    const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-    const gpu = String(gl.getParameter(param));
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+    const ctxAttrs: WebGLContextAttributes = {
+      alpha: wantAlpha,
+      antialias: false,
+      failIfMajorPerformanceCaveat: false,
+    };
+    const gl =
+      (canvas.getContext("webgl2", ctxAttrs) as WebGLRenderingContext | null) ||
+      (canvas.getContext("webgl", ctxAttrs) as WebGLRenderingContext | null) ||
+      (canvas.getContext(
+        "experimental-webgl",
+        ctxAttrs
+      ) as WebGLRenderingContext | null);
+    if (gl) {
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        context: gl,
+        alpha: wantAlpha,
+        antialias: false,
+      });
+      cachedWebGLSupport = true;
+      return renderer;
+    }
   } catch {
-    return true;
+    // WebGL is completely unavailable on this browser/environment
   }
+
+  return null;
 }
 
 export function getAdaptiveDpr(isSoftwareGl = false): number {
@@ -107,14 +210,13 @@ export function computeAutoTier(): {
   }
   const webgl = detectWebGLSupport();
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const isNarrow = window.innerWidth < 1024;
-  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const isMobileViewport = window.innerWidth < 768;
   const nav = navigator as Navigator & {
     connection?: { saveData?: boolean };
   };
   const saveData = Boolean(nav.connection?.saveData);
 
-  if (!webgl || reduced || saveData || isNarrow || isCoarsePointer) {
+  if (saveData || isMobileViewport) {
     return { tier: "simple", webgl, reduced };
   }
   return { tier: "hd", webgl, reduced };
@@ -134,7 +236,7 @@ export function VisualTierProvider({ children }: { children: React.ReactNode }) 
     setWebglSupported(auto.webgl);
     setReducedMotion(auto.reduced);
 
-    if (stored === "hd" && auto.webgl) {
+    if (stored === "hd") {
       setTier("hd");
       setIsManualOverride(true);
     } else if (stored === "simple") {
@@ -158,11 +260,6 @@ export function VisualTierProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const setManualTier = React.useCallback((next: VisualTier) => {
-    const webgl = detectWebGLSupport();
-    if (next === "hd" && !webgl) {
-      setTier("simple");
-      return;
-    }
     writeStoredTier(next);
     setIsManualOverride(true);
     setTier(next);
@@ -176,9 +273,7 @@ export function VisualTierProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const downgradeToSimple = React.useCallback(() => {
-    // Only auto-downgrade if user did not manually force 3D and not on headless software GL verification
-    if (isSoftwareWebGL()) return;
-    setTier("simple");
+    // Do not force-downgrade global tier when the user wants 3D mode; individual scenes handle fallback gracefully
   }, []);
 
   const value = React.useMemo(

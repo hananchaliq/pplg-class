@@ -27,6 +27,7 @@ interface BukuKenanganSceneHDProps {
   coverCaption?: string;
   onOpenBook: () => void;
   onChangeSpread: (nextIndex: number) => void;
+  onWebglUnavailable?: () => void;
 }
 
 const {
@@ -284,6 +285,7 @@ export function BukuKenanganSceneHD({
   coverCaption,
   onOpenBook,
   onChangeSpread,
+  onWebglUnavailable,
 }: BukuKenanganSceneHDProps) {
   const spreadsRef = React.useRef(spreads);
   const isOpenRef = React.useRef(isBookOpen);
@@ -1676,6 +1678,7 @@ export function BukuKenanganSceneHD({
   return (
     <SceneShell
       onSetup={handleSetup}
+      onWebglUnavailable={onWebglUnavailable}
       cameraPosition={[
         BOOK_FLIP_CONFIG.camera.closedPos.x,
         BOOK_FLIP_CONFIG.camera.closedPos.y,
