@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   MessageSquareHeart,
   Send,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { type LanyardMember } from "@/components/ui/team-lanyard-rail";
-import { SingleIronRailLanyard } from "@/components/ui/single-iron-rail-lanyard";
 import { FlatIdCardRail } from "@/components/ui/flat-id-card";
 import { Adaptive } from "@/components/three/adaptive";
 import { studentToLanyardMember } from "@/lib/domain-logic";
@@ -22,9 +22,28 @@ import {
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
 import { MOTION_EASE, MOTION_DURATION } from "@/lib/motion-tokens";
-import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { MonochromeShimmer, SplitLineHeading } from "@/components/ui/motion-primitives";
 import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { StudentRow } from "@/lib/types";
+
+const SingleIronRailLanyard = dynamic(
+  () =>
+    import("@/components/ui/single-iron-rail-lanyard").then(
+      (mod) => mod.SingleIronRailLanyard
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="flex h-[540px] w-full items-center justify-center rounded-xl border border-border bg-card p-4"
+      >
+        <MonochromeShimmer className="h-[420px] w-full max-w-4xl rounded-xl" />
+      </div>
+    ),
+  }
+);
 
 type StudentFilter = "family" | "all" | "L" | "P" | "moved";
 

@@ -631,14 +631,26 @@ async function mutateBlobClassRecords(
 }
 
 /**
- * Simpan kiriman publik baru ke Vercel Blob (`pending-manifest.json` untuk foto/karya dan `manifest.json` untuk teks).
+ * Simpan kiriman publik baru ke Vercel Blob (`manifest.json` & `pending-manifest.json` untuk foto/karya dan `manifest.json` untuk teks).
  */
-export async function createPendingSubmission(payload: SubmitPayload) {
+export async function createPendingSubmission(
+  payload: SubmitPayload,
+  preUploadedBlobItem?: { id: string; url: string; blobUrl?: string }
+) {
   const id = crypto.randomUUID();
   const nowIso = new Date().toISOString();
 
-  // 1. Unggahan foto momen publik langsung disimpan ke Vercel Blob (`pending/`) + `pending-manifest.json`
+  // 1. Unggahan foto momen publik langsung disimpan ke Vercel Blob (manifest.json + pending-manifest.json)
   if (payload.type === "moment") {
+    if (preUploadedBlobItem) {
+      return {
+        id: preUploadedBlobItem.id,
+        type: payload.type,
+        status: "pending" as const,
+        blobUrl: preUploadedBlobItem.blobUrl || preUploadedBlobItem.url,
+      };
+    }
+
     const seedNum = Math.floor(Math.random() * 99) + 1;
     let buffer: Buffer | undefined;
     let contentType = "image/webp";
@@ -651,32 +663,48 @@ export async function createPendingSubmission(payload: SubmitPayload) {
       const parsed = parseImageDataUrl(payload.imageDataUrl);
       buffer = parsed.buffer;
       contentType = parsed.contentType;
+    } else if (
+      payload.imageDataUrl &&
+      /^https?:\/\//i.test(payload.imageDataUrl)
+    ) {
+      existingUrl = payload.imageDataUrl;
     } else {
       existingUrl = `/api/moment-illustration?seed=${seedNum}`;
     }
 
-    const created = await createPendingBlobSubmission({
+    const uploaded = await uploadMediaToBlob({
       channel: "gallery",
       category: sanitizeText(payload.category),
       buffer,
       contentType,
       existingUrl,
-      senderName: sanitizeText(payload.uploaderName),
+      uploaderName: sanitizeText(payload.uploaderName),
       caption: sanitizeText(payload.caption),
       phase: payload.phase,
       takenAt: payload.takenAt || nowIso.slice(0, 10),
+      status: "pending",
+      featured: false,
     });
 
     return {
-      id: created.item.id,
+      id: uploaded.item.id,
       type: payload.type,
       status: "pending" as const,
-      blobUrl: created.item.blobUrl,
+      blobUrl: uploaded.item.url,
     };
   }
 
-  // 2. Kiriman karya siswa (dengan foto terkompresi atau auto-screenshot demoUrl) disimpan ke `pending-manifest.json` (`karya`)
+  // 2. Kiriman karya siswa (dengan foto terkompresi atau auto-screenshot demoUrl) disimpan ke Vercel Blob (`karya`)
   if (payload.type === "work") {
+    if (preUploadedBlobItem) {
+      return {
+        id: preUploadedBlobItem.id,
+        type: payload.type,
+        status: "pending" as const,
+        blobUrl: preUploadedBlobItem.blobUrl || preUploadedBlobItem.url,
+      };
+    }
+
     const stuUuid = toDeterministicUuid(payload.studentId);
     const store = await fetchAllFromStorage();
     const stu = store.students.find(
@@ -695,6 +723,11 @@ export async function createPendingSubmission(payload: SubmitPayload) {
       const parsed = parseImageDataUrl(payload.imageDataUrl);
       buffer = parsed.buffer;
       contentType = parsed.contentType;
+    } else if (
+      payload.imageDataUrl &&
+      /^https?:\/\//i.test(payload.imageDataUrl)
+    ) {
+      existingUrl = payload.imageDataUrl;
     } else if (payload.demoUrl && /^https?:\/\//i.test(payload.demoUrl.trim())) {
       existingUrl = `https://api.microlink.io/?url=${encodeURIComponent(
         payload.demoUrl.trim()
@@ -705,13 +738,13 @@ export async function createPendingSubmission(payload: SubmitPayload) {
       )}&phase=XII&category=Karya+Siswa&seed=404`;
     }
 
-    const created = await createPendingBlobSubmission({
+    const uploaded = await uploadMediaToBlob({
       channel: "karya",
       category: "Karya Siswa",
       buffer,
       contentType,
       existingUrl,
-      senderName: studentName,
+      uploaderName: studentName,
       studentId: payload.studentId,
       studentName,
       title: sanitizeText(payload.title),
@@ -719,13 +752,15 @@ export async function createPendingSubmission(payload: SubmitPayload) {
       demoUrl: payload.demoUrl || "",
       repoUrl: payload.repoUrl || "",
       tags: payload.tags.map((t) => sanitizeText(t)),
+      status: "pending",
+      featured: false,
     });
 
     return {
-      id: created.item.id,
+      id: uploaded.item.id,
       type: payload.type,
       status: "pending" as const,
-      blobUrl: created.item.blobUrl,
+      blobUrl: uploaded.item.url,
     };
   }
 

@@ -6,11 +6,11 @@ import {
   MAX_PUBLIC_SUBMISSION_BYTES,
   approvePendingBlobSubmission,
   createPendingBlobSubmission,
+  deleteMediaFromBlob,
   isVercelBlobConfigured,
   normalizeChannel,
   parseImageDataUrl,
   readPendingMediaManifest,
-  rejectPendingBlobSubmission,
   type MediaChannel,
 } from "@/lib/media-store";
 import type { MomentPhase } from "@/lib/types";
@@ -373,16 +373,22 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
-    if (action === "reject" || action === "rejected" || action === "tolak") {
-      const result = await rejectPendingBlobSubmission(id);
+    if (
+      action === "reject" ||
+      action === "rejected" ||
+      action === "tolak" ||
+      action === "delete"
+    ) {
+      const delRes = await deleteMediaFromBlob({ id });
+      const { manifest: updatedPending } = await readPendingMediaManifest();
 
       revalidateAllSubmissionPages();
 
       return NextResponse.json({
         ok: true,
         action: "rejected",
-        rejectedItem: result.rejectedItem,
-        remainingPending: result.pendingManifest.items.length,
+        rejectedItem: delRes.removedItem,
+        remainingPending: updatedPending.items.length,
         message:
           "Kiriman ditolak. File gambar fisik telah dihapus dari Vercel Blob dan antrean dibersihkan.",
       });

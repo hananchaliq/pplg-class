@@ -59,7 +59,7 @@ export function navigateWithVanishingPoint(
  * Memastikan elemen <img> yang tampak di layar (above-the-fold) telah selesai
  * dimuat dan didekode ke GPU sebelum overlay matriks titik-titik memudar.
  */
-async function decodeVisibleImages(maxWaitMs = 4500): Promise<void> {
+async function decodeVisibleImages(maxWaitMs = 850): Promise<void> {
   if (typeof document === "undefined" || typeof window === "undefined") return;
 
   const vw = window.innerWidth || 1280;
@@ -70,7 +70,7 @@ async function decodeVisibleImages(maxWaitMs = 4500): Promise<void> {
   ).filter((img) => {
     const rect = img.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
-    return rect.top < vh * 1.15 && rect.bottom > -40 && rect.left < vw * 1.1;
+    return rect.top < vh * 1.05 && rect.bottom > -20 && rect.left < vw * 1.05;
   });
 
   if (imgs.length === 0) return;
@@ -123,7 +123,10 @@ function inspectDomPaintReadiness(
     return { ready: false, reason: "Menyiapkan dokumen..." };
   }
 
-  if (document.readyState !== "complete") {
+  if (
+    document.readyState !== "complete" &&
+    document.readyState !== "interactive"
+  ) {
     return { ready: false, reason: "Memuat sumber daya halaman..." };
   }
 
@@ -132,7 +135,7 @@ function inspectDomPaintReadiness(
     return { ready: false, reason: "Menyiapkan lembaran halaman..." };
   }
 
-  // 2. Pastikan semua komponen dynamic (Polaroid 3D, Koran LeafThrough, dll.) sudah terpasang
+  // 2. Pastikan semua komponen dynamic above-the-fold sudah terpasang
   if (document.querySelector('main [data-dynamic-loading="true"]')) {
     return { ready: false, reason: "Memuat panggung visual..." };
   }
@@ -161,7 +164,7 @@ function inspectDomPaintReadiness(
     return { ready: false, reason: "Menampilkan isi halaman..." };
   }
 
-  // 4. Jika halaman memiliki scene 3D / LeafThrough, pastikan sinyal siap + kanvas tergambar (>0px)
+  // 4. Jika halaman memiliki scene 3D / LeafThrough di area utama, pastikan sinyal siap + kanvas tergambar (>0px)
   const hasInteractiveCanvasStage = Boolean(
     mainEl.querySelector('[data-testid="scene-shell"]') ||
       mainEl.querySelector("[data-scene-canvas]") ||
@@ -196,6 +199,8 @@ function waitTwoAnimationFrames(): Promise<void> {
     });
   });
 }
+
+const SAFETY_AUTO_OPEN_MS = 2500;
 
 export function VanishingPageTransition({
   children,
@@ -246,7 +251,7 @@ export function VanishingPageTransition({
 
   /**
    * Memudarkan layar matriks titik-titik secara perlahan & lembut
-   * HANYA setelah seluruh elemen halaman 100% tergambar di layar.
+   * HANYA setelah elemen utama halaman siap di layar atau saat safety timeout 2.5 detik tercapai.
    */
   const fadeOutSlowly = React.useCallback(
     (isInitialBoot = false) => {
@@ -267,7 +272,7 @@ export function VanishingPageTransition({
           { opacity: 0.94 },
           {
             opacity: 1,
-            duration: 0.55,
+            duration: 0.42,
             ease: "power2.out",
             clearProps: "opacity",
           }
@@ -282,7 +287,7 @@ export function VanishingPageTransition({
 
       activeFadeTweenRef.current = gsap.to(overlay, {
         opacity: 0,
-        duration: reduced ? 0.2 : 0.72,
+        duration: reduced ? 0.16 : 0.48,
         ease: "power2.inOut",
         onComplete: () => {
           setPhaseSynced("idle");
@@ -296,7 +301,7 @@ export function VanishingPageTransition({
   );
 
   /**
-   * Menunggu 100% kesiapan tampilan aktual halaman (DOM, font, gambar above-the-fold,
+   * Menunggu kesiapan tampilan aktual halaman (DOM, font, gambar above-the-fold,
    * bebas route/dynamic skeleton, dan scene 3D/Koran selesai render) dengan MutationObserver + poll.
    */
   const waitUntilPageFullyPainted = React.useCallback(
@@ -324,18 +329,17 @@ export function VanishingPageTransition({
           if (typeof document !== "undefined" && "fonts" in document) {
             await Promise.race([
               document.fonts.ready,
-              new Promise<void>((r) => window.setTimeout(r, 1500)),
+              new Promise<void>((r) => window.setTimeout(r, 500)),
             ]).catch(() => {});
           }
           if (signal.cancelled) return;
 
           setStatusLabel("Menyelesaikan pemuatan foto...");
-          await decodeVisibleImages(4500);
+          await decodeVisibleImages(850);
           if (signal.cancelled) return;
 
-          // Tunggu 2 frame komposit GPU + verifikasi ulang tidak ada placeholder baru yang muncul
+          // Tunggu 2 frame komposit GPU tanpa jeda buatan panjang
           await waitTwoAnimationFrames();
-          await new Promise<void>((r) => window.setTimeout(r, 90));
           if (signal.cancelled) return;
 
           const recheck = inspectDomPaintReadiness(
@@ -347,9 +351,6 @@ export function VanishingPageTransition({
             resolving = false;
             return;
           }
-
-          await waitTwoAnimationFrames();
-          if (signal.cancelled) return;
 
           fadeOutSlowly(isInitialBoot);
         } finally {
@@ -372,7 +373,7 @@ export function VanishingPageTransition({
 
       const pollId = window.setInterval(() => {
         void checkNow();
-      }, 110);
+      }, 80);
 
       void checkNow();
 
@@ -407,8 +408,21 @@ export function VanishingPageTransition({
     };
   }, []);
 
+  // 1B. Safety Timeout 2.5 Detik saat Initial Boot: otomatis pudar mulus bila ada aset lambat
+  React.useEffect(() => {
+    if (phase !== "initial") return;
+    const bootEscape = window.setTimeout(() => {
+      if (phaseRef.current === "initial") {
+        sceneReadyFlagRef.current = true;
+        forceOpenAlbum();
+        fadeOutSlowly(true);
+      }
+    }, SAFETY_AUTO_OPEN_MS);
+    return () => window.clearTimeout(bootEscape);
+  }, [phase, forceOpenAlbum, fadeOutSlowly]);
+
   // 2. Siklus Awal Buka / Refresh Situs:
-  //    Tetap loop titik-titik hingga LoadingContext siap DAN seluruh halaman 100% tergambar!
+  //    Tetap loop titik-titik hingga LoadingContext siap DAN halaman siap tergambar!
   React.useEffect(() => {
     if (phase !== "initial") return;
     if (!isInitialAppReady) return;
@@ -436,16 +450,17 @@ export function VanishingPageTransition({
         setStatusLabel("Membuka lembaran...");
         setPhaseSynced("entering");
 
-        // Jangan paksa hilang saat halaman masih kosong!
-        // Setelah 12 detik baru tampilkan tombol manual bila jaringan sangat lambat.
+        // Safety timeout 2.5 detik: otomatis pudar mulus saat timeout tercapai agar user tidak tertahan lama
         routeEscapeTimerRef.current = window.setTimeout(() => {
           if (
             phaseRef.current === "entering" ||
             phaseRef.current === "looping"
           ) {
+            sceneReadyFlagRef.current = true;
             setRouteCanForceOpen(true);
+            fadeOutSlowly(false);
           }
-        }, 12000);
+        }, SAFETY_AUTO_OPEN_MS);
       },
     };
 
@@ -454,7 +469,7 @@ export function VanishingPageTransition({
       clearRouteTimers();
       activeFadeTweenRef.current?.kill();
     };
-  }, [clearRouteTimers, setPhaseSynced]);
+  }, [clearRouteTimers, fadeOutSlowly, setPhaseSynced]);
 
   // 4. Jalankan fade-in halus saat overlay baru terpasang pada fase "entering", lalu push rute
   React.useEffect(() => {

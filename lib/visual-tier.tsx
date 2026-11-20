@@ -62,6 +62,15 @@ export function isSoftwareWebGL(): boolean {
   }
 }
 
+export function getAdaptiveDpr(isSoftwareGl = false): number {
+  if (isSoftwareGl || typeof window === "undefined") return 1;
+  const rawDpr = window.devicePixelRatio || 1;
+  const isLightweight =
+    window.innerWidth < 1024 ||
+    window.matchMedia("(pointer: coarse)").matches;
+  return isLightweight ? Math.min(rawDpr, 1.25) : Math.min(rawDpr, 1.75);
+}
+
 function readStoredTier(): VisualTier | null {
   if (typeof window === "undefined") return null;
   try {

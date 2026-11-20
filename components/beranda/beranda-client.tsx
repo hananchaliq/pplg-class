@@ -373,63 +373,65 @@ export function BerandaClient({
       <DrawnHairlineRule className="my-12" />
 
       {/* PETA HALAMAN KENANGAN */}
-      <section aria-labelledby="map-heading" className="map-grid-section">
-        <div className="mx-auto max-w-xl text-center">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Indeks Ruang · XII PPLG 1
-          </p>
-          <SplitLineHeading
-            as="h2"
-            id="map-heading"
-            className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-          >
-            Enam Sudut Cerita Kita
-          </SplitLineHeading>
-          <p className="mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            {SITE_CONTENT.school.subTagline}
-          </p>
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {dynamicMapCards.map((card, idx) => (
-            <TiltRevealCard
-              key={card.href}
-              delay={idx * MOTION_STAGGER.base}
-              className="h-full"
+      <React.Suspense fallback={null}>
+        <section aria-labelledby="map-heading" className="map-grid-section">
+          <div className="mx-auto max-w-xl text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Indeks Ruang · XII PPLG 1
+            </p>
+            <SplitLineHeading
+              as="h2"
+              id="map-heading"
+              className="mt-1.5 font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
             >
-              <a
-                href={card.href}
-                onClick={(e) => handleNavigate(e, card.href)}
-                className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-foreground/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              Enam Sudut Cerita Kita
+            </SplitLineHeading>
+            <p className="mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
+              {SITE_CONTENT.school.subTagline}
+            </p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dynamicMapCards.map((card, idx) => (
+              <TiltRevealCard
+                key={card.href}
+                delay={idx * MOTION_STAGGER.base}
+                className="h-full"
               >
-                <div>
-                  <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                    <span className="font-bold text-foreground transition-transform duration-200 group-hover:translate-x-0.5">
-                      NO. {card.index}
-                    </span>
-                    <span>{card.meta}</span>
+                <a
+                  href={card.href}
+                  onClick={(e) => handleNavigate(e, card.href)}
+                  className="group flex h-full flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-foreground/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <div>
+                    <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+                      <span className="font-bold text-foreground transition-transform duration-200 group-hover:translate-x-0.5">
+                        NO. {card.index}
+                      </span>
+                      <span>{card.meta}</span>
+                    </div>
+
+                    <div className="mt-2.5 flex items-center justify-between gap-2">
+                      <h3 className="editorial-underline font-serif text-lg font-bold text-foreground">
+                        {card.title}
+                      </h3>
+                      <ArrowRight className="size-4 shrink-0 text-foreground transition-transform duration-200 group-hover:translate-x-1.5" />
+                    </div>
+
+                    <p className="mt-1 font-sans text-xs font-semibold text-muted-foreground">
+                      {card.subtitle}
+                    </p>
+
+                    <p className="mt-2 line-clamp-2 font-sans text-xs leading-relaxed text-card-foreground/85">
+                      {card.description}
+                    </p>
                   </div>
-
-                  <div className="mt-2.5 flex items-center justify-between gap-2">
-                    <h3 className="editorial-underline font-serif text-lg font-bold text-foreground">
-                      {card.title}
-                    </h3>
-                    <ArrowRight className="size-4 shrink-0 text-foreground transition-transform duration-200 group-hover:translate-x-1.5" />
-                  </div>
-
-                  <p className="mt-1 font-sans text-xs font-semibold text-muted-foreground">
-                    {card.subtitle}
-                  </p>
-
-                  <p className="mt-2 line-clamp-2 font-sans text-xs leading-relaxed text-card-foreground/85">
-                    {card.description}
-                  </p>
-                </div>
-              </a>
-            </TiltRevealCard>
-          ))}
-        </div>
-      </section>
+                </a>
+              </TiltRevealCard>
+            ))}
+          </div>
+        </section>
+      </React.Suspense>
     </div>
   );
 }

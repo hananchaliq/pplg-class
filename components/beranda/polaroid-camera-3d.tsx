@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Camera, ChevronRight } from "lucide-react";
 import { gsap } from "@/lib/gsap-utils";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
-import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
+import { getAdaptiveDpr, isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
 import { disposeSceneGraph } from "@/components/three/scene-shell";
 import { MOTION_EASE } from "@/lib/motion-tokens";
 import type { MomentRow } from "@/lib/types";
@@ -640,9 +640,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.94;
     renderer.localClippingEnabled = true;
-    renderer.setPixelRatio(
-      isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
-    );
+    renderer.setPixelRatio(getAdaptiveDpr(isSoftwareGl));
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = !isSoftwareGl;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -987,14 +985,39 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       masterTl.restart(false);
     };
 
-    const onVisibilityChange = () => {
-      if (document.hidden) {
+    let isInViewport = true;
+    let isLoopRunning = false;
+
+    const syncPlaybackState = () => {
+      if (isDisposed) return;
+      const shouldRun = isInViewport && !document.hidden;
+      if (!shouldRun) {
         masterTl.pause();
-      } else if (!isDisposed) {
+      } else {
         masterTl.resume();
+        if (!isLoopRunning) {
+          clock.getDelta();
+          isLoopRunning = true;
+          rafId = requestAnimationFrame(tick);
+        }
       }
     };
+
+    const onVisibilityChange = () => {
+      syncPlaybackState();
+    };
     document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const viewportObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        isInViewport = entry.isIntersecting;
+        syncPlaybackState();
+      },
+      { threshold: 0.05 }
+    );
+    viewportObserver.observe(container);
 
     const setPhotoClipping = (planes: THREE.Plane[]) => {
       if (frontMat.clippingPlanes !== planes) {
@@ -1223,6 +1246,11 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
         }
       }
 
+      if (isDisposed || !isInViewport || document.hidden) {
+        isLoopRunning = false;
+        return;
+      }
+      isLoopRunning = true;
       renderer.render(scene, camera);
 
       if (isSoftwareGl) {
@@ -1232,6 +1260,7 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
       }
     };
 
+    isLoopRunning = true;
     if (isSoftwareGl) {
       renderer.render(scene, camera);
       afterDraw(tick);
@@ -1250,8 +1279,10 @@ export function PolaroidCamera3D({ moments }: PolaroidCamera3DProps) {
 
     return () => {
       isDisposed = true;
+      isLoopRunning = false;
       skipCycleFnRef.current = null;
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      viewportObserver.disconnect();
       masterTl.kill();
       window.clearTimeout(rafId);
       cancelAnimationFrame(rafId);

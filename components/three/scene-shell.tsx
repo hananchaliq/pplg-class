@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
+import { getAdaptiveDpr, isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
 
 export interface SceneShellContext {
   scene: THREE.Scene;
@@ -212,9 +212,7 @@ export function SceneShell({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
-    renderer.setPixelRatio(
-      isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
-    );
+    renderer.setPixelRatio(getAdaptiveDpr(isSoftwareGl));
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = !isSoftwareGl;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -322,14 +320,19 @@ export function SceneShell({
     }, 90);
 
     const clock = new THREE.Clock();
+    let isLoopRunning = false;
 
     function tick() {
-      if (disposed) return;
+      if (disposed) {
+        isLoopRunning = false;
+        return;
+      }
       if (!isVisibleInViewport || !isTabVisible) {
-        timeoutId = window.setTimeout(tick, 200);
+        isLoopRunning = false;
         return;
       }
 
+      isLoopRunning = true;
       const dt = Math.min(0.1, clock.getDelta());
       const elapsed = clock.elapsedTime;
 
@@ -343,12 +346,25 @@ export function SceneShell({
       }
     }
 
+    function resumeLoopIfNeeded() {
+      if (disposed || !isVisibleInViewport || !isTabVisible) return;
+      if (continuous) {
+        if (!isLoopRunning) {
+          clock.getDelta();
+          tick();
+        }
+      } else {
+        requestRender();
+      }
+    }
+
     if (continuous) {
       tick();
     }
 
     const handleRouteTransitionStart = () => {
       disposed = true;
+      isLoopRunning = false;
       cancelAnimationFrame(frameId);
       clearTimeout(timeoutId);
       clearTimeout(curtainTimerId);
@@ -363,8 +379,8 @@ export function SceneShell({
         const entry = entries[0];
         if (entry) {
           isVisibleInViewport = entry.isIntersecting;
-          if (isVisibleInViewport && !continuous) {
-            requestRender();
+          if (isVisibleInViewport) {
+            resumeLoopIfNeeded();
           }
         }
       },
@@ -374,8 +390,8 @@ export function SceneShell({
 
     const onVisibilityChange = () => {
       isTabVisible = !document.hidden;
-      if (isTabVisible && !continuous) {
-        requestRender();
+      if (isTabVisible) {
+        resumeLoopIfNeeded();
       }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);

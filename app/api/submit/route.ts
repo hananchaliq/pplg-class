@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
-import { SubmitPayloadSchema, verifyClassCode } from "@/lib/domain-logic";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { SubmitPayloadSchema, sanitizeText, verifyClassCode } from "@/lib/domain-logic";
 import { createPendingSubmission } from "@/lib/db";
+import {
+  normalizeChannel,
+  parseImageDataUrl,
+  uploadMediaToBlob,
+  type MediaItem,
+} from "@/lib/media-store";
 
 // Rate limit sederhana per IP / perangkat di memori server
 const rateMap = new Map<string, { count: number; resetAt: number }>();
@@ -74,7 +80,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validasi tipe MIME dan ukuran untuk unggahan gambar momen atau karya
+    let preUploadedBlobItem: MediaItem | undefined;
+
+    // Validasi tipe MIME, ukuran, dan unggah langsung data:image/... ke Vercel Blob (status: "pending", featured: false)
+    // agar TIDAK PERNAH menyimpan base64 mentah ke lib/db.ts
     if (
       (payload.type === "moment" || payload.type === "work") &&
       payload.imageDataUrl
@@ -105,10 +114,66 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+
+      if (payload.imageDataUrl.startsWith("data:image/")) {
+        const parsedImg = parseImageDataUrl(payload.imageDataUrl);
+        if (parsedImg.buffer.byteLength > 2 * 1024 * 1024) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Ukuran file gambar melebihi batas maksimal 2 MB. Pastikan gambar sudah terkompresi.",
+            },
+            { status: 400 }
+          );
+        }
+
+        if (payload.type === "moment") {
+          const cleanCategory = sanitizeText(payload.category);
+          const targetChannel = normalizeChannel(undefined, cleanCategory);
+          const uploaded = await uploadMediaToBlob({
+            channel: targetChannel,
+            category: cleanCategory,
+            buffer: parsedImg.buffer,
+            contentType: parsedImg.contentType,
+            uploaderName: sanitizeText(payload.uploaderName),
+            caption: sanitizeText(payload.caption),
+            phase: payload.phase,
+            takenAt: payload.takenAt || new Date().toISOString().slice(0, 10),
+            status: "pending",
+            featured: false,
+          });
+          payload.imageDataUrl = uploaded.item.url;
+          preUploadedBlobItem = uploaded.item;
+        } else if (payload.type === "work") {
+          const uploaded = await uploadMediaToBlob({
+            channel: "karya",
+            category: "Karya Siswa",
+            buffer: parsedImg.buffer,
+            contentType: parsedImg.contentType,
+            studentId: payload.studentId,
+            title: sanitizeText(payload.title),
+            caption: sanitizeText(payload.description),
+            demoUrl: payload.demoUrl || "",
+            repoUrl: payload.repoUrl || "",
+            tags: payload.tags.map((t) => sanitizeText(t)),
+            status: "pending",
+            featured: false,
+          });
+          payload.imageDataUrl = uploaded.item.url;
+          preUploadedBlobItem = uploaded.item;
+        }
+      }
     }
 
-    const created = await createPendingSubmission(payload);
+    const created = await createPendingSubmission(payload, preUploadedBlobItem);
 
+    try {
+      revalidateTag("media-manifest");
+      revalidateTag("pending-manifest");
+    } catch {
+      // Abaikan jika di luar konteks cache
+    }
     revalidatePath("/");
     revalidatePath("/galeri");
     revalidatePath("/kenangan");

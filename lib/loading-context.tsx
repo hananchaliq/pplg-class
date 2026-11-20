@@ -5,8 +5,8 @@ import * as THREE from "three";
 import { ensureAlbumFontsLoaded } from "@/lib/class-meta";
 
 const SESSION_KEY = "pplg_uno_album_opened_v1";
-const MIN_HOLD_MS = 450;
-const SAFE_TIMEOUT_MS = 12000;
+const MIN_HOLD_MS = 180;
+const SAFE_TIMEOUT_MS = 2500;
 
 export interface LoadingContextValue {
   /** Monotonically increasing progress 0..100 */
@@ -15,7 +15,7 @@ export interface LoadingContextValue {
   isReady: boolean;
   /** Whether the loader has completely finished its exit animation and unmounted */
   isLoaderUnmounted: boolean;
-  /** True when 12s safety timeout has elapsed and some assets are still pending */
+  /** True when 2.5s safety timeout has elapsed and some assets are still pending */
   canForceOpen: boolean;
   /** Report 3D scene progress (0..100) */
   reportSceneProgress: (pct: number, label?: string) => void;
@@ -79,7 +79,8 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // 1. Selalu jalankan penjagaan awal saat halaman pertama kali dibuka ATAU di-refresh
-  //    agar tidak pernah muncul layar putih polos sebelum seluruh elemen & canvas siap.
+  //    agar tidak pernah muncul layar putih polos sebelum elemen utama siap,
+  //    dengan safety timeout otomatis 2.5 detik agar tidak pernah menahan user terlalu lama.
   React.useEffect(() => {
     let alreadyOpened = false;
     try {
@@ -95,14 +96,15 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     document.body.style.overflow = "hidden";
 
     // Tahan singkat agar titik-titik tidak berkedip keras
-    const holdDuration = alreadyOpened ? 220 : MIN_HOLD_MS;
+    const holdDuration = alreadyOpened ? 100 : MIN_HOLD_MS;
     const minHoldTimer = window.setTimeout(() => {
       setMinHoldElapsed(true);
     }, holdDuration);
 
-    // Katup pengaman 12 detik -> munculkan tombol "Buka sekarang" jika jaringan macet
+    // Katup pengaman 2.5 detik -> otomatis buka mulus jika ada aset atau jaringan lambat
     const safeTimer = window.setTimeout(() => {
       setCanForceOpen(true);
+      forceOpenAlbum();
     }, SAFE_TIMEOUT_MS);
 
     const markLoaded = () => setDocComplete(true);
@@ -118,7 +120,7 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("load", markLoaded);
       document.body.style.overflow = "";
     };
-  }, []);
+  }, [forceOpenAlbum]);
 
   // 2. Pantau kesiapan font album
   React.useEffect(() => {

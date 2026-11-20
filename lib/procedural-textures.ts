@@ -42,68 +42,94 @@ function seededRandom(seed: number) {
   };
 }
 
+const woodCanvasCache = new Map<
+  "warm" | "dark" | "light",
+  { colorCanvas: HTMLCanvasElement; bumpCanvas: HTMLCanvasElement }
+>();
+
 /**
  * Tekstur kayu monokrom arsip (albedo + bump) untuk aksesoris buku & papan tulis darkroom.
+ * Menggunakan memoized base canvas agar tidak menggambar ulang ratusan garis serat di main thread.
  */
 export function createWoodTextures(
   renderer?: THREE.WebGLRenderer | null,
   tone: "warm" | "dark" | "light" = "warm"
 ) {
-  const size = 512;
-  const colorCanvas = document.createElement("canvas");
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const ctx = colorCanvas.getContext("2d")!;
+  let cached = woodCanvasCache.get(tone);
+  if (!cached && typeof document !== "undefined") {
+    const size = 512;
+    const colorCanvas = document.createElement("canvas");
+    colorCanvas.width = size;
+    colorCanvas.height = size;
+    const ctx = colorCanvas.getContext("2d")!;
 
-  const bumpCanvas = document.createElement("canvas");
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext("2d")!;
+    const bumpCanvas = document.createElement("canvas");
+    bumpCanvas.width = size;
+    bumpCanvas.height = size;
+    const bCtx = bumpCanvas.getContext("2d")!;
 
-  const baseColors = {
-    warm: ["#4A4843", "#3D3D3A", "#5C5A54"],
-    dark: ["#2A2A28", "#1C1C1A", "#32322F"],
-    light: ["#8E8B82", "#7D7A72", "#A8A49B"],
-  }[tone];
+    const baseColors = {
+      warm: ["#4A4843", "#3D3D3A", "#5C5A54"],
+      dark: ["#2A2A28", "#1C1C1A", "#32322F"],
+      light: ["#8E8B82", "#7D7A72", "#A8A49B"],
+    }[tone];
 
-  const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, baseColors[0]);
-  grad.addColorStop(0.5, baseColors[1]);
-  grad.addColorStop(1, baseColors[2]);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, baseColors[0]);
+    grad.addColorStop(0.5, baseColors[1]);
+    grad.addColorStop(1, baseColors[2]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
 
-  bCtx.fillStyle = "#808080";
-  bCtx.fillRect(0, 0, size, size);
+    bCtx.fillStyle = "#808080";
+    bCtx.fillRect(0, 0, size, size);
 
-  const rand = seededRandom(tone === "warm" ? 42 : tone === "dark" ? 99 : 17);
-  for (let i = 0; i < 220; i++) {
-    const y = rand() * size;
-    const h = 1 + rand() * 4;
-    const alpha = 0.05 + rand() * 0.12;
-    ctx.fillStyle = rand() > 0.5 ? `rgba(22,22,20,${alpha})` : `rgba(232,229,220,${alpha * 0.55})`;
-    ctx.fillRect(0, y, size, h);
+    const rand = seededRandom(tone === "warm" ? 42 : tone === "dark" ? 99 : 17);
+    for (let i = 0; i < 220; i++) {
+      const y = rand() * size;
+      const h = 1 + rand() * 4;
+      const alpha = 0.05 + rand() * 0.12;
+      ctx.fillStyle =
+        rand() > 0.5
+          ? `rgba(22,22,20,${alpha})`
+          : `rgba(232,229,220,${alpha * 0.55})`;
+      ctx.fillRect(0, y, size, h);
 
-    bCtx.fillStyle = rand() > 0.5 ? `rgba(60,60,60,0.22)` : `rgba(195,195,195,0.22)`;
-    bCtx.fillRect(0, y, size, h);
-  }
-
-  // Serat melengkung halus
-  ctx.strokeStyle = "rgba(22, 22, 20, 0.16)";
-  ctx.lineWidth = 1.4;
-  for (let k = 0; k < 28; k++) {
-    const baseY = (k / 28) * size;
-    ctx.beginPath();
-    ctx.moveTo(0, baseY);
-    for (let x = 0; x <= size; x += 32) {
-      const wave = Math.sin(x * 0.02 + k) * 6;
-      ctx.lineTo(x, baseY + wave);
+      bCtx.fillStyle =
+        rand() > 0.5 ? `rgba(60,60,60,0.22)` : `rgba(195,195,195,0.22)`;
+      bCtx.fillRect(0, y, size, h);
     }
-    ctx.stroke();
+
+    // Serat melengkung halus
+    ctx.strokeStyle = "rgba(22, 22, 20, 0.16)";
+    ctx.lineWidth = 1.4;
+    for (let k = 0; k < 28; k++) {
+      const baseY = (k / 28) * size;
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (let x = 0; x <= size; x += 32) {
+        const wave = Math.sin(x * 0.02 + k) * 6;
+        ctx.lineTo(x, baseY + wave);
+      }
+      ctx.stroke();
+    }
+
+    cached = { colorCanvas, bumpCanvas };
+    woodCanvasCache.set(tone, cached);
   }
 
-  const map = applyTextureSettings(new THREE.CanvasTexture(colorCanvas), renderer, true, true);
-  const bumpMap = applyTextureSettings(new THREE.CanvasTexture(bumpCanvas), renderer, false, true);
+  const map = applyTextureSettings(
+    new THREE.CanvasTexture(cached!.colorCanvas),
+    renderer,
+    true,
+    true
+  );
+  const bumpMap = applyTextureSettings(
+    new THREE.CanvasTexture(cached!.bumpCanvas),
+    renderer,
+    false,
+    true
+  );
   return { map, bumpMap };
 }
 
@@ -367,62 +393,77 @@ export function createBookCoverTextures(
   return { map, bumpMap };
 }
 
+let cachedChalkboardCanvas: HTMLCanvasElement | null = null;
+
 /**
  * Tekstur papan tulis kapur (Chalkboard) dengan debu kapur & bekas hapus
  */
 export function createChalkboardTexture(renderer?: THREE.WebGLRenderer | null) {
-  const width = 1024;
-  const height = 512;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
+  if (!cachedChalkboardCanvas && typeof document !== "undefined") {
+    const width = 1024;
+    const height = 512;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d")!;
 
-  const grad = ctx.createRadialGradient(
-    width * 0.5,
-    height * 0.5,
-    40,
-    width * 0.5,
-    height * 0.5,
-    width * 0.65
-  );
-  grad.addColorStop(0, "#232321");
-  grad.addColorStop(0.6, "#1A1A18");
-  grad.addColorStop(1, "#141413");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+    const grad = ctx.createRadialGradient(
+      width * 0.5,
+      height * 0.5,
+      40,
+      width * 0.5,
+      height * 0.5,
+      width * 0.65
+    );
+    grad.addColorStop(0, "#232321");
+    grad.addColorStop(0.6, "#1A1A18");
+    grad.addColorStop(1, "#141413");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
 
-  // Bekas sapuan penghapus kapur
-  const rand = seededRandom(301);
-  for (let i = 0; i < 45; i++) {
-    const x = rand() * width;
-    const y = rand() * height;
-    const rx = 40 + rand() * 120;
-    const ry = 12 + rand() * 35;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((rand() - 0.5) * 0.6);
-    ctx.fillStyle = `rgba(232, 229, 220, ${0.015 + rand() * 0.03})`;
+    // Bekas sapuan penghapus kapur
+    const rand = seededRandom(301);
+    for (let i = 0; i < 45; i++) {
+      const x = rand() * width;
+      const y = rand() * height;
+      const rx = 40 + rand() * 120;
+      const ry = 12 + rand() * 35;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((rand() - 0.5) * 0.6);
+      ctx.fillStyle = `rgba(232, 229, 220, ${0.015 + rand() * 0.03})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Tulisan kapur tipis di bagian atas papan
+    ctx.fillStyle = "rgba(232, 229, 220, 0.42)";
+    ctx.font = `400 28px ${getAlbumDisplayFont()}`;
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Papan Cita-Cita & Harapan — XII PPLG 1 MAKN Ende",
+      width / 2,
+      46
+    );
+
+    ctx.strokeStyle = "rgba(232, 229, 220, 0.22)";
+    ctx.setLineDash([8, 6]);
     ctx.beginPath();
-    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    ctx.moveTo(120, 62);
+    ctx.lineTo(width - 120, 62);
+    ctx.stroke();
+
+    cachedChalkboardCanvas = canvas;
   }
 
-  // Tulisan kapur tipis di bagian atas papan
-  ctx.fillStyle = "rgba(232, 229, 220, 0.42)";
-  ctx.font = `400 28px ${getAlbumDisplayFont()}`;
-  ctx.textAlign = "center";
-  ctx.fillText("Papan Cita-Cita & Harapan — XII PPLG 1 MAKN Ende", width / 2, 46);
-
-  ctx.strokeStyle = "rgba(232, 229, 220, 0.22)";
-  ctx.setLineDash([8, 6]);
-  ctx.beginPath();
-  ctx.moveTo(120, 62);
-  ctx.lineTo(width - 120, 62);
-  ctx.stroke();
-
-  return applyTextureSettings(new THREE.CanvasTexture(canvas), renderer, true, false);
+  return applyTextureSettings(
+    new THREE.CanvasTexture(cachedChalkboardCanvas!),
+    renderer,
+    true,
+    false
+  );
 }
 
 /**

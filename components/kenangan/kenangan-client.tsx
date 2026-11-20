@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen,
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import { useVisualTier } from "@/lib/visual-tier";
 import { PaginationBar } from "@/components/ui/pagination-bar";
-import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { MonochromeShimmer, SplitLineHeading } from "@/components/ui/motion-primitives";
 import { useEditorialToast } from "@/components/ui/editorial-toast";
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
 import { FAREWELL_MEME_STICKERS } from "@/lib/procedural-textures";
@@ -32,10 +33,7 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
-import {
-  BukuKenanganSceneHD,
-  type BookSpread,
-} from "@/components/kenangan/buku-scene-hd";
+import type { BookSpread } from "@/components/kenangan/buku-scene-hd";
 import type {
   MemoryEntryRow,
   MomentRow,
@@ -43,6 +41,25 @@ import type {
   ThanksRow,
   TimeCapsuleRow,
 } from "@/lib/types";
+
+const BukuKenanganSceneHD = dynamic(
+  () =>
+    import("@/components/kenangan/buku-scene-hd").then(
+      (mod) => mod.BukuKenanganSceneHD
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="flex h-[500px] sm:h-[580px] lg:h-[650px] w-full items-center justify-center rounded-xl border border-border bg-[#161614] p-4"
+      >
+        <MonochromeShimmer className="h-[380px] w-full max-w-2xl rounded-xl" />
+      </div>
+    ),
+  }
+);
 
 type KenanganTab = "buku" | "kapsul" | "thanks";
 

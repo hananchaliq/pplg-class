@@ -276,13 +276,20 @@ export const DEFAULT_LOCAL_MEDIA_FALLBACK: MediaItem[] = [
   },
 ];
 
-export function isVercelBlobConfigured(): boolean {
+export function getBlobToken(): string | undefined {
   const token = (process.env.BLOB_READ_WRITE_TOKEN || "").trim();
-  return (
+  if (
     token.length > 10 &&
     !token.includes("ISI_DENGAN_TOKEN") &&
     !token.includes("your-token")
-  );
+  ) {
+    return token;
+  }
+  return undefined;
+}
+
+export function isVercelBlobConfigured(): boolean {
+  return Boolean(getBlobToken());
 }
 
 export function isVercelBlobUrl(url: string): boolean {
@@ -417,12 +424,13 @@ export async function readRawMediaManifest(): Promise<{
   manifest: MediaManifest;
   storage: "vercel-blob" | "local-fallback";
 }> {
-  if (!isVercelBlobConfigured()) {
+  const token = getBlobToken();
+  if (!token) {
     const local = await readLocalFallbackManifest();
     return { manifest: local, storage: "local-fallback" };
   }
 
-  const { blobs } = await list({ prefix: MANIFEST_PATHNAME, limit: 20 });
+  const { blobs } = await list({ prefix: MANIFEST_PATHNAME, limit: 20, token });
   const exactManifestBlob =
     blobs.find((b) => b.pathname === MANIFEST_PATHNAME) ??
     blobs.find((b) => b.pathname.endsWith(`/${MANIFEST_PATHNAME}`));
@@ -477,6 +485,7 @@ export async function writeMediaManifest(
   items: MediaItem[],
   recordsOverride?: Partial<BlobClassRecords>
 ): Promise<MediaManifest> {
+  const token = getBlobToken();
   const current = await readRawMediaManifest().catch(
     (): { manifest: MediaManifest; storage: "local-fallback" } => ({
       manifest: { version: 1, updatedAt: "", items: [] },
@@ -494,7 +503,7 @@ export async function writeMediaManifest(
     ...(mergedRecords ? { records: mergedRecords } : {}),
   };
 
-  if (!isVercelBlobConfigured()) {
+  if (!token) {
     if (process.env.VERCEL === "1") {
       throw new Error(
         "BLOB_READ_WRITE_TOKEN belum dikonfigurasi di Environment Variables Vercel."
@@ -510,61 +519,99 @@ export async function writeMediaManifest(
     addRandomSuffix: false,
     allowOverwrite: true,
     cacheControlMaxAge: 0,
+    token,
   });
 
   return manifest;
 }
 
 /**
- * Membaca file pending-manifest.json dari Vercel Blob (daftar antrean kiriman pengunjung berstatus pending).
+ * Membaca file pending-manifest.json dari Vercel Blob (daftar antrean kiriman pengunjung berstatus pending),
+ * serta menggabungkan item berstatus `pending` yang tersimpan langsung di `manifest.json` utama.
  */
 export async function readPendingMediaManifest(): Promise<{
   manifest: PendingMediaManifest;
   storage: "vercel-blob" | "local-fallback";
 }> {
-  if (!isVercelBlobConfigured()) {
+  const token = getBlobToken();
+  let pendingItems: PendingSubmissionItem[] = [];
+  let storage: "vercel-blob" | "local-fallback" = token
+    ? "vercel-blob"
+    : "local-fallback";
+
+  if (!token) {
     const local = await readLocalFallbackPendingManifest();
-    return { manifest: local, storage: "local-fallback" };
-  }
+    pendingItems = [...local.items];
+  } else {
+    const { blobs } = await list({
+      prefix: PENDING_MANIFEST_PATHNAME,
+      limit: 20,
+      token,
+    });
+    const exactBlob =
+      blobs.find((b) => b.pathname === PENDING_MANIFEST_PATHNAME) ??
+      blobs.find((b) => b.pathname.endsWith(`/${PENDING_MANIFEST_PATHNAME}`));
 
-  const { blobs } = await list({ prefix: PENDING_MANIFEST_PATHNAME, limit: 20 });
-  const exactBlob =
-    blobs.find((b) => b.pathname === PENDING_MANIFEST_PATHNAME) ??
-    blobs.find((b) => b.pathname.endsWith(`/${PENDING_MANIFEST_PATHNAME}`));
-
-  if (!exactBlob?.url) {
-    return {
-      manifest: {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        items: [],
-      },
-      storage: "vercel-blob",
-    };
-  }
-
-  const res = await fetch(
-    `${exactBlob.url}${exactBlob.url.includes("?") ? "&" : "?"}t=${Date.now()}`,
-    {
-      cache: "no-store",
-      next: { tags: ["media-manifest", "pending-manifest"] },
+    if (exactBlob?.url) {
+      const res = await fetch(
+        `${exactBlob.url}${exactBlob.url.includes("?") ? "&" : "?"}t=${Date.now()}`,
+        {
+          cache: "no-store",
+          next: { tags: ["media-manifest", "pending-manifest"] },
+        }
+      );
+      if (!res.ok) {
+        throw new Error(
+          `Gagal mengunduh pending-manifest.json dari Vercel Blob (HTTP ${res.status}).`
+        );
+      }
+      const parsed = (await res.json()) as Partial<PendingMediaManifest>;
+      if (Array.isArray(parsed.items)) {
+        pendingItems = [...parsed.items];
+      }
     }
-  );
-  if (!res.ok) {
-    throw new Error(
-      `Gagal mengunduh pending-manifest.json dari Vercel Blob (HTTP ${res.status}).`
-    );
   }
 
-  const parsed = (await res.json()) as Partial<PendingMediaManifest>;
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
+  // Sinkronkan juga item yang tersimpan langsung di manifest.json dengan status === "pending"
+  try {
+    const { manifest: mainManifest } = await readRawMediaManifest();
+    const seenIds = new Set(pendingItems.map((i) => i.id));
+    for (const item of mainManifest.items) {
+      if (item.status === "pending" && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        pendingItems.push({
+          id: item.id,
+          senderName: item.uploaderName || item.studentName || "Siswa XII PPLG 1",
+          title: item.title,
+          caption: item.caption,
+          category: item.category,
+          channel: item.channel,
+          phase: item.phase,
+          takenAt: item.takenAt,
+          blobUrl: item.blobUrl || item.url,
+          pathname: item.pathname,
+          ...(typeof item.sizeBytes === "number" ? { sizeBytes: item.sizeBytes } : {}),
+          ...(item.studentId ? { studentId: item.studentId } : {}),
+          ...(item.studentName ? { studentName: item.studentName } : {}),
+          ...(item.demoUrl ? { demoUrl: item.demoUrl } : {}),
+          ...(item.repoUrl ? { repoUrl: item.repoUrl } : {}),
+          ...(item.tags ? { tags: item.tags } : {}),
+          status: "pending",
+          createdAt: item.createdAt,
+        });
+      }
+    }
+  } catch {
+    // Abaikan jika manifest utama belum ada
+  }
+
   return {
     manifest: {
       version: 1,
-      updatedAt: parsed.updatedAt || new Date().toISOString(),
-      items,
+      updatedAt: new Date().toISOString(),
+      items: pendingItems,
     },
-    storage: "vercel-blob",
+    storage,
   };
 }
 
@@ -574,13 +621,14 @@ export async function readPendingMediaManifest(): Promise<{
 export async function writePendingMediaManifest(
   items: PendingSubmissionItem[]
 ): Promise<PendingMediaManifest> {
+  const token = getBlobToken();
   const manifest: PendingMediaManifest = {
     version: 1,
     updatedAt: new Date().toISOString(),
     items,
   };
 
-  if (!isVercelBlobConfigured()) {
+  if (!token) {
     if (process.env.VERCEL === "1") {
       throw new Error(
         "BLOB_READ_WRITE_TOKEN belum dikonfigurasi di Environment Variables Vercel."
@@ -596,6 +644,7 @@ export async function writePendingMediaManifest(
     addRandomSuffix: false,
     allowOverwrite: true,
     cacheControlMaxAge: 0,
+    token,
   });
 
   return manifest;
@@ -613,6 +662,7 @@ export async function createPendingBlobSubmission(
   manifest: PendingMediaManifest;
   storage: "vercel-blob" | "local-fallback";
 }> {
+  const token = getBlobToken();
   const category = cleanField(
     input.category ||
       defaultCategoryForChannel(normalizeChannel(input.channel, input.category)),
@@ -676,13 +726,14 @@ export async function createPendingBlobSubmission(
       );
     }
 
-    if (isVercelBlobConfigured()) {
+    if (token) {
       const uploaded = await put(pendingPathname, input.buffer, {
         access: "public",
         contentType,
         addRandomSuffix: false,
         allowOverwrite: true,
         cacheControlMaxAge: 60 * 60 * 24 * 365,
+        token,
       });
       blobUrl = uploaded.url;
       finalPathname = uploaded.pathname;
@@ -724,7 +775,10 @@ export async function createPendingBlobSubmission(
     createdAt: nowIso,
   };
 
-  const nextPendingItems = [pendingItem, ...currentPending.items];
+  const nextPendingItems = [
+    pendingItem,
+    ...currentPending.items.filter((i) => i.id !== pendingItem.id),
+  ];
   const savedPending = await writePendingMediaManifest(nextPendingItems);
 
   return {
@@ -745,6 +799,7 @@ async function ensureImageInTargetChannelBlob(params: {
   targetChannel: MediaChannel;
   slugHint: string;
 }): Promise<{ url: string; pathname: string; sizeBytes?: number }> {
+  const token = getBlobToken();
   const { sourceUrl, sourcePathname, targetChannel, slugHint } = params;
   const prefix = MEDIA_CHANNEL_PREFIXES[targetChannel];
   const slug = slugifyFileSegment(slugHint);
@@ -753,12 +808,13 @@ async function ensureImageInTargetChannelBlob(params: {
   if (sourceUrl.startsWith("data:image/")) {
     const parsed = parseImageDataUrl(sourceUrl);
     const targetPathname = `${prefix}${timestamp}-${slug}.${parsed.extension}`;
-    if (isVercelBlobConfigured()) {
+    if (token) {
       const uploaded = await put(targetPathname, parsed.buffer, {
         access: "public",
         contentType: parsed.contentType,
         addRandomSuffix: true,
         cacheControlMaxAge: 60 * 60 * 24 * 365,
+        token,
       });
       return {
         url: uploaded.url,
@@ -775,7 +831,7 @@ async function ensureImageInTargetChannelBlob(params: {
 
   // Jika file sudah berada di Vercel Blob di bawah `pending/`, salin ke folder channel tujuan (`<channel>/...`) lalu hapus file `pending/`
   if (
-    isVercelBlobConfigured() &&
+    token &&
     isVercelBlobUrl(sourceUrl) &&
     (sourcePathname?.startsWith("pending/") || sourceUrl.includes("/pending/"))
   ) {
@@ -796,8 +852,9 @@ async function ensureImageInTargetChannelBlob(params: {
           contentType,
           addRandomSuffix: true,
           cacheControlMaxAge: 60 * 60 * 24 * 365,
+          token,
         });
-        await del(sourceUrl).catch(() => {});
+        await del(sourceUrl, { token }).catch(() => {});
         return {
           url: uploaded.url,
           pathname: uploaded.pathname,
@@ -817,7 +874,7 @@ async function ensureImageInTargetChannelBlob(params: {
 
 /**
  * Tahap 2A — Admin Klik ACC (Approve) pada Item Antrean Pending:
- * 1) Pindahkan/salin item dari `pending-manifest.json` ke `manifest.json` utama sesuai channel tujuannya (`hero3d`, `gallery`, `yearbook`, `karya`, `students`).
+ * 1) Ubah status item `"pending"` di `manifest.json` (atau pindahkan dari `pending-manifest.json` ke `manifest.json`) menjadi `"approved"`.
  * 2) Hapus item tersebut dari `pending-manifest.json` agar antrean admin bersih.
  */
 export async function approvePendingBlobSubmission(
@@ -834,16 +891,18 @@ export async function approvePendingBlobSubmission(
   pendingManifest: PendingMediaManifest;
 }> {
   const { manifest: pendingManifest } = await readPendingMediaManifest();
+  const { manifest: mainManifest } = await readRawMediaManifest();
+
+  const mainIdx = mainManifest.items.findIndex((item) => item.id === id);
   const pendingIdx = pendingManifest.items.findIndex((item) => item.id === id);
 
-  if (pendingIdx < 0) {
-    // Cek apabila item berada di manifest.json utama dengan status pending
-    const { manifest: mainManifest } = await readRawMediaManifest();
-    const mainIdx = mainManifest.items.findIndex((item) => item.id === id);
-    if (mainIdx < 0) {
-      throw new Error("Kiriman tidak ditemukan di antrean pending-manifest.json.");
-    }
+  if (mainIdx < 0 && pendingIdx < 0) {
+    throw new Error("Kiriman tidak ditemukan di antrean pending maupun manifest.json.");
+  }
 
+  let approvedItem: MediaItem;
+
+  if (mainIdx >= 0) {
     const existing = mainManifest.items[mainIdx]!;
     const targetChannel = options?.targetChannel || existing.channel;
     const ensured = await ensureImageInTargetChannelBlob({
@@ -853,7 +912,7 @@ export async function approvePendingBlobSubmission(
       slugHint: existing.title || existing.caption,
     });
 
-    const approvedMainItem: MediaItem = {
+    approvedItem = {
       ...existing,
       channel: targetChannel,
       url: ensured.url,
@@ -871,70 +930,59 @@ export async function approvePendingBlobSubmission(
       status: "approved",
       featured: true,
     };
+  } else {
+    const pendingItem = pendingManifest.items[pendingIdx]!;
+    const targetChannel =
+      options?.targetChannel ||
+      normalizeChannel(pendingItem.channel, pendingItem.category);
+    const targetCategory = cleanField(
+      options?.targetCategory ||
+        pendingItem.category ||
+        defaultCategoryForChannel(targetChannel),
+      80
+    );
+    const finalCaption = cleanField(
+      options?.updatedCaption || pendingItem.caption,
+      280
+    );
+    const finalTitle = cleanField(
+      options?.updatedTitle || pendingItem.title,
+      140
+    );
 
-    const nextMainItems = [...mainManifest.items];
-    nextMainItems[mainIdx] = approvedMainItem;
-    const savedMain = await writeMediaManifest(nextMainItems);
+    const ensured = await ensureImageInTargetChannelBlob({
+      sourceUrl: pendingItem.blobUrl,
+      sourcePathname: pendingItem.pathname,
+      targetChannel,
+      slugHint: finalTitle || pendingItem.senderName,
+    });
 
-    return {
-      approvedItem: approvedMainItem,
-      manifest: savedMain,
-      pendingManifest,
+    approvedItem = {
+      id: pendingItem.id,
+      channel: targetChannel,
+      title: finalTitle,
+      caption: finalCaption,
+      category: targetCategory,
+      phase: pendingItem.phase,
+      takenAt: pendingItem.takenAt,
+      uploaderName: pendingItem.senderName,
+      ...(pendingItem.studentName ? { studentName: pendingItem.studentName } : {}),
+      ...(pendingItem.studentId ? { studentId: pendingItem.studentId } : {}),
+      ...(pendingItem.demoUrl ? { demoUrl: pendingItem.demoUrl } : {}),
+      ...(pendingItem.repoUrl ? { repoUrl: pendingItem.repoUrl } : {}),
+      ...(pendingItem.tags ? { tags: pendingItem.tags } : {}),
+      featured: true,
+      status: "approved",
+      url: ensured.url,
+      blobUrl: ensured.url,
+      pathname: ensured.pathname,
+      ...(typeof (ensured.sizeBytes ?? pendingItem.sizeBytes) === "number"
+        ? { sizeBytes: ensured.sizeBytes ?? pendingItem.sizeBytes }
+        : {}),
+      createdAt: pendingItem.createdAt,
     };
   }
 
-  const pendingItem = pendingManifest.items[pendingIdx]!;
-  const targetChannel =
-    options?.targetChannel ||
-    normalizeChannel(pendingItem.channel, pendingItem.category);
-  const targetCategory = cleanField(
-    options?.targetCategory ||
-      pendingItem.category ||
-      defaultCategoryForChannel(targetChannel),
-    80
-  );
-  const finalCaption = cleanField(
-    options?.updatedCaption || pendingItem.caption,
-    280
-  );
-  const finalTitle = cleanField(
-    options?.updatedTitle || pendingItem.title,
-    140
-  );
-
-  const ensured = await ensureImageInTargetChannelBlob({
-    sourceUrl: pendingItem.blobUrl,
-    sourcePathname: pendingItem.pathname,
-    targetChannel,
-    slugHint: finalTitle || pendingItem.senderName,
-  });
-
-  const approvedItem: MediaItem = {
-    id: pendingItem.id,
-    channel: targetChannel,
-    title: finalTitle,
-    caption: finalCaption,
-    category: targetCategory,
-    phase: pendingItem.phase,
-    takenAt: pendingItem.takenAt,
-    uploaderName: pendingItem.senderName,
-    ...(pendingItem.studentName ? { studentName: pendingItem.studentName } : {}),
-    ...(pendingItem.studentId ? { studentId: pendingItem.studentId } : {}),
-    ...(pendingItem.demoUrl ? { demoUrl: pendingItem.demoUrl } : {}),
-    ...(pendingItem.repoUrl ? { repoUrl: pendingItem.repoUrl } : {}),
-    ...(pendingItem.tags ? { tags: pendingItem.tags } : {}),
-    featured: true,
-    status: "approved",
-    url: ensured.url,
-    blobUrl: ensured.url,
-    pathname: ensured.pathname,
-    ...(typeof (ensured.sizeBytes ?? pendingItem.sizeBytes) === "number"
-      ? { sizeBytes: ensured.sizeBytes ?? pendingItem.sizeBytes }
-      : {}),
-    createdAt: pendingItem.createdAt,
-  };
-
-  const { manifest: mainManifest } = await readRawMediaManifest();
   const filteredMain = mainManifest.items.filter((i) => i.id !== approvedItem.id);
   const nextMainItems = [approvedItem, ...filteredMain];
   const savedMain = await writeMediaManifest(nextMainItems);
@@ -951,33 +999,18 @@ export async function approvePendingBlobSubmission(
 
 /**
  * Tahap 2B — Admin Klik Tolak (Reject) pada Item Antrean Pending:
- * 1) Hapus file gambar fisiknya dari Vercel Blob menggunakan `del(item.blobUrl)` agar tidak memenuhi kuota storage.
- * 2) Hapus item tersebut dari `pending-manifest.json`.
+ * 1) Hapus file gambar fisiknya dari Vercel Blob menggunakan `deleteMediaFromBlob` (`del(item.blobUrl)`).
+ * 2) Hapus item tersebut dari `manifest.json` dan `pending-manifest.json`.
  */
 export async function rejectPendingBlobSubmission(id: string): Promise<{
   rejectedItem: PendingSubmissionItem | MediaItem | null;
   pendingManifest: PendingMediaManifest;
 }> {
-  const { manifest: pendingManifest } = await readPendingMediaManifest();
-  const target = pendingManifest.items.find((item) => item.id === id);
-
-  if (target) {
-    if (isVercelBlobConfigured() && isVercelBlobUrl(target.blobUrl)) {
-      await del(target.blobUrl).catch(() => {});
-    }
-    const nextPendingItems = pendingManifest.items.filter((item) => item.id !== id);
-    const savedPending = await writePendingMediaManifest(nextPendingItems);
-    return {
-      rejectedItem: target,
-      pendingManifest: savedPending,
-    };
-  }
-
-  // Jika item berada di manifest.json utama, hapus file blob dan hapus dari manifest.json
   const delRes = await deleteMediaFromBlob({ id });
+  const { manifest: updatedPending } = await readPendingMediaManifest();
   return {
     rejectedItem: delRes.removedItem,
-    pendingManifest,
+    pendingManifest: updatedPending,
   };
 }
 
@@ -1086,7 +1119,7 @@ export function pendingSubmissionToMediaItem(
     ...(item.demoUrl ? { demoUrl: item.demoUrl } : {}),
     ...(item.repoUrl ? { repoUrl: item.repoUrl } : {}),
     ...(item.tags ? { tags: item.tags } : {}),
-    featured: true,
+    featured: false,
     status: "pending",
     url: item.blobUrl,
     blobUrl: item.blobUrl,
@@ -1134,9 +1167,9 @@ export function parseImageDataUrl(dataUrl: string): {
 }
 
 /**
- * Tahap 3 — Upload Langsung oleh Admin:
- * Menyimpan berkas langsung ke folder channel (`hero3d/`, `gallery/`, `yearbook/`, `karya/`, `students/`)
- * dan langsung menulis ke `manifest.json` utama tanpa lewat `pending-manifest.json`.
+ * Tahap 3 — Upload Foto ke Vercel Blob (mendukung status `"approved"` maupun `"pending"`):
+ * Menyimpan berkas gambar langsung ke folder channel (`hero3d/`, `gallery/`, `yearbook/`, `karya/`, `students/`)
+ * dan menulis item ke `manifest.json` utama (serta menyinkronkan ke `pending-manifest.json` bila `status === "pending"`).
  */
 export async function uploadMediaToBlob(
   input: UploadMediaInput
@@ -1145,6 +1178,7 @@ export async function uploadMediaToBlob(
   manifest: MediaManifest;
   storage: "vercel-blob" | "local-fallback";
 }> {
+  const token = getBlobToken();
   const channel = normalizeChannel(input.channel, input.category);
   const category = cleanField(
     input.category || defaultCategoryForChannel(channel),
@@ -1182,35 +1216,7 @@ export async function uploadMediaToBlob(
     ? input.tags.map((t) => cleanField(t, 40)).filter(Boolean).slice(0, 8)
     : undefined;
   const status: ContentStatus = input.status || "approved";
-  const featured = input.featured ?? true;
-
-  // Jika status adalah pending, arahkan ke antrean pending-manifest.json (`pending/`)
-  if (status === "pending") {
-    const pendingRes = await createPendingBlobSubmission({
-      channel,
-      category,
-      buffer: input.buffer,
-      contentType: input.contentType,
-      fileName: input.fileName,
-      existingUrl: input.existingUrl,
-      senderName: uploaderName,
-      title,
-      caption,
-      phase,
-      takenAt,
-      studentId,
-      studentName,
-      demoUrl,
-      repoUrl,
-      tags,
-    });
-    const { manifest: mainManifest } = await readRawMediaManifest();
-    return {
-      item: pendingSubmissionToMediaItem(pendingRes.item),
-      manifest: mainManifest,
-      storage: pendingRes.storage,
-    };
-  }
+  const featured = input.featured ?? (status === "approved");
 
   const { manifest: currentManifest, storage } = await readRawMediaManifest();
   const prefix = MEDIA_CHANNEL_PREFIXES[channel];
@@ -1230,12 +1236,13 @@ export async function uploadMediaToBlob(
   let sizeBytes = input.buffer?.byteLength;
 
   if (input.buffer && input.buffer.byteLength > 0) {
-    if (isVercelBlobConfigured()) {
+    if (token) {
       const uploaded = await put(pathname, input.buffer, {
         access: "public",
         contentType: input.contentType || "image/webp",
         addRandomSuffix: true,
         cacheControlMaxAge: 60 * 60 * 24 * 365,
+        token,
       });
       finalUrl = uploaded.url;
       finalPathname = uploaded.pathname;
@@ -1251,12 +1258,13 @@ export async function uploadMediaToBlob(
     }
   } else if (finalUrl.startsWith("data:image/")) {
     const parsed = parseImageDataUrl(finalUrl);
-    if (isVercelBlobConfigured()) {
+    if (token) {
       const uploaded = await put(pathname, parsed.buffer, {
         access: "public",
         contentType: parsed.contentType,
         addRandomSuffix: true,
         cacheControlMaxAge: 60 * 60 * 24 * 365,
+        token,
       });
       finalUrl = uploaded.url;
       finalPathname = uploaded.pathname;
@@ -1284,7 +1292,7 @@ export async function uploadMediaToBlob(
     ...(repoUrl ? { repoUrl } : {}),
     ...(tags && tags.length > 0 ? { tags } : {}),
     featured,
-    status: "approved",
+    status,
     url: finalUrl,
     blobUrl: finalUrl,
     pathname: finalPathname,
@@ -1294,28 +1302,29 @@ export async function uploadMediaToBlob(
 
   let nextItems = [...currentManifest.items];
 
-  // Jika replaceExistingCategory aktif (mis. Foto Sampul Buku), ganti entri kategori yang sama
-  if (input.replaceExistingCategory && category) {
+  // Jika replaceExistingCategory aktif (mis. Foto Sampul Buku) dan status approved, ganti entri kategori yang sama
+  if (status === "approved" && input.replaceExistingCategory && category) {
     const replaced = nextItems.filter(
       (i) => i.channel === channel && i.category === category
     );
     nextItems = nextItems.filter(
       (i) => !(i.channel === channel && i.category === category)
     );
-    if (isVercelBlobConfigured()) {
+    if (token) {
       for (const old of replaced) {
         if (old.url !== finalUrl && isVercelBlobUrl(old.url)) {
           const stillReferenced = nextItems.some((x) => x.url === old.url);
           if (!stillReferenced) {
-            await del(old.url).catch(() => {});
+            await del(old.url, { token }).catch(() => {});
           }
         }
       }
     }
   }
 
-  // Jika mengunggah foto ID Card / Sahabat Istimewa untuk siswa tertentu, perbarui entri siswa tersebut
+  // Jika mengunggah foto ID Card / Sahabat Istimewa (approved) untuk siswa tertentu, perbarui entri siswa tersebut
   if (
+    status === "approved" &&
     (channel === "yearbook" || channel === "students") &&
     (studentId || studentName)
   ) {
@@ -1328,12 +1337,12 @@ export async function uploadMediaToBlob(
     );
     if (prevStudentPhotos.length > 0 && category.startsWith("ID Card")) {
       nextItems = nextItems.filter((i) => !prevStudentPhotos.includes(i));
-      if (isVercelBlobConfigured()) {
+      if (token) {
         for (const old of prevStudentPhotos) {
           if (old.url !== finalUrl && isVercelBlobUrl(old.url)) {
             const stillUsed = nextItems.some((x) => x.url === old.url);
             if (!stillUsed) {
-              await del(old.url).catch(() => {});
+              await del(old.url, { token }).catch(() => {});
             }
           }
         }
@@ -1343,6 +1352,36 @@ export async function uploadMediaToBlob(
 
   nextItems = [newItem, ...nextItems];
   const savedManifest = await writeMediaManifest(nextItems);
+
+  // Jika status === "pending", sinkronkan juga ke pending-manifest.json agar muncul di semua endpoint moderasi
+  if (status === "pending") {
+    const { manifest: currentPending } = await readPendingMediaManifest();
+    const pendingItem: PendingSubmissionItem = {
+      id: newItem.id,
+      senderName: uploaderName,
+      title,
+      caption,
+      category,
+      channel,
+      phase,
+      takenAt,
+      blobUrl: finalUrl,
+      pathname: finalPathname,
+      ...(typeof sizeBytes === "number" ? { sizeBytes } : {}),
+      ...(studentId ? { studentId } : {}),
+      ...(studentName ? { studentName } : {}),
+      ...(demoUrl ? { demoUrl } : {}),
+      ...(repoUrl ? { repoUrl } : {}),
+      ...(tags && tags.length > 0 ? { tags } : {}),
+      status: "pending",
+      createdAt: nowIso,
+    };
+    const nextPending = [
+      pendingItem,
+      ...currentPending.items.filter((i) => i.id !== newItem.id),
+    ];
+    await writePendingMediaManifest(nextPending);
+  }
 
   return {
     item: newItem,
@@ -1360,23 +1399,28 @@ export async function updateMediaItemInManifest(
     Pick<MediaItem, "status" | "caption" | "category" | "phase" | "featured">
   >
 ): Promise<boolean> {
-  // Jika berasal dari pending-manifest.json:
-  const { manifest: pendingManifest } = await readPendingMediaManifest();
-  const inPending = pendingManifest.items.some((item) => item.id === id);
-
-  if (inPending) {
-    if (patch.status === "approved") {
+  if (patch.status === "approved") {
+    try {
       await approvePendingBlobSubmission(id, {
         updatedCaption: patch.caption,
         targetCategory: patch.category,
       });
       return true;
+    } catch {
+      // Lanjutkan ke pengecekan manifest.json utama jika tidak ada di pending
     }
-    if (patch.status === "rejected") {
-      await rejectPendingBlobSubmission(id);
-      return true;
-    }
-    // Jika hanya mengedit caption selagi masih pending
+  }
+
+  if (patch.status === "rejected") {
+    const delRes = await deleteMediaFromBlob({ id });
+    return delRes.deleted;
+  }
+
+  // Jika berasal dari pending-manifest.json dan hanya mengedit caption/kategori selagi masih pending:
+  const { manifest: pendingManifest } = await readPendingMediaManifest();
+  const inPending = pendingManifest.items.some((item) => item.id === id);
+
+  if (inPending) {
     const nextPending = pendingManifest.items.map((item) =>
       item.id === id
         ? {
@@ -1392,39 +1436,16 @@ export async function updateMediaItemInManifest(
         : item
     );
     await writePendingMediaManifest(nextPending);
-    return true;
   }
 
-  // Jika item berada di manifest.json utama:
+  // Cek juga di manifest.json utama:
   const { manifest } = await readRawMediaManifest();
   const idx = manifest.items.findIndex((item) => item.id === id);
-  if (idx < 0) return false;
-
-  if (patch.status === "rejected") {
-    await deleteMediaFromBlob({ id });
-    return true;
-  }
+  if (idx < 0) return inPending;
 
   const current = manifest.items[idx]!;
-  let finalUrl = current.url;
-  let finalPathname = current.pathname;
-
-  if (patch.status === "approved") {
-    const ensured = await ensureImageInTargetChannelBlob({
-      sourceUrl: current.url,
-      sourcePathname: current.pathname,
-      targetChannel: current.channel,
-      slugHint: current.title || current.caption,
-    });
-    finalUrl = ensured.url;
-    finalPathname = ensured.pathname;
-  }
-
   const updated: MediaItem = {
     ...current,
-    url: finalUrl,
-    blobUrl: finalUrl,
-    pathname: finalPathname,
     ...(patch.status ? { status: patch.status } : {}),
     ...(typeof patch.caption === "string"
       ? { caption: cleanField(patch.caption, 260) }
@@ -1443,7 +1464,7 @@ export async function updateMediaItemInManifest(
 }
 
 /**
- * Hapus berkas gambar dari Vercel Blob (`del`) dan bersihkan entrinya dari manifest.json maupun pending-manifest.json.
+ * Hapus berkas gambar fisik dari Vercel Blob (`del`) dan bersihkan entrinya dari manifest.json maupun pending-manifest.json.
  */
 export async function deleteMediaFromBlob(
   idOrUrl: { id?: string; url?: string }
@@ -1452,7 +1473,11 @@ export async function deleteMediaFromBlob(
   removedItem: MediaItem | null;
   manifest: MediaManifest;
 }> {
-  // 1. Cek apakah ada di pending-manifest.json terlebih dahulu
+  const token = getBlobToken();
+  let removedItem: MediaItem | null = null;
+  let urlsToDelete = new Set<string>();
+
+  // 1. Cek dan bersihkan dari pending-manifest.json
   const { manifest: pendingManifest } = await readPendingMediaManifest();
   const pendingTarget = pendingManifest.items.find(
     (item) =>
@@ -1460,48 +1485,51 @@ export async function deleteMediaFromBlob(
       (idOrUrl.url && item.blobUrl === idOrUrl.url)
   );
   if (pendingTarget) {
-    if (isVercelBlobConfigured() && isVercelBlobUrl(pendingTarget.blobUrl)) {
-      await del(pendingTarget.blobUrl).catch(() => {});
+    removedItem = pendingSubmissionToMediaItem(pendingTarget);
+    if (isVercelBlobUrl(pendingTarget.blobUrl)) {
+      urlsToDelete.add(pendingTarget.blobUrl);
     }
     const nextPending = pendingManifest.items.filter(
       (item) => item.id !== pendingTarget.id
     );
     await writePendingMediaManifest(nextPending);
-    const { manifest: currentMain } = await readRawMediaManifest();
-    return {
-      deleted: true,
-      removedItem: pendingSubmissionToMediaItem(pendingTarget),
-      manifest: currentMain,
-    };
   }
 
-  // 2. Cek di manifest.json utama
+  // 2. Cek dan bersihkan dari manifest.json utama
   const { manifest } = await readRawMediaManifest();
-  const target = manifest.items.find(
+  const mainTarget = manifest.items.find(
     (item) =>
       (idOrUrl.id && item.id === idOrUrl.id) ||
       (idOrUrl.url && item.url === idOrUrl.url)
   );
 
-  if (!target) {
-    if (idOrUrl.url && isVercelBlobConfigured() && isVercelBlobUrl(idOrUrl.url)) {
-      await del(idOrUrl.url).catch(() => {});
-      return { deleted: true, removedItem: null, manifest };
+  let savedManifest = manifest;
+  if (mainTarget) {
+    if (!removedItem) removedItem = mainTarget;
+    if (isVercelBlobUrl(mainTarget.url)) {
+      urlsToDelete.add(mainTarget.url);
     }
-    return { deleted: false, removedItem: null, manifest };
+    const nextItems = manifest.items.filter((item) => item.id !== mainTarget.id);
+    // Jangan hapus blob yang masih direferensikan oleh item lain di manifest.json
+    for (const u of Array.from(urlsToDelete)) {
+      if (nextItems.some((item) => item.url === u)) {
+        urlsToDelete.delete(u);
+      }
+    }
+    savedManifest = await writeMediaManifest(nextItems);
+  } else if (idOrUrl.url && isVercelBlobUrl(idOrUrl.url)) {
+    urlsToDelete.add(idOrUrl.url);
   }
 
-  const nextItems = manifest.items.filter((item) => item.id !== target.id);
-
-  const stillReferenced = nextItems.some((item) => item.url === target.url);
-  if (!stillReferenced && isVercelBlobConfigured() && isVercelBlobUrl(target.url)) {
-    await del(target.url).catch(() => {});
+  if (token && urlsToDelete.size > 0) {
+    for (const url of urlsToDelete) {
+      await del(url, { token }).catch(() => {});
+    }
   }
 
-  const savedManifest = await writeMediaManifest(nextItems);
   return {
-    deleted: true,
-    removedItem: target,
+    deleted: Boolean(removedItem || urlsToDelete.size > 0),
+    removedItem,
     manifest: savedManifest,
   };
 }
