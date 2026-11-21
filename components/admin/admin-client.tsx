@@ -127,11 +127,7 @@ const ADMIN_TOKEN_STORAGE_KEY = "xii_pplg1_admin_token";
 function readStoredAdminToken(): string {
   if (typeof window === "undefined") return "";
   try {
-    return (
-      window.sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ||
-      window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ||
-      ""
-    );
+    return window.sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || "";
   } catch {
     return "";
   }
@@ -140,12 +136,11 @@ function readStoredAdminToken(): string {
 function writeStoredAdminToken(token: string) {
   if (typeof window === "undefined") return;
   try {
+    window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
     if (token) {
       window.sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
-      window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
     } else {
       window.sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-      window.localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
     }
   } catch {
     // Ignore storage restriction errors in sandboxed iframes
@@ -246,6 +241,7 @@ export function AdminClient() {
       const token = getActiveToken(overrideToken);
       return fetch("/api/admin", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "x-admin-session": token } : {}),
@@ -268,10 +264,12 @@ export function AdminClient() {
         const [res, subRes] = await Promise.all([
           fetch("/api/admin", {
             cache: "no-store",
+            credentials: "same-origin",
             headers: token ? { "x-admin-session": token } : undefined,
           }),
           fetch("/api/submissions", {
             cache: "no-store",
+            credentials: "same-origin",
             headers: token ? { "x-admin-session": token } : undefined,
           }).catch(() => null),
         ]);
@@ -316,6 +314,7 @@ export function AdminClient() {
     try {
       const res = await fetch("/api/admin", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "login", email, password }),
       });
@@ -326,7 +325,7 @@ export function AdminClient() {
         );
         return;
       }
-      const token = String(json.token || "authenticated_admin_xiipplg1");
+      const token = String(json.token || "");
       setSessionToken(token);
       writeStoredAdminToken(token);
       setPassword("");
@@ -535,6 +534,7 @@ export function AdminClient() {
 
         const subRes = await fetch(endpoint, {
           method,
+          credentials: "same-origin",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { "x-admin-session": token } : {}),
@@ -758,6 +758,7 @@ export function AdminClient() {
 
       const res = await fetch("/api/upload", {
         method: "POST",
+        credentials: "same-origin",
         headers: token ? { "x-admin-session": token } : undefined,
         body: formData,
       });
@@ -775,6 +776,7 @@ export function AdminClient() {
       const token = getActiveToken();
       const res = await fetch(`/api/upload?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
+        credentials: "same-origin",
         headers: token ? { "x-admin-session": token } : undefined,
       });
       const json = await res.json();

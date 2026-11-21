@@ -111,6 +111,16 @@ export function Navbar() {
   } = useSadAudio();
   const [mobileSheetOpen, setMobileSheetOpen] = React.useState(false);
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const onScroll = () => {
+      setIsScrolled(window.scrollY > 12);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   React.useEffect(() => {
     setMobileSheetOpen(false);
@@ -156,7 +166,13 @@ export function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur-md">
+      <header
+        className={`sticky top-0 z-40 w-full border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+          isScrolled
+            ? "editorial-glass border-border/80 shadow-sm"
+            : "border-border bg-card/90 backdrop-blur-md"
+        }`}
+      >
         <div className="ikat-divider" aria-hidden="true" />
         {pendingHref && (
           <div
@@ -173,7 +189,6 @@ export function Navbar() {
           <div className="relative flex min-w-0 items-center">
             <Link
               href="/"
-              prefetch={false}
               onClick={(e) => handleNavigate(e, "/")}
               className="group flex min-w-0 items-center gap-2 sm:gap-2.5 rounded-xl py-1 pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
@@ -212,7 +227,6 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  prefetch={false}
                   onClick={(e) => handleNavigate(e, link.href)}
                   aria-current={isActive ? "page" : undefined}
                   className={`group relative inline-flex min-h-[34px] items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-semibold whitespace-nowrap transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
@@ -281,9 +295,13 @@ export function Navbar() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.6, opacity: 0 }}
                       transition={{ duration: 0.18 }}
-                      className="inline-flex"
+                      className="inline-flex items-center gap-0.5"
                     >
-                      <Disc3 className="size-4 animate-spin [animation-duration:3.5s]" />
+                      <Disc3 className="size-3.5 animate-spin [animation-duration:3.5s]" />
+                      <span className="inline-flex h-2.5 items-end gap-[1.5px]" aria-hidden="true">
+                        <span className="w-[1.5px] rounded-full bg-[var(--accent-gold)] animate-pulse h-2" />
+                        <span className="w-[1.5px] rounded-full bg-[var(--accent-gold)] animate-pulse h-2.5 [animation-delay:140ms]" />
+                      </span>
                     </motion.span>
                   ) : (
                     <motion.span
@@ -500,7 +518,6 @@ export function Navbar() {
                   >
                     <Link
                       href={item.href}
-                      prefetch={false}
                       onClick={(e) => handleNavigate(e, item.href)}
                       aria-current={isActive ? "page" : undefined}
                       className={`flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
@@ -548,7 +565,7 @@ export function Navbar() {
       {/* Navigasi Bawah Mobile (< lg) */}
       <nav
         aria-label="Navigasi Bawah Mobile"
-        className="fixed right-0 bottom-0 left-0 z-50 border-t border-border bg-card/95 px-2 py-1.5 shadow-[0_-4px_20px_rgba(27,27,26,0.1)] backdrop-blur-md lg:hidden"
+        className="editorial-glass fixed right-0 bottom-0 left-0 z-50 border-t border-border px-2 py-1.5 shadow-[0_-6px_24px_rgba(27,27,26,0.12)] lg:hidden"
       >
         <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
           {MOBILE_PRIMARY_TABS.map((item) => {
@@ -564,7 +581,6 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 onClick={(e) => handleNavigate(e, item.href)}
                 aria-current={isActive ? "page" : undefined}
                 className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 font-sans text-[10px] font-semibold transition-colors ${

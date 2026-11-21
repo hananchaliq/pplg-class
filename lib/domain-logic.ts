@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSafeHttpUrl, sanitizeSafeUrl } from "./url-safety.ts";
 import type { LanyardMember } from "@/components/ui/team-lanyard-rail";
 import type {
   StudentRow,
@@ -135,12 +136,23 @@ export function studentToLanyardMember(
       : "Siswa XII PPLG 1";
 
   const cleanName = decodeHtmlEntities(student.full_name);
+  const safePhotoUrl = sanitizeSafeUrl(student.photo_url, {
+    allowRelative: true,
+  });
   const image =
     !student.show_photo
       ? ""
-      : student.photo_url && student.photo_url.trim().length > 0
-        ? student.photo_url
+      : safePhotoUrl.length > 0
+        ? safePhotoUrl
         : createAvatarPlaceholderDataUri(cleanName, tone, true);
+
+  const safeLinks = (student.links ?? [])
+    .map((l) => ({
+      label: sanitizeText(l.label),
+      href: sanitizeSafeUrl(l.href),
+    }))
+    .filter((l) => l.label.length > 0 && l.href.length > 0)
+    .slice(0, 3);
 
   return {
     id: student.id,
@@ -150,7 +162,7 @@ export function studentToLanyardMember(
     image,
     bio: decodeHtmlEntities(student.bio),
     tags: cleanTags.slice(0, 3),
-    links: (student.links ?? []).slice(0, 3),
+    links: safeLinks,
     tone,
   };
 }
@@ -172,9 +184,12 @@ export function teacherToLanyardMember(teacher: TeacherRow): LanyardMember {
   };
 
   const cleanName = decodeHtmlEntities(teacher.full_name);
+  const safePhotoUrl = sanitizeSafeUrl(teacher.photo_url, {
+    allowRelative: true,
+  });
   const image =
-    teacher.photo_url && teacher.photo_url.trim().length > 0
-      ? teacher.photo_url
+    safePhotoUrl.length > 0
+      ? safePhotoUrl
       : createAvatarPlaceholderDataUri(cleanName, tone, true);
 
   return {
@@ -304,7 +319,12 @@ export function computeClassSkillMap(
  * Verifikasi kode kelas sederhana di sisi server.
  */
 export function verifyClassCode(inputCode: string, expectedSecret?: string): boolean {
-  const secret = (expectedSecret || process.env.CLASS_SECRET_CODE || "XIIPPLG1")
+  const secret = (
+    expectedSecret ||
+    process.env.CLASS_PASSCODE ||
+    process.env.CLASS_SECRET_CODE ||
+    "XIIPPLG1"
+  )
     .trim()
     .toUpperCase();
   return inputCode.trim().toUpperCase() === secret;
@@ -373,8 +393,22 @@ export const SubmitPayloadSchema = z.discriminatedUnion("type", [
     title: z.string().min(3).max(90),
     description: z.string().min(10).max(280),
     tags: z.array(z.string().min(1).max(24)).min(1).max(5),
-    demoUrl: z.string().url().optional().or(z.literal("")),
-    repoUrl: z.string().url().optional().or(z.literal("")),
+    demoUrl: z
+      .string()
+      .trim()
+      .refine((v) => !v || isSafeHttpUrl(v), {
+        message: "Tautan demo harus menggunakan protokol http:// atau https://.",
+      })
+      .optional()
+      .or(z.literal("")),
+    repoUrl: z
+      .string()
+      .trim()
+      .refine((v) => !v || isSafeHttpUrl(v), {
+        message: "Tautan repo harus menggunakan protokol http:// atau https://.",
+      })
+      .optional()
+      .or(z.literal("")),
     imageDataUrl: z.string().optional(),
   }),
 ]);

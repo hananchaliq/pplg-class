@@ -1,17 +1,36 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { HeartHandshake, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { SingleIronRailLanyard } from "@/components/ui/single-iron-rail-lanyard";
 import { FlatIdCardRail } from "@/components/ui/flat-id-card";
 import { Adaptive } from "@/components/three/adaptive";
 import { teacherToLanyardMember } from "@/lib/domain-logic";
 import { SITE_CONTENT } from "@/lib/content";
 import { useLivePublicData } from "@/lib/use-public-data";
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
-import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { MonochromeShimmer, SplitLineHeading } from "@/components/ui/motion-primitives";
 import type { TeacherGroup, TeacherRow } from "@/lib/types";
+
+const SingleIronRailLanyard = dynamic(
+  () =>
+    import("@/components/ui/single-iron-rail-lanyard").then(
+      (mod) => mod.SingleIronRailLanyard
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="flex h-[540px] w-full items-center justify-center rounded-xl border border-border bg-card p-4"
+      >
+        <MonochromeShimmer className="h-[420px] w-full max-w-4xl rounded-xl" />
+      </div>
+    ),
+  }
+);
 
 export function GuruClient({
   teachers: initialTeachers,
@@ -115,7 +134,7 @@ export function GuruClient({
           className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12"
         >
           {/* Left Dark Anchor Card for Wali Kelas */}
-          <div className="flex flex-col justify-between rounded-3xl border border-[#2A2926] bg-[#141413] p-6 text-[#F3F1EA] shadow-lg lg:col-span-5">
+          <div className="darkroom-surface flex flex-col justify-between rounded-3xl p-6 text-[#F3F1EA] shadow-lg lg:col-span-5">
             <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-widest text-[#A8A49B]">
               <span>WALI KELAS XII PPLG 1</span>
               <span>PEMBIMBING UTAMA</span>
@@ -169,7 +188,7 @@ export function GuruClient({
 
           {/* Right Light Bento Cards: Message & Family Tribute */}
           <div className="flex flex-col justify-between gap-4 lg:col-span-7">
-            <div className="flex-1 rounded-3xl border border-border bg-card p-6 shadow-xs">
+            <div className="editorial-card-lux flex-1 rounded-3xl border border-border bg-card p-6">
               <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
                 PESAN WALI KELAS UNTUK ANGKATAN &apos;27
               </p>
@@ -178,7 +197,7 @@ export function GuruClient({
               </blockquote>
             </div>
 
-            <div className="flex items-start gap-3.5 rounded-3xl border border-border bg-card/85 p-5 shadow-2xs">
+            <div className="editorial-card-lux flex items-start gap-3.5 rounded-3xl border border-border bg-card/85 p-5">
               <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]">
                 <HeartHandshake className="size-4" />
               </span>

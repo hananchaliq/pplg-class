@@ -8,6 +8,8 @@ import {
   useLivePublicData,
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
+import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { MOTION_EASE } from "@/lib/motion-tokens";
 import type { PollWithOptions } from "@/lib/types";
 
 const DEVICE_TOKEN_KEY = "xii_pplg1_device_voter_token";
@@ -102,9 +104,12 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Sudut Nostalgia · XII PPLG 1 MAKN Ende
         </p>
-        <h1 className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]">
+        <SplitLineHeading
+          as="h1"
+          className="mt-1.5 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl [text-wrap:balance]"
+        >
           Kuis &amp; Polling Kelas
-        </h1>
+        </SplitLineHeading>
         <p className="mx-auto mt-1.5 font-sans text-xs sm:text-sm leading-relaxed text-muted-foreground">
           Uji ingatanmu tentang kisah laboratorium RPL dan pilih momen terbaik kita.
         </p>
@@ -115,9 +120,9 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
+          transition={{ duration: 0.35, ease: MOTION_EASE.luxury }}
           aria-labelledby="quiz-heading"
-          className="rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6 shadow-sm"
+          className="editorial-card-lux rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border pb-3.5 sm:pb-4">
             <div>
@@ -134,6 +139,18 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
             <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-foreground">
               Soal {currentQ + 1} / {questions.length}
             </span>
+          </div>
+
+          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full origin-left bg-[var(--accent-gold)]"
+              animate={{
+                scaleX: quizFinished
+                  ? 1
+                  : (currentQ + 1) / Math.max(1, questions.length),
+              }}
+              transition={MOTION_EASE.springLuxury}
+            />
           </div>
 
           <AnimatePresence mode="wait">
@@ -291,7 +308,7 @@ export function MainClient({ initialPolls }: { initialPolls: PollWithOptions[] }
         {/* Bagian Kanan: Polling Kelas dengan Batang 3D Ringan */}
         <section
           aria-labelledby="poll-heading"
-          className="rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6"
+          className="editorial-card-lux rounded-2xl border border-border bg-card p-4 sm:p-8 lg:col-span-6"
         >
           {polls.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-12 text-center">

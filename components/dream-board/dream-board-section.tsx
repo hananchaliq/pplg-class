@@ -11,11 +11,8 @@ import {
   getAlbumDisplayFont,
   getAlbumTulisFont,
 } from "@/lib/class-meta";
-import {
-  createSafeWebGLRenderer,
-  isSoftwareWebGL,
-  useVisualTier,
-} from "@/lib/visual-tier";
+import { createSafeWebGLRenderer } from "@/lib/three-renderer";
+import { isSoftwareWebGL, useVisualTier } from "@/lib/visual-tier";
 import {
   Sparkles,
   Pin,

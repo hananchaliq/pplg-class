@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { isSafePostgresConnectionUrl } from "@/lib/security";
 import {
   AUTO_MIGRATE_SQL,
   ensureDatabaseSchema,
@@ -13,9 +15,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const isAdmin = isAuthorizedAdmin(req);
   const { url, configured } = getSupabaseConfig();
   const data = await getPublicAppData(true);
+
+  if (!isAdmin) {
+    return NextResponse.json(
+      {
+        ok: true,
+        supabaseConfigured: configured,
+        dbConnected: data.dbConnected,
+        missingTables: data.missingTables,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   return NextResponse.json(
     {
       ok: true,
@@ -34,8 +50,32 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
+    const bodyToken =
+      typeof body?.sessionToken === "string" ? body.sessionToken : undefined;
+
+    if (!isAuthorizedAdmin(req, bodyToken)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Akses ditolak. Hanya admin terautentikasi yang dapat menginisialisasi skema database.",
+        },
+        { status: 401 }
+      );
+    }
+
     const customDatabaseUrl =
       typeof body?.databaseUrl === "string" ? body.databaseUrl.trim() : "";
+
+    if (customDatabaseUrl) {
+      const check = isSafePostgresConnectionUrl(customDatabaseUrl);
+      if (!check.ok) {
+        return NextResponse.json(
+          { ok: false, error: check.error || "URL database tidak valid." },
+          { status: 400 }
+        );
+      }
+    }
 
     let migrationResult: { ok: boolean; error?: string } | null = null;
     if (customDatabaseUrl || getConfiguredDatabaseUrl()) {
@@ -71,10 +111,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
-    const msg =
-      err instanceof Error
-        ? err.message
-        : "Gagal menginisialisasi tabel database.";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    console.error("[api/db-init] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Gagal menginisialisasi tabel database." },
+      { status: 500 }
+    );
   }
 }

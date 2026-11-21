@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Volume2, VolumeX, SkipForward, ExternalLink } from "lucide-react";
+import { MOTION_EASE } from "@/lib/motion-tokens";
 
 export interface SadTrack {
   id: string;
@@ -142,8 +144,10 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
   const stepRef = React.useRef<number>(0);
   const ytPlayerRef = React.useRef<YTPlayerInstance | null>(null);
   const ytReadyRef = React.useRef(false);
+  const ytBootRequestedRef = React.useRef(false);
   const playingRef = React.useRef(false);
   const trackIndexRef = React.useRef(0);
+  const popoverRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     playingRef.current = playing;
@@ -274,9 +278,11 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
     [stopSynthEngine]
   );
 
-  // Load Official YouTube IFrame API for the 3 requested YouTube tracks
-  React.useEffect(() => {
-    if (typeof window === "undefined") return undefined;
+  // Lazy-load Official YouTube IFrame API strictly on first user audio/menu interaction
+  const ensureYouTubePlayer = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (ytBootRequestedRef.current && ytPlayerRef.current) return;
+    ytBootRequestedRef.current = true;
 
     const win = window as unknown as {
       YT?: {
@@ -284,19 +290,17 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
           id: string,
           opts: Record<string, unknown>
         ) => YTPlayerInstance;
-        PlayerState?: {
-          PLAYING: number;
-          ENDED: number;
-          PAUSED: number;
-        };
       };
       onYouTubeIframeAPIReady?: () => void;
     };
 
     const initPlayer = () => {
       if (!win.YT || !win.YT.Player || ytPlayerRef.current) return;
+      const mountEl = document.getElementById("xii-pplg1-yt-player");
+      if (!mountEl) return;
       try {
         ytPlayerRef.current = new win.YT.Player("xii-pplg1-yt-player", {
+          host: "https://www.youtube-nocookie.com",
           height: "108",
           width: "228",
           videoId: SAD_TIKTOK_TRACKS[trackIndexRef.current]?.youtubeId ?? "cA7Gzh2ISL0",
@@ -324,8 +328,8 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
               } else if (ev.data === 0) {
                 const nextIdx = (trackIndexRef.current + 1) % SAD_TIKTOK_TRACKS.length;
                 setTrackIndex(nextIdx);
-                const nextTrack = SAD_TIKTOK_TRACKS[nextIdx]!;
-                ytPlayerRef.current?.loadVideoById?.(nextTrack.youtubeId);
+                const nextTrackItem = SAD_TIKTOK_TRACKS[nextIdx]!;
+                ytPlayerRef.current?.loadVideoById?.(nextTrackItem.youtubeId);
               } else if (ev.data === 2) {
                 setYtActive(false);
               }
@@ -359,14 +363,37 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         document.head.appendChild(tag);
       }
     }
+  }, [startSynthEngine, stopSynthEngine]);
 
+  React.useEffect(() => {
     return () => {
       stopSynthEngine();
     };
-  }, [startSynthEngine, stopSynthEngine]);
+  }, [stopSynthEngine]);
+
+  React.useEffect(() => {
+    if (!musicMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMusicMenuOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (popoverRef.current?.contains(target)) return;
+      if (target.closest?.('[aria-label="Buka daftar putar musik"]')) return;
+      setMusicMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [musicMenuOpen]);
 
   const selectTrack = React.useCallback(
     (idx: number) => {
+      ensureYouTubePlayer();
       const safeIdx = ((idx % SAD_TIKTOK_TRACKS.length) + SAD_TIKTOK_TRACKS.length) % SAD_TIKTOK_TRACKS.length;
       setTrackIndex(safeIdx);
       const track = SAD_TIKTOK_TRACKS[safeIdx]!;
@@ -383,7 +410,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         startSynthEngine(safeIdx);
       }
     },
-    [startSynthEngine]
+    [ensureYouTubePlayer, startSynthEngine]
   );
 
   const toggleAudio = React.useCallback(() => {
@@ -397,6 +424,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     } else {
+      ensureYouTubePlayer();
       setPlaying(true);
       const track = SAD_TIKTOK_TRACKS[trackIndex % SAD_TIKTOK_TRACKS.length]!;
       startSynthEngine(trackIndex);
@@ -410,7 +438,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [playing, stopSynthEngine, startSynthEngine, trackIndex]);
+  }, [ensureYouTubePlayer, playing, stopSynthEngine, startSynthEngine, trackIndex]);
 
   const nextTrack = React.useCallback(() => {
     const nextIdx = (trackIndex + 1) % SAD_TIKTOK_TRACKS.length;
@@ -418,8 +446,12 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
   }, [trackIndex, selectTrack]);
 
   const toggleMusicMenu = React.useCallback(() => {
-    setMusicMenuOpen((prev) => !prev);
-  }, []);
+    setMusicMenuOpen((prev) => {
+      const next = !prev;
+      if (next) ensureYouTubePlayer();
+      return next;
+    });
+  }, [ensureYouTubePlayer]);
 
   const closeMusicMenu = React.useCallback(() => {
     setMusicMenuOpen(false);
@@ -458,22 +490,37 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
     <SadAudioContext.Provider value={value}>
       {children}
 
-      {/* Compact Popover Fitur Musik (Muncul saat Icon Musik Berputar di Navbar Atas Di-klik) */}
-      <aside
+      {/* Compact Popover Fitur Musik — keeps YT player node mounted once requested */}
+      <motion.aside
+        ref={popoverRef}
         aria-label="Fitur Pemutar Lagu Kenangan"
         data-testid="compact-music-popover"
-        className={`fixed top-16 right-4 z-50 w-[252px] origin-top-right rounded-2xl border border-border bg-card/95 p-3 text-card-foreground shadow-2xl backdrop-blur-md transition-all duration-200 sm:right-6 ${
+        initial={false}
+        animate={
           musicMenuOpen
-            ? "pointer-events-auto scale-100 opacity-100"
-            : "pointer-events-none scale-95 opacity-0 -translate-y-2"
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.95, y: -8 }
+        }
+        transition={MOTION_EASE.springLuxury}
+        className={`editorial-glass fixed top-16 right-4 z-50 w-[256px] origin-top-right rounded-2xl border border-border p-3.5 text-card-foreground shadow-2xl sm:right-6 ${
+          musicMenuOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}
       >
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-bold text-foreground">
-              {currentTrack.title}
-            </p>
-            <p className="truncate font-mono text-[9px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              {playing && (
+                <span className="inline-flex h-2.5 items-end gap-[2px]" aria-hidden="true">
+                  <span className="w-[2px] animate-pulse rounded-full bg-[var(--accent-gold)] h-2" />
+                  <span className="w-[2px] animate-pulse rounded-full bg-[var(--accent-gold)] h-2.5 [animation-delay:120ms]" />
+                  <span className="w-[2px] animate-pulse rounded-full bg-[var(--accent-gold)] h-1.5 [animation-delay:240ms]" />
+                </span>
+              )}
+              <p className="truncate text-[11px] font-bold text-foreground">
+                {currentTrack.title}
+              </p>
+            </div>
+            <p className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground">
               {ytActive
                 ? "Memutar dari YouTube"
                 : playing
@@ -486,7 +533,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
             target="_blank"
             rel="noopener noreferrer"
             title="Buka lagu di YouTube"
-            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
           >
             <ExternalLink className="size-3" />
           </a>
@@ -522,7 +569,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
             onClick={nextTrack}
             title="Lagu berikutnya"
             aria-label="Lagu berikutnya"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"
           >
             <SkipForward className="size-3.5" />
           </button>
@@ -553,7 +600,7 @@ export function SadAudioProvider({ children }: { children: React.ReactNode }) {
         <div className="relative mx-auto h-[108px] w-[228px] overflow-hidden rounded-lg border border-border bg-[#161614]">
           <div id="xii-pplg1-yt-player" className="size-full" />
         </div>
-      </aside>
+      </motion.aside>
     </SadAudioContext.Provider>
   );
 }

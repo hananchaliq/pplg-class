@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence, useInView } from "motion/react";
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useInView,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+} from "motion/react";
 import { X } from "lucide-react";
 import {
   MOTION_DISTANCE,
@@ -13,8 +21,19 @@ import {
 } from "@/lib/motion-tokens";
 
 /**
- * Tombol editorial dengan sapuan isi halus, umpan balik tekan pegas,
- * dan efek magnetik ultra-tipis khusus pointer desktop.
+ * Global MotionConfig root so every Framer Motion interaction honours OS reduced-motion settings.
+ */
+export function MotionRootProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+}
+
+/**
+ * Tombol editorial dengan sapuan kilau sutra, umpan balik tekan pegas,
+ * dan efek magnetik zero-rerender via MotionValue + useSpring.
  */
 interface EditorialButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,7 +52,10 @@ export function EditorialButton({
   ...rest
 }: EditorialButtonProps) {
   const ref = React.useRef<HTMLButtonElement | null>(null);
-  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const x = useSpring(rawX, MOTION_EASE.springMagnetic);
+  const y = useSpring(rawY, MOTION_EASE.springMagnetic);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     onMouseMove?.(e);
@@ -45,17 +67,14 @@ export function EditorialButton({
     const rect = el.getBoundingClientRect();
     const rx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
     const ry = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
-    setOffset({
-      x: Math.max(-1, Math.min(1, rx)) * MOTION_DISTANCE.magneticMaxPx,
-      y: Math.max(-1, Math.min(1, ry)) * MOTION_DISTANCE.magneticMaxPx,
-    });
+    rawX.set(Math.max(-1, Math.min(1, rx)) * MOTION_DISTANCE.magneticMaxPx);
+    rawY.set(Math.max(-1, Math.min(1, ry)) * MOTION_DISTANCE.magneticMaxPx);
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
     onMouseLeave?.(e);
-    if (offset.x !== 0 || offset.y !== 0) {
-      setOffset({ x: 0, y: 0 });
-    }
+    rawX.set(0);
+    rawY.set(0);
   };
 
   const baseStyles =
@@ -65,16 +84,11 @@ export function EditorialButton({
         ? "bg-card text-foreground border border-border hover:border-foreground/45"
         : "bg-transparent text-foreground border border-transparent hover:bg-muted/70";
 
-  const sweepStyles =
-    variant === "primary"
-      ? "bg-foreground/12 dark:bg-background/14"
-      : "bg-foreground/[0.06]";
-
   return (
     <motion.button
       ref={ref}
       disabled={disabled}
-      animate={{ x: offset.x, y: offset.y }}
+      style={{ x, y }}
       whileTap={disabled ? undefined : { scale: 0.97 }}
       transition={MOTION_EASE.springTactile}
       onMouseMove={handleMouseMove}
@@ -84,7 +98,11 @@ export function EditorialButton({
     >
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-300 ease-out group-hover:translate-x-0 ${sweepStyles}`}
+        className="pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-500 ease-out group-hover:translate-x-full"
+        style={{
+          background:
+            "linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.18) 50%, transparent 80%)",
+        }}
       />
       <span className="relative z-10 inline-flex items-center justify-center gap-2">
         {children}
@@ -94,7 +112,7 @@ export function EditorialButton({
 }
 
 /**
- * Tautan editorial bergaya tombol dengan sapuan isi + magnetik halus.
+ * Tautan editorial bergaya tombol dengan sapuan kilau sutra + magnetik zero-rerender.
  */
 interface EditorialLinkButtonProps
   extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -112,7 +130,10 @@ export function EditorialLinkButton({
   ...rest
 }: EditorialLinkButtonProps) {
   const ref = React.useRef<HTMLAnchorElement | null>(null);
-  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const x = useSpring(rawX, MOTION_EASE.springMagnetic);
+  const y = useSpring(rawY, MOTION_EASE.springMagnetic);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     onMouseMove?.(e);
@@ -122,17 +143,14 @@ export function EditorialLinkButton({
     const rect = el.getBoundingClientRect();
     const rx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
     const ry = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
-    setOffset({
-      x: Math.max(-1, Math.min(1, rx)) * MOTION_DISTANCE.magneticMaxPx,
-      y: Math.max(-1, Math.min(1, ry)) * MOTION_DISTANCE.magneticMaxPx,
-    });
+    rawX.set(Math.max(-1, Math.min(1, rx)) * MOTION_DISTANCE.magneticMaxPx);
+    rawY.set(Math.max(-1, Math.min(1, ry)) * MOTION_DISTANCE.magneticMaxPx);
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
     onMouseLeave?.(e);
-    if (offset.x !== 0 || offset.y !== 0) {
-      setOffset({ x: 0, y: 0 });
-    }
+    rawX.set(0);
+    rawY.set(0);
   };
 
   const baseStyles =
@@ -140,15 +158,10 @@ export function EditorialLinkButton({
       ? "bg-primary text-primary-foreground border border-primary shadow-sm"
       : "bg-card text-foreground border border-border hover:border-foreground/45";
 
-  const sweepStyles =
-    variant === "primary"
-      ? "bg-foreground/12 dark:bg-background/14"
-      : "bg-foreground/[0.06]";
-
   return (
     <motion.a
       ref={ref}
-      animate={{ x: offset.x, y: offset.y }}
+      style={{ x, y }}
       whileTap={{ scale: 0.97 }}
       transition={MOTION_EASE.springTactile}
       onMouseMove={handleMouseMove}
@@ -158,7 +171,11 @@ export function EditorialLinkButton({
     >
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-300 ease-out group-hover:translate-x-0 ${sweepStyles}`}
+        className="pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-500 ease-out group-hover:translate-x-full"
+        style={{
+          background:
+            "linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.18) 50%, transparent 80%)",
+        }}
       />
       <span className="relative z-10 inline-flex items-center justify-center gap-2">
         {children}
@@ -168,7 +185,7 @@ export function EditorialLinkButton({
 }
 
 /**
- * Mask reveal bergaya cetakan tinta koran untuk judul utama (split per baris/frasa).
+ * Mask reveal bergaya tirai tinta editorial untuk judul utama.
  */
 export function SplitLineHeading({
   as = "h1",
@@ -184,7 +201,7 @@ export function SplitLineHeading({
   delay?: number;
 }) {
   const ref = React.useRef<HTMLDivElement | null>(null);
-  const inView = useInView(ref, { once: true, amount: 0.35 });
+  const inView = useInView(ref, { once: true, amount: 0.25 });
   const Tag = as;
 
   const text = typeof children === "string" ? children : null;
@@ -198,19 +215,19 @@ export function SplitLineHeading({
       <Tag id={id} className={className}>
         {segments ? (
           segments.map((line, idx) => (
-            <span key={idx} className="block overflow-hidden">
+            <span key={idx} className="inline-block w-full overflow-hidden align-bottom">
               <motion.span
-                className="block"
-                initial={{ y: "100%", opacity: 0.001 }}
+                className="block will-change-transform"
+                initial={{ y: "105%", opacity: 0.001 }}
                 animate={
                   inView
                     ? { y: "0%", opacity: 1 }
-                    : { y: "100%", opacity: 0.001 }
+                    : { y: "105%", opacity: 0.001 }
                 }
                 transition={{
                   duration: MOTION_DURATION.slow,
                   delay: delay + idx * MOTION_STAGGER.relaxed,
-                  ease: MOTION_EASE.editorial,
+                  ease: MOTION_EASE.luxury,
                 }}
               >
                 {line}
@@ -218,25 +235,112 @@ export function SplitLineHeading({
             </span>
           ))
         ) : (
-          <motion.span
-            className="block"
-            initial={{ y: "100%", opacity: 0.001 }}
-            animate={
-              inView
-                ? { y: "0%", opacity: 1 }
-                : { y: "100%", opacity: 0.001 }
-            }
-            transition={{
-              duration: MOTION_DURATION.slow,
-              delay,
-              ease: MOTION_EASE.editorial,
-            }}
-          >
-            {children}
-          </motion.span>
+          <span className="inline-block w-full overflow-hidden align-bottom">
+            <motion.span
+              className="block will-change-transform"
+              initial={{ y: "105%", opacity: 0.001 }}
+              animate={
+                inView
+                  ? { y: "0%", opacity: 1 }
+                  : { y: "105%", opacity: 0.001 }
+              }
+              transition={{
+                duration: MOTION_DURATION.slow,
+                delay,
+                ease: MOTION_EASE.luxury,
+              }}
+            >
+              {children}
+            </motion.span>
+          </span>
         )}
       </Tag>
     </div>
+  );
+}
+
+/**
+ * Self-drawing architectural hairline divider, with optional centered archival label.
+ */
+export function EditorialDivider({
+  label,
+  className = "",
+}: {
+  label?: string;
+  className?: string;
+}) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { once: true, amount: 0.4 });
+
+  if (!label) {
+    return (
+      <div ref={ref} aria-hidden="true" className={`overflow-hidden ${className}`}>
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0.3 }}
+          animate={inView ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0.3 }}
+          transition={{ duration: MOTION_DURATION.slow, ease: MOTION_EASE.luxury }}
+          className="h-[1px] w-full origin-left bg-gradient-to-r from-border via-[var(--accent-gold)]/55 to-border"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className={`flex items-center gap-3 overflow-hidden ${className}`}
+    >
+      <motion.div
+        initial={{ scaleX: 0 }}
+        animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
+        transition={{ duration: MOTION_DURATION.slow, ease: MOTION_EASE.luxury }}
+        className="h-[1px] flex-1 origin-left bg-gradient-to-r from-transparent via-border to-[var(--accent-gold)]/55"
+      />
+      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+        {label}
+      </span>
+      <motion.div
+        initial={{ scaleX: 0 }}
+        animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
+        transition={{ duration: MOTION_DURATION.slow, ease: MOTION_EASE.luxury }}
+        className="h-[1px] flex-1 origin-right bg-gradient-to-l from-transparent via-border to-[var(--accent-gold)]/55"
+      />
+    </div>
+  );
+}
+
+/**
+ * Wrapper reveal lembut untuk blok konten besar saat memasuki viewport.
+ */
+export function EditorialReveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { once: true, amount: 0.14 });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+      animate={
+        inView ? { opacity: 1, y: 0 } : { opacity: 0, y: MOTION_DISTANCE.sm }
+      }
+      transition={{
+        duration: MOTION_DURATION.medium,
+        delay,
+        ease: MOTION_EASE.luxury,
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -260,7 +364,8 @@ export function DrawnHairlineRule({ className = "" }: { className?: string }) {
 }
 
 /**
- * Kartu editorial dengan kemunculan staggered sekali jalan + tilt 3D super halus di desktop.
+ * Kartu editorial dengan kemunculan staggered, tilt 3D zero-rerender,
+ * dan sorotan radial mengikuti kursor.
  */
 export function TiltRevealCard({
   children,
@@ -275,25 +380,37 @@ export function TiltRevealCard({
 }) {
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const inView = useInView(cardRef, { once: true, amount: 0.12 });
-  const [tilt, setTilt] = React.useState({ rx: 0, ry: 0 });
+
+  const rawRx = useMotionValue(0);
+  const rawRy = useMotionValue(0);
+  const rotateX = useSpring(rawRx, MOTION_EASE.springLuxury);
+  const rotateY = useSpring(rawRy, MOTION_EASE.springLuxury);
+  const mouseX = useMotionValue(-200);
+  const mouseY = useMotionValue(-200);
+  const spotlightOpacity = useMotionValue(0);
+
+  const spotlightBg = useMotionTemplate`radial-gradient(320px circle at ${mouseX}px ${mouseY}px, var(--accent-gold-soft), transparent 65%)`;
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!enableTilt || !isFinePointerDevice() || prefersReducedMotion()) return;
     const el = cardRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    setTilt({
-      rx: -ny * MOTION_DISTANCE.tiltMaxDeg,
-      ry: nx * MOTION_DISTANCE.tiltMaxDeg,
-    });
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const nx = (px / rect.width - 0.5) * 2;
+    const ny = (py / rect.height - 0.5) * 2;
+    rawRx.set(-ny * MOTION_DISTANCE.tiltMaxDeg);
+    rawRy.set(nx * MOTION_DISTANCE.tiltMaxDeg);
+    mouseX.set(px);
+    mouseY.set(py);
+    spotlightOpacity.set(1);
   };
 
   const handleLeave = () => {
-    if (tilt.rx !== 0 || tilt.ry !== 0) {
-      setTilt({ rx: 0, ry: 0 });
-    }
+    rawRx.set(0);
+    rawRy.set(0);
+    spotlightOpacity.set(0);
   };
 
   return (
@@ -301,22 +418,31 @@ export function TiltRevealCard({
       ref={cardRef}
       initial={{ opacity: 0, y: MOTION_DISTANCE.md }}
       animate={
-        inView
-          ? { opacity: 1, y: 0, rotateX: tilt.rx, rotateY: tilt.ry }
-          : { opacity: 0, y: MOTION_DISTANCE.md }
+        inView ? { opacity: 1, y: 0 } : { opacity: 0, y: MOTION_DISTANCE.md }
       }
       transition={{
-        opacity: { duration: MOTION_DURATION.medium, delay, ease: MOTION_EASE.editorial },
-        y: { duration: MOTION_DURATION.medium, delay, ease: MOTION_EASE.editorial },
-        rotateX: { duration: 0.22, ease: "easeOut" },
-        rotateY: { duration: 0.22, ease: "easeOut" },
+        duration: MOTION_DURATION.medium,
+        delay,
+        ease: MOTION_EASE.luxury,
       }}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
-      style={{ transformPerspective: 900 }}
-      className={className}
+      style={{
+        transformPerspective: 960,
+        rotateX,
+        rotateY,
+      }}
+      className={`relative ${className}`}
     >
       {children}
+      <motion.div
+        aria-hidden="true"
+        style={{
+          background: spotlightBg,
+          opacity: spotlightOpacity,
+        }}
+        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
+      />
     </motion.div>
   );
 }
@@ -348,7 +474,7 @@ export function ClipPathMedia({
       transition={{
         duration: MOTION_DURATION.slow,
         delay,
-        ease: MOTION_EASE.editorial,
+        ease: MOTION_EASE.luxury,
       }}
       className={className}
     >
@@ -410,11 +536,15 @@ export function CountUpNumber({
 /**
  * Skeleton shimmer monokrom lembut untuk pemuatan konten.
  */
-export function MonochromeShimmer({ className = "h-24 w-full rounded-xl" }: { className?: string }) {
+export function MonochromeShimmer({
+  className = "h-24 w-full rounded-xl",
+}: {
+  className?: string;
+}) {
   return (
     <div
       aria-hidden="true"
-      className={`editorial-shimmer relative overflow-hidden bg-muted/70 ${className}`}
+      className={`luxury-shimmer relative overflow-hidden bg-muted/70 ${className}`}
     />
   );
 }
@@ -493,7 +623,7 @@ export function FloatingTextarea({
 
 /**
  * Modal / Bottom Sheet editorial dengan backdrop blur lembut, drag-to-dismiss,
- * Escape close, dan focus trap aksesibel.
+ * GPU-only spring transition, Escape close, dan focus trap aksesibel.
  */
 export function EditorialModal({
   open,
@@ -568,7 +698,7 @@ export function EditorialModal({
             transition={{ duration: MOTION_DURATION.fast }}
             onClick={onClose}
             aria-hidden="true"
-            className="fixed inset-0 bg-foreground/45 backdrop-blur-[3px]"
+            className="fixed inset-0 bg-foreground/45 backdrop-blur-[4px]"
           />
 
           <motion.div
@@ -576,10 +706,10 @@ export function EditorialModal({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
-            initial={{ opacity: 0, y: 28, scale: 0.96, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: 20, scale: 0.97, filter: "blur(3px)" }}
-            transition={MOTION_EASE.springSheet}
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={MOTION_EASE.springLuxury}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0.04, bottom: 0.45 }}

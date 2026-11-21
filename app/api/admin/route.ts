@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   ADMIN_COOKIE,
-  ADMIN_SESSION_TOKEN,
-  getExpectedAdminPasscode,
+  getAdminSessionCookieOptions,
   isAuthorizedAdmin,
+  issueAdminSessionToken,
   setAdminSessionCookie,
+  verifyAdminCredentials,
 } from "@/lib/admin-auth";
+import {
+  checkRateLimit,
+  detectImageMimeFromMagicBytes,
+  getClientIp,
+} from "@/lib/security";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
 import {
   createPollAdmin,
   deleteModeratedItem,
@@ -73,25 +80,41 @@ export async function POST(req: NextRequest) {
     const action = body?.action as string;
 
     if (action === "login") {
+      const ip = getClientIp(req);
+      const rl = checkRateLimit(`admin-login:${ip}`, 8, 15 * 60 * 1000);
+      if (!rl.allowed) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Terlalu banyak percobaan masuk admin. Silakan coba lagi beberapa saat.",
+          },
+          {
+            status: 429,
+            headers: { "Retry-After": String(rl.retryAfterSec) },
+          }
+        );
+      }
+
+      const email = String(body?.email || "").trim();
       const password = String(body?.password || "").trim();
 
-      if (password === getExpectedAdminPasscode()) {
+      if (verifyAdminCredentials(email, password)) {
+        const token = issueAdminSessionToken();
         const data = await getAdminDashboardData();
         const res = NextResponse.json({
           ok: true,
           authenticated: true,
-          token: ADMIN_SESSION_TOKEN,
+          token,
           data,
         });
-        setAdminSessionCookie(res);
+        setAdminSessionCookie(res, token);
         return res;
       }
 
       return NextResponse.json(
         {
           ok: false,
-          error:
-            "Kredensial admin tidak valid. Gunakan kode sandi admin (default: ADMIN-MAKN-ENDE).",
+          error: "Kredensial admin tidak valid. Periksa kembali kode sandi admin.",
         },
         { status: 401 }
       );
@@ -99,7 +122,7 @@ export async function POST(req: NextRequest) {
 
     if (action === "logout") {
       const res = NextResponse.json({ ok: true, authenticated: false });
-      res.cookies.delete(ADMIN_COOKIE);
+      res.cookies.set(ADMIN_COOKIE, "", getAdminSessionCookieOptions(0));
       return res;
     }
 
@@ -155,10 +178,34 @@ export async function POST(req: NextRequest) {
 
       if (imageUrl.startsWith("data:image/")) {
         const parsed = parseImageDataUrl(imageUrl);
+        const detectedMime = detectImageMimeFromMagicBytes(parsed.buffer);
+        if (
+          !detectedMime ||
+          !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Isi berkas gambar tidak valid. Hanya menerima berkas PNG, JPEG, atau WebP asli.",
+            },
+            { status: 400 }
+          );
+        }
         buffer = parsed.buffer;
-        contentType = parsed.contentType;
+        contentType = detectedMime;
       } else {
-        existingUrl = imageUrl;
+        const safeUrl = sanitizeSafeUrl(imageUrl, { allowRelative: true });
+        if (!safeUrl) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: "URL gambar harus berupa jalur lokal atau http(s) yang valid.",
+            },
+            { status: 400 }
+          );
+        }
+        existingUrl = safeUrl;
       }
 
       await uploadMediaToBlob({
@@ -203,7 +250,31 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "upsert_student") {
-      await upsertStudentAdmin(body.student);
+      const stuInput =
+        body?.student && typeof body.student === "object"
+          ? {
+              ...body.student,
+              ...(typeof body.student.photo_url === "string" &&
+              !body.student.photo_url.startsWith("data:image/")
+                ? {
+                    photo_url: sanitizeSafeUrl(body.student.photo_url, {
+                      allowRelative: true,
+                    }),
+                  }
+                : {}),
+              ...(Array.isArray(body.student.links)
+                ? {
+                    links: body.student.links
+                      .map((l: { label?: string; href?: string }) => ({
+                        label: String(l?.label || "").trim(),
+                        href: sanitizeSafeUrl(l?.href),
+                      }))
+                      .filter((l: { label: string; href: string }) => l.label && l.href),
+                  }
+                : {}),
+            }
+          : body.student;
+      await upsertStudentAdmin(stuInput);
       revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
@@ -218,7 +289,21 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "upsert_teacher") {
-      await upsertTeacherAdmin(body.teacher);
+      const teaInput =
+        body?.teacher && typeof body.teacher === "object"
+          ? {
+              ...body.teacher,
+              ...(typeof body.teacher.photo_url === "string" &&
+              !body.teacher.photo_url.startsWith("data:image/")
+                ? {
+                    photo_url: sanitizeSafeUrl(body.teacher.photo_url, {
+                      allowRelative: true,
+                    }),
+                  }
+                : {}),
+            }
+          : body.teacher;
+      await upsertTeacherAdmin(teaInput);
       revalidateAllRoutes();
       const data = await getAdminDashboardData();
       return NextResponse.json({ ok: true, data });
@@ -263,10 +348,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
-    const msg =
-      err instanceof Error
-        ? err.message
-        : "Terjadi kesalahan pada server admin.";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    console.error("[api/admin] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Terjadi kesalahan pada server admin." },
+      { status: 500 }
+    );
   }
 }

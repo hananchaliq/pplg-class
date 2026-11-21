@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import * as THREE from "three";
 import { ensureAlbumFontsLoaded } from "@/lib/class-meta";
 
 const SESSION_KEY = "pplg_uno_album_opened_v1";
-const MIN_HOLD_MS = 180;
-const SAFE_TIMEOUT_MS = 2500;
+const MIN_HOLD_MS = 80;
+const SAFE_TIMEOUT_MS = 950;
 
 export interface LoadingContextValue {
   /** Monotonically increasing progress 0..100 */
@@ -15,7 +14,7 @@ export interface LoadingContextValue {
   isReady: boolean;
   /** Whether the loader has completely finished its exit animation and unmounted */
   isLoaderUnmounted: boolean;
-  /** True when 2.5s safety timeout has elapsed and some assets are still pending */
+  /** True when safety timeout has elapsed and some assets are still pending */
   canForceOpen: boolean;
   /** Report 3D scene progress (0..100) */
   reportSceneProgress: (pct: number, label?: string) => void;
@@ -32,10 +31,10 @@ export interface LoadingContextValue {
 const LoadingContext = React.createContext<LoadingContextValue | null>(null);
 
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
-  const [progress, setProgressState] = React.useState<number>(12);
+  const [progress, setProgressState] = React.useState<number>(20);
   const [fontsLoaded, setFontsLoaded] = React.useState<boolean>(false);
   const [docComplete, setDocComplete] = React.useState<boolean>(false);
-  const [sceneProgress, setSceneProgress] = React.useState<number>(20);
+  const [sceneProgress, setSceneProgress] = React.useState<number>(30);
   const [minHoldElapsed, setMinHoldElapsed] = React.useState<boolean>(false);
   const [canForceOpen, setCanForceOpen] = React.useState<boolean>(false);
   const [forcedOpen, setForcedOpen] = React.useState<boolean>(false);
@@ -78,9 +77,6 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 1. Selalu jalankan penjagaan awal saat halaman pertama kali dibuka ATAU di-refresh
-  //    agar tidak pernah muncul layar putih polos sebelum elemen utama siap,
-  //    dengan safety timeout otomatis 2.5 detik agar tidak pernah menahan user terlalu lama.
   React.useEffect(() => {
     let alreadyOpened = false;
     try {
@@ -91,17 +87,18 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
 
     if (alreadyOpened) {
       setIsFirstSessionVisit(false);
+      forceOpenAlbum();
+      setIsLoaderUnmounted(true);
+      document.body.style.overflow = "";
+      return undefined;
     }
 
     document.body.style.overflow = "hidden";
 
-    // Tahan singkat agar titik-titik tidak berkedip keras
-    const holdDuration = alreadyOpened ? 100 : MIN_HOLD_MS;
     const minHoldTimer = window.setTimeout(() => {
       setMinHoldElapsed(true);
-    }, holdDuration);
+    }, MIN_HOLD_MS);
 
-    // Katup pengaman 2.5 detik -> otomatis buka mulus jika ada aset atau jaringan lambat
     const safeTimer = window.setTimeout(() => {
       setCanForceOpen(true);
       forceOpenAlbum();
@@ -122,7 +119,6 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     };
   }, [forceOpenAlbum]);
 
-  // 2. Pantau kesiapan font album
   React.useEffect(() => {
     let active = true;
     ensureAlbumFontsLoaded().finally(() => {
@@ -133,27 +129,10 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // 3. Pantau THREE.DefaultLoadingManager & sinyal scene-loading / scene-ready
   React.useEffect(() => {
-    const prevOnProgress = THREE.DefaultLoadingManager.onProgress;
-    const prevOnLoad = THREE.DefaultLoadingManager.onLoad;
-
-    THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-      prevOnProgress?.(url, itemsLoaded, itemsTotal);
-      if (itemsTotal > 0) {
-        const pct = Math.round((itemsLoaded / itemsTotal) * 100);
-        reportSceneProgress(pct);
-      }
-    };
-
-    THREE.DefaultLoadingManager.onLoad = () => {
-      prevOnLoad?.();
-      markSceneReady();
-    };
-
     const onSceneLoading = (e: Event) => {
       const detail = (e as CustomEvent<{ progress?: number }>).detail;
-      reportSceneProgress(detail?.progress ?? 35);
+      reportSceneProgress(detail?.progress ?? 40);
     };
 
     const onSceneProgress = (e: Event) => {
@@ -171,7 +150,6 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("app:scene-progress", onSceneProgress);
     window.addEventListener("app:scene-ready", onSceneReady);
 
-    // Hanya tandai scene ready otomatis bila halaman memang TIDAK memiliki scene 3D / dynamic loader sama sekali
     const checkStaticRouteInterval = window.setInterval(() => {
       const hasPendingLoaders = Boolean(
         document.querySelector('[data-route-loading="true"]') ||
@@ -188,11 +166,9 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
         markSceneReady();
         window.clearInterval(checkStaticRouteInterval);
       }
-    }, 220);
+    }, 150);
 
     return () => {
-      THREE.DefaultLoadingManager.onProgress = prevOnProgress;
-      THREE.DefaultLoadingManager.onLoad = prevOnLoad;
       window.removeEventListener("app:scene-loading", onSceneLoading);
       window.removeEventListener("app:scene-progress", onSceneProgress);
       window.removeEventListener("app:scene-ready", onSceneReady);
@@ -200,14 +176,13 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     };
   }, [reportSceneProgress, markSceneReady]);
 
-  // 4. Hitung progres monotonik gabungan
   React.useEffect(() => {
     if (forcedOpen) {
       updateMonotonicProgress(100);
       return;
     }
     const fontWeight = fontsLoaded ? 30 : 12;
-    const docWeight = docComplete ? 25 : 10;
+    const docWeight = docComplete ? 25 : 12;
     const sceneWeight = Math.round((sceneProgress / 100) * 45);
     const combined = fontWeight + docWeight + sceneWeight;
 

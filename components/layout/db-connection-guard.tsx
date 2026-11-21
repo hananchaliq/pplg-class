@@ -173,11 +173,7 @@ export function DbConnectionGuard({
             <strong className="text-foreground">
               tidak menampilkan data dummy sama sekali
             </strong>{" "}
-            dan berpatokan 100% pada database Supabase PostgreSQL (
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
-              https://wjntbhdjjdkspigsnbog.supabase.co
-            </code>
-            ). Saat tabel dibuat, seluruh tabel akan dibiarkan{" "}
+            dan berpatokan 100% pada database Supabase PostgreSQL. Saat tabel dibuat, seluruh tabel akan dibiarkan{" "}
             <strong className="text-foreground">kosong (0 data)</strong> agar
             dapat Anda kelola sepenuhnya dari Dasbor Admin.
           </p>
@@ -235,7 +231,7 @@ export function DbConnectionGuard({
                   type="password"
                   value={databaseUrl}
                   onChange={(e) => setDatabaseUrl(e.target.value)}
-                  placeholder="postgresql://postgres.wjntbhdjjdkspigsnbog:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+                  placeholder="postgresql://postgres.<project-ref>:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
                   className="mt-1.5 w-full rounded-xl border border-border bg-card px-3.5 py-2.5 font-mono text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>

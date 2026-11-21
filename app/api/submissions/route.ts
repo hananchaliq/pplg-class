@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { verifyClassCode } from "@/lib/domain-logic";
+import {
+  checkRateLimit,
+  detectImageMimeFromMagicBytes,
+  getClientIp,
+} from "@/lib/security";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
 import {
   ALLOWED_SUBMISSION_MIME_TYPES,
   MAX_PUBLIC_SUBMISSION_BYTES,
@@ -87,6 +94,21 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`submissions:${ip}`, 10, 10 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Terlalu banyak unggahan dalam waktu singkat. Coba lagi sebentar ya.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        }
+      );
+    }
+
     const contentType = req.headers.get("content-type") || "";
 
     if (contentType.includes("multipart/form-data")) {
@@ -100,8 +122,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const classCode = String(formData.get("classCode") || "").trim();
+      if (!verifyClassCode(classCode)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Kode kelas tidak sesuai. Periksa kembali kode akses XII PPLG 1.",
+          },
+          { status: 403 }
+        );
+      }
+
       const fileEntry = formData.get("file");
-      const existingUrl = String(formData.get("existingUrl") || "").trim();
+      const rawExistingUrl = String(formData.get("existingUrl") || "").trim();
+      const existingUrl = rawExistingUrl
+        ? sanitizeSafeUrl(rawExistingUrl, { allowRelative: true })
+        : "";
       const category = String(formData.get("category") || "").trim();
       const channel = normalizeChannel(
         String(formData.get("channel") || ""),
@@ -121,8 +157,8 @@ export async function POST(req: NextRequest) {
       const takenAt = String(formData.get("takenAt") || "").trim();
       const studentId = String(formData.get("studentId") || "").trim();
       const studentName = String(formData.get("studentName") || "").trim();
-      const demoUrl = String(formData.get("demoUrl") || "").trim();
-      const repoUrl = String(formData.get("repoUrl") || "").trim();
+      const demoUrl = sanitizeSafeUrl(String(formData.get("demoUrl") || ""));
+      const repoUrl = sanitizeSafeUrl(String(formData.get("repoUrl") || ""));
       const rawTags = String(formData.get("tags") || "").trim();
       const tags = rawTags
         ? rawTags
@@ -159,7 +195,21 @@ export async function POST(req: NextRequest) {
         }
         const arrayBuf = await fileEntry.arrayBuffer();
         buffer = Buffer.from(arrayBuf);
-        fileContentType = mime;
+        const detectedMime = detectImageMimeFromMagicBytes(buffer);
+        if (
+          !detectedMime ||
+          !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Konten berkas tidak cocok dengan format gambar WebP, JPEG, atau PNG yang valid.",
+            },
+            { status: 400 }
+          );
+        }
+        fileContentType = detectedMime;
         fileName = fileEntry.name || "kiriman-kelas.webp";
       } else if (!existingUrl) {
         return NextResponse.json(
@@ -211,6 +261,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const jsonClassCode = String(body?.classCode || "").trim();
+    if (!verifyClassCode(jsonClassCode)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Kode kelas tidak sesuai. Periksa kembali kode akses XII PPLG 1.",
+        },
+        { status: 403 }
+      );
+    }
+
     const category = String(body?.category || "").trim();
     const channel = normalizeChannel(
       typeof body?.channel === "string" ? body.channel : "",
@@ -227,7 +288,10 @@ export async function POST(req: NextRequest) {
       body?.caption || body?.description || "Kiriman Kenangan XII PPLG 1"
     ).trim();
     const rawImage = String(body?.imageDataUrl || body?.imageUrl || "").trim();
-    const existingUrl = String(body?.existingUrl || "").trim();
+    const existingUrl = sanitizeSafeUrl(
+      typeof body?.existingUrl === "string" ? body.existingUrl : "",
+      { allowRelative: true }
+    );
 
     let buffer: Buffer | undefined;
     let fileContentType = "image/webp";
@@ -255,10 +319,24 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      const detectedMime = detectImageMimeFromMagicBytes(parsed.buffer);
+      if (
+        !detectedMime ||
+        !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Konten gambar tidak valid. Hanya menerima berkas WebP, JPEG, atau PNG asli.",
+          },
+          { status: 400 }
+        );
+      }
       buffer = parsed.buffer;
-      fileContentType = parsed.contentType;
+      fileContentType = detectedMime;
     } else if (rawImage) {
-      finalExistingUrl = rawImage;
+      finalExistingUrl = sanitizeSafeUrl(rawImage, { allowRelative: true });
     }
 
     if (!buffer && !finalExistingUrl) {
@@ -284,8 +362,8 @@ export async function POST(req: NextRequest) {
         typeof body?.studentId === "string" ? body.studentId : undefined,
       studentName:
         typeof body?.studentName === "string" ? body.studentName : undefined,
-      demoUrl: typeof body?.demoUrl === "string" ? body.demoUrl : undefined,
-      repoUrl: typeof body?.repoUrl === "string" ? body.repoUrl : undefined,
+      demoUrl: sanitizeSafeUrl(typeof body?.demoUrl === "string" ? body.demoUrl : "") || undefined,
+      repoUrl: sanitizeSafeUrl(typeof body?.repoUrl === "string" ? body.repoUrl : "") || undefined,
       tags: Array.isArray(body?.tags) ? body.tags.map(String) : undefined,
     });
 
@@ -300,11 +378,11 @@ export async function POST(req: NextRequest) {
         "Foto berhasil dikirim ke antrean moderasi admin (pending-manifest.json)!",
     });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Gagal menyimpan kiriman foto ke antrean Vercel Blob.";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[api/submissions POST] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Gagal menyimpan kiriman foto ke antrean." },
+      { status: 500 }
+    );
   }
 }
 

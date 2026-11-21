@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
 import { Send, X, CheckCircle2, Pin } from "lucide-react";
-import {
-  DreamBoardSection,
-  type ExtendedStudentRecord,
-} from "@/components/dream-board/dream-board-section";
+import type { ExtendedStudentRecord } from "@/components/dream-board/dream-board-section";
+import { MonochromeShimmer } from "@/components/ui/motion-primitives";
 import {
   mapToExtendedStudentRecords,
   DREAM_PAPER_PALETTE,
@@ -18,6 +17,25 @@ import {
 import { MOTION_EASE } from "@/lib/motion-tokens";
 import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { DreamRow, StudentRow } from "@/lib/types";
+
+const DreamBoardSection = dynamic(
+  () =>
+    import("@/components/dream-board/dream-board-section").then(
+      (mod) => mod.DreamBoardSection
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="mx-auto max-w-7xl px-4 py-8 sm:px-6"
+      >
+        <MonochromeShimmer className="h-[580px] w-full rounded-3xl" />
+      </div>
+    ),
+  }
+);
 
 export function DreamBoardClient({
   dreams: initialDreams,

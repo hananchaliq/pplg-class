@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { detectImageMimeFromMagicBytes } from "@/lib/security";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
 import {
   deleteMediaFromBlob,
   getMediaManifest,
@@ -97,7 +99,10 @@ export async function POST(req: NextRequest) {
       }
 
       const fileEntry = formData.get("file");
-      const existingUrl = String(formData.get("existingUrl") || "").trim();
+      const rawExistingUrl = String(formData.get("existingUrl") || "").trim();
+      const existingUrl = rawExistingUrl
+        ? sanitizeSafeUrl(rawExistingUrl, { allowRelative: true })
+        : "";
       const category = String(formData.get("category") || "").trim();
       const channel = normalizeChannel(
         String(formData.get("channel") || ""),
@@ -128,11 +133,25 @@ export async function POST(req: NextRequest) {
         }
         const arrayBuf = await fileEntry.arrayBuffer();
         buffer = Buffer.from(arrayBuf);
-        fileContentType = fileEntry.type || "image/webp";
+        const detectedMime = detectImageMimeFromMagicBytes(buffer);
+        if (
+          !detectedMime ||
+          !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Isi berkas tidak sesuai format gambar WebP, JPEG, atau PNG yang valid.",
+            },
+            { status: 400 }
+          );
+        }
+        fileContentType = detectedMime;
         fileName = fileEntry.name || "foto-kelas.webp";
       } else if (!existingUrl) {
         return NextResponse.json(
-          { ok: false, error: "Berkas foto atau tautan gambar wajib disertakan." },
+          { ok: false, error: "Berkas foto atau tautan gambar valid wajib disertakan." },
           { status: 400 }
         );
       }
@@ -182,7 +201,10 @@ export async function POST(req: NextRequest) {
       category
     );
     const rawImage = String(body?.imageDataUrl || body?.imageUrl || "").trim();
-    const existingUrl = String(body?.existingUrl || "").trim();
+    const existingUrl = sanitizeSafeUrl(
+      typeof body?.existingUrl === "string" ? body.existingUrl : "",
+      { allowRelative: true }
+    );
 
     let buffer: Buffer | undefined;
     let fileContentType = "image/webp";
@@ -190,10 +212,24 @@ export async function POST(req: NextRequest) {
 
     if (rawImage.startsWith("data:image/")) {
       const parsed = parseImageDataUrl(rawImage);
+      const detectedMime = detectImageMimeFromMagicBytes(parsed.buffer);
+      if (
+        !detectedMime ||
+        !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Data gambar tidak sesuai format WebP, JPEG, atau PNG yang valid.",
+          },
+          { status: 400 }
+        );
+      }
       buffer = parsed.buffer;
-      fileContentType = parsed.contentType;
+      fileContentType = detectedMime;
     } else if (rawImage) {
-      finalExistingUrl = rawImage;
+      finalExistingUrl = sanitizeSafeUrl(rawImage, { allowRelative: true });
     }
 
     if (!buffer && !finalExistingUrl) {
@@ -234,9 +270,11 @@ export async function POST(req: NextRequest) {
       totalItems: uploaded.manifest.items.length,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Gagal mengunggah foto ke Vercel Blob.";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[api/upload POST] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Gagal mengunggah foto ke penyimpanan." },
+      { status: 500 }
+    );
   }
 }
 

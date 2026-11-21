@@ -68,9 +68,17 @@ interface DatabaseSnapshot {
 }
 
 const DEFAULT_GRADUATION_DATE = "2026-05-15T08:00:00+08:00";
+const PUBLIC_SNAPSHOT_CACHE_TTL_MS = 8000;
+
+let publicSnapshotCache: {
+  data: DatabaseSnapshot;
+  expiresAt: number;
+} | null = null;
+let inFlightPublicSnapshot: Promise<DatabaseSnapshot> | null = null;
 
 export function invalidatePublicDataCache() {
-  // Data selalu diambil langsung secara real-time dari Vercel Blob (no-store)
+  publicSnapshotCache = null;
+  inFlightPublicSnapshot = null;
 }
 
 export function getSupabaseConfig(): {
@@ -190,6 +198,19 @@ async function fetchAllFromStorage(options?: {
   includePendingMedia?: boolean;
   forceSyncToBlob?: boolean;
 }): Promise<DatabaseSnapshot> {
+  const canUsePublicCache =
+    !options?.includePendingMedia && !options?.forceSyncToBlob;
+
+  if (canUsePublicCache) {
+    if (publicSnapshotCache && publicSnapshotCache.expiresAt > Date.now()) {
+      return publicSnapshotCache.data;
+    }
+    if (inFlightPublicSnapshot) {
+      return inFlightPublicSnapshot;
+    }
+  }
+
+  const runFetch = async (): Promise<DatabaseSnapshot> => {
   const rawManifestRes = await readRawMediaManifest({
     forceRefresh: options?.forceSyncToBlob,
   });
@@ -612,6 +633,25 @@ async function fetchAllFromStorage(options?: {
       updatedAt: Date.now(),
     };
   }
+  };
+
+  if (!canUsePublicCache) {
+    return runFetch();
+  }
+
+  inFlightPublicSnapshot = runFetch()
+    .then((snapshot) => {
+      publicSnapshotCache = {
+        data: snapshot,
+        expiresAt: Date.now() + PUBLIC_SNAPSHOT_CACHE_TTL_MS,
+      };
+      return snapshot;
+    })
+    .finally(() => {
+      inFlightPublicSnapshot = null;
+    });
+
+  return inFlightPublicSnapshot;
 }
 
 /**
@@ -640,13 +680,17 @@ export async function syncAllDataToVercelBlob() {
       ? raw.manifest.items
       : DEFAULT_LOCAL_MEDIA_FALLBACK;
   const saved = await writeMediaManifest(itemsToPersist, syncedRecords);
+  invalidatePublicDataCache();
   return saved;
 }
 
 /**
  * Ambil semua data publik yang sudah berstatus 'approved' dari Vercel Blob (manifest.json).
  */
-export async function getPublicAppData(_bypassCache = false) {
+export async function getPublicAppData(bypassCache = false) {
+  if (bypassCache) {
+    invalidatePublicDataCache();
+  }
   const store = await fetchAllFromStorage();
   const nowMs = Date.now();
 
@@ -717,6 +761,7 @@ async function mutateBlobClassRecords(
   const records = getDefaultBlobRecords(manifest.records);
   mutator(records);
   await writeMediaManifest(manifest.items, records);
+  invalidatePublicDataCache();
   return records;
 }
 
@@ -775,6 +820,7 @@ export async function createPendingSubmission(
       status: "pending",
       featured: false,
     });
+    invalidatePublicDataCache();
 
     return {
       id: uploaded.item.id,
@@ -845,6 +891,7 @@ export async function createPendingSubmission(
       status: "pending",
       featured: false,
     });
+    invalidatePublicDataCache();
 
     return {
       id: uploaded.item.id,
@@ -1048,10 +1095,12 @@ export async function moderateItem(
               ? updatedText
               : undefined,
         });
+        invalidatePublicDataCache();
         return true;
       }
       if (status === "rejected") {
         await rejectPendingBlobSubmission(id);
+        invalidatePublicDataCache();
         return true;
       }
     }
@@ -1062,7 +1111,10 @@ export async function moderateItem(
         ? { caption: updatedText }
         : {}),
     });
-    if (updatedInMedia) return true;
+    if (updatedInMedia) {
+      invalidatePublicDataCache();
+      return true;
+    }
   }
 
   // 2. Moderasi records di manifest.json Vercel Blob
@@ -1127,7 +1179,10 @@ export async function deleteModeratedItem(
 ) {
   if (table === "moments" || table === "works") {
     const res = await deleteMediaFromBlob({ id });
-    if (res.deleted) return true;
+    if (res.deleted) {
+      invalidatePublicDataCache();
+      return true;
+    }
   }
 
   let deleted = false;

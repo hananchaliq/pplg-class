@@ -9,9 +9,10 @@ import {
   computeClassSkillMap,
   verifyClassCode,
   SubmitPayloadSchema,
-} from "./domain-logic";
-import { AUTO_MIGRATE_SQL } from "./db-sql";
-import type { StudentRow, TeacherRow, WorkRow } from "./types";
+} from "./domain-logic.ts";
+import { isSafeHttpUrl, sanitizeSafeUrl } from "./url-safety.ts";
+import { AUTO_MIGRATE_SQL } from "./db-sql.ts";
+import type { StudentRow, TeacherRow, WorkRow } from "./types.ts";
 
 describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
   it("sanitizeText strips HTML tags while preserving quotes and decoding &quot;", () => {
@@ -214,5 +215,46 @@ describe("Domain Logic — XII PPLG 1 MAKN Ende", () => {
     assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.poll_votes"));
     assert.ok(AUTO_MIGRATE_SQL.includes("CREATE TABLE IF NOT EXISTS public.site_settings"));
     assert.equal(AUTO_MIGRATE_SQL.includes("INSERT INTO"), false);
+  });
+
+  it("isSafeHttpUrl and sanitizeSafeUrl block javascript/vbscript/data XSS schemes", () => {
+    assert.equal(isSafeHttpUrl("https://pplg.uno/demo"), true);
+    assert.equal(isSafeHttpUrl("http://localhost:3000"), true);
+    assert.equal(isSafeHttpUrl("javascript:alert(1)"), false);
+    assert.equal(isSafeHttpUrl("vbscript:msgbox(1)"), false);
+    assert.equal(isSafeHttpUrl("data:text/html,<script>alert(1)</script>"), false);
+
+    assert.equal(sanitizeSafeUrl("javascript:alert(1)"), "");
+    assert.equal(sanitizeSafeUrl("  https://github.com/pplg1  "), "https://github.com/pplg1");
+    assert.equal(sanitizeSafeUrl("/api/moment-illustration?seed=1", { allowRelative: true }), "/api/moment-illustration?seed=1");
+    assert.equal(sanitizeSafeUrl("//evil.com/phish", { allowRelative: true }), "");
+  });
+
+  it("SubmitPayloadSchema rejects javascript: URLs in work demoUrl and repoUrl", () => {
+    const xssWork = SubmitPayloadSchema.safeParse({
+      type: "work",
+      classCode: "XIIPPLG1",
+      honeypot: "",
+      studentId: "student-1",
+      title: "Aplikasi Uji Keamanan",
+      description: "Deskripsi proyek valid lebih dari 10 karakter.",
+      tags: ["Next.js"],
+      demoUrl: "javascript:alert(document.cookie)",
+      repoUrl: "https://github.com/example/repo",
+    });
+    assert.equal(xssWork.success, false);
+
+    const safeWork = SubmitPayloadSchema.safeParse({
+      type: "work",
+      classCode: "XIIPPLG1",
+      honeypot: "",
+      studentId: "student-1",
+      title: "Aplikasi Aman",
+      description: "Deskripsi proyek valid lebih dari 10 karakter.",
+      tags: ["Next.js"],
+      demoUrl: "https://demo.example.com",
+      repoUrl: "https://github.com/example/repo",
+    });
+    assert.equal(safeWork.success, true);
   });
 });

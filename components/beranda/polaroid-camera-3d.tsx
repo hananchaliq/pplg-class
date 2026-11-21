@@ -7,8 +7,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Camera, ChevronRight } from "lucide-react";
 import { gsap } from "@/lib/gsap-utils";
 import { decodeHtmlEntities } from "@/lib/domain-logic";
+import { createSafeWebGLRenderer } from "@/lib/three-renderer";
 import {
-  createSafeWebGLRenderer,
   getAdaptiveDpr,
   isSoftwareWebGL,
   useVisualTier,

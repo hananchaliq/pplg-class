@@ -293,9 +293,9 @@ export function AnggotaClient({
           </div>
         </div>
 
-        {/* Right Dark Bento Scoreboard Card (iDraft Style) */}
+        {/* Right Dark Bento Scoreboard Card */}
         <div className="lg:col-span-5">
-          <div className="rounded-3xl border border-[#2A2926] bg-[#141413] p-5 text-[#F3F1EA] shadow-md">
+          <div className="darkroom-surface rounded-3xl p-5 text-[#F3F1EA]">
             <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-widest text-[#A8A49B]">
               <span>KOMPOSISI ANGKATAN</span>
               <span>UNO · &apos;24–&apos;27</span>

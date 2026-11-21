@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Camera,
@@ -13,10 +14,6 @@ import {
   Crop,
   Newspaper,
 } from "lucide-react";
-import {
-  KoranGaleri,
-  type KoranGaleriHandle,
-} from "@/components/galeri/koran-galeri";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import {
   ImageCropperModal,
@@ -33,9 +30,26 @@ import {
   notifyPublicDataUpdated,
 } from "@/lib/use-public-data";
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
-import { SplitLineHeading } from "@/components/ui/motion-primitives";
+import { MonochromeShimmer, SplitLineHeading } from "@/components/ui/motion-primitives";
 import { useEditorialToast } from "@/components/ui/editorial-toast";
 import type { MomentPhase, MomentRow } from "@/lib/types";
+
+const KoranGaleri = dynamic(
+  () =>
+    import("@/components/galeri/koran-galeri").then((mod) => mod.KoranGaleri),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        data-dynamic-loading="true"
+        aria-hidden="true"
+        className="rounded-2xl border border-border bg-card p-4 sm:p-6"
+      >
+        <MonochromeShimmer className="h-[520px] w-full rounded-xl" />
+      </div>
+    ),
+  }
+);
 
 const SPECIAL_NON_GALLERY_CATEGORIES = new Set([
   "Foto Hero 3D",
@@ -69,7 +83,6 @@ export function GaleriClient({
     [rawMoments]
   );
 
-  const koranRef = React.useRef<KoranGaleriHandle | null>(null);
   const gridSectionRef = React.useRef<HTMLElement | null>(null);
 
   const { toast } = useEditorialToast();
@@ -375,7 +388,6 @@ export function GaleriClient({
       {!showAllGrid && (
         <div className="mt-5">
           <KoranGaleri
-            ref={koranRef}
             moments={filteredMoments}
             activeCategory={activeCategory}
             activePhase={activePhase}
@@ -443,8 +455,9 @@ export function GaleriClient({
                 }}
                 whileHover={{ y: -3, rotate: 0, scale: 1.015 }}
                 whileTap={{ scale: 0.98 }}
+                data-cursor="LIHAT"
                 onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
-                className={`real-photo-paper group flex flex-col justify-between rounded-xl p-3 pb-4 text-left transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${naturalRot}`}
+                className={`real-photo-paper editorial-card-lux group flex flex-col justify-between rounded-xl p-3 pb-4 text-left transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${naturalRot}`}
               >
                 <div>
                   <div className="photo-gloss-sheen relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-border bg-muted">

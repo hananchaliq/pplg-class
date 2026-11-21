@@ -37,6 +37,7 @@ import {
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion-tokens";
 import { SplitLineHeading } from "@/components/ui/motion-primitives";
 import { useEditorialToast } from "@/components/ui/editorial-toast";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
 import type { StudentRow, WorkRow } from "@/lib/types";
 
 /**
@@ -190,10 +191,13 @@ function TiltWorkCard({
     [student, studentIndex]
   );
 
+  const safeDemoUrl = sanitizeSafeUrl(work.demo_url);
+  const safeRepoUrl = sanitizeSafeUrl(work.repo_url);
+
   let hostnameLabel = "live-demo.app";
   try {
-    if (work.demo_url && /^https?:\/\//i.test(work.demo_url)) {
-      hostnameLabel = new URL(work.demo_url).hostname.replace(/^www\./, "");
+    if (safeDemoUrl) {
+      hostnameLabel = new URL(safeDemoUrl).hostname.replace(/^www\./, "");
     }
   } catch {
     hostnameLabel = "live-demo.app";
@@ -207,15 +211,16 @@ function TiltWorkCard({
       transition={{
         duration: MOTION_DURATION.medium,
         delay: (index % 6) * 0.045,
-        ease: MOTION_EASE.editorial,
+        ease: MOTION_EASE.luxury,
       }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-150 ease-out hover:border-foreground/50"
+      className="editorial-card-lux group flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-[transform,border-color,box-shadow] duration-200 ease-out hover:border-foreground/50"
     >
       <div>
         {/* Pratinjau Screenshot Otomatis dari Link Demo (Gaya Vercel) + Kartu ID Siswa */}
         <div
+          data-cursor="LIHAT"
           onClick={() => {
             if (onPreviewImage) onPreviewImage(work, imgSrc);
           }}
@@ -303,19 +308,25 @@ function TiltWorkCard({
       </div>
 
       <div className="flex items-center justify-between border-t border-border px-5 py-3.5 text-xs font-semibold">
-        <a
-          href={work.demo_url || "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-[36px] items-center gap-1.5 text-foreground hover:underline whitespace-nowrap"
-        >
-          <span>Lihat Demo</span>
-          <ExternalLink className="size-3.5" />
-        </a>
-
-        {work.repo_url && (
+        {safeDemoUrl ? (
           <a
-            href={work.repo_url}
+            href={safeDemoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[36px] items-center gap-1.5 text-foreground hover:underline whitespace-nowrap"
+          >
+            <span>Lihat Demo</span>
+            <ExternalLink className="size-3.5" />
+          </a>
+        ) : (
+          <span className="inline-flex min-h-[36px] items-center gap-1.5 text-muted-foreground/70 whitespace-nowrap">
+            Demo belum tersedia
+          </span>
+        )}
+
+        {safeRepoUrl && (
+          <a
+            href={safeRepoUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-[36px] items-center gap-1.5 text-muted-foreground hover:text-foreground whitespace-nowrap"
@@ -1398,9 +1409,9 @@ export function KaryaClient({
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                {previewWork.work.demo_url && (
+                {sanitizeSafeUrl(previewWork.work.demo_url) && (
                   <a
-                    href={previewWork.work.demo_url}
+                    href={sanitizeSafeUrl(previewWork.work.demo_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
@@ -1409,9 +1420,9 @@ export function KaryaClient({
                     <ExternalLink className="size-3.5" />
                   </a>
                 )}
-                {previewWork.work.repo_url && (
+                {sanitizeSafeUrl(previewWork.work.repo_url) && (
                   <a
-                    href={previewWork.work.repo_url}
+                    href={sanitizeSafeUrl(previewWork.work.repo_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted"

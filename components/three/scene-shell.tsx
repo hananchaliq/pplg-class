@@ -3,8 +3,8 @@
 import * as React from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { createSafeWebGLRenderer } from "@/lib/three-renderer";
 import {
-  createSafeWebGLRenderer,
   getAdaptiveDpr,
   isSoftwareWebGL,
   useVisualTier,

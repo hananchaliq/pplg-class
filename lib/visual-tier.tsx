@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import * as THREE from "three";
 
 export type VisualTier = "hd" | "simple";
 
@@ -81,90 +80,6 @@ export function isSoftwareWebGL(): boolean {
   return cachedSoftwareWebGL ?? false;
 }
 
-export interface SafeWebGLRendererOptions {
-  antialias?: boolean;
-  alpha?: boolean;
-  preserveDrawingBuffer?: boolean;
-}
-
-/**
- * Progressive WebGLRenderer factory that tries multiple context configurations
- * (WebGL2 high-performance -> default -> low-caveat -> manual WebGL1/experimental context)
- * so 3D models never crash on strict or integrated GPU drivers.
- */
-export function createSafeWebGLRenderer(
-  options: SafeWebGLRendererOptions = {}
-): THREE.WebGLRenderer | null {
-  if (typeof window === "undefined") return null;
-  const wantAlpha = options.alpha ?? false;
-  const wantAntialias = options.antialias ?? true;
-  const wantPreserve = options.preserveDrawingBuffer ?? false;
-
-  const attempts: THREE.WebGLRendererParameters[] = [
-    {
-      antialias: wantAntialias,
-      alpha: wantAlpha,
-      powerPreference: "high-performance",
-      preserveDrawingBuffer: wantPreserve,
-    },
-    {
-      antialias: false,
-      alpha: wantAlpha,
-      powerPreference: "default",
-      preserveDrawingBuffer: false,
-    },
-    {
-      antialias: false,
-      alpha: wantAlpha,
-      failIfMajorPerformanceCaveat: false,
-    },
-  ];
-
-  for (const params of attempts) {
-    try {
-      const renderer = new THREE.WebGLRenderer(params);
-      if (renderer && renderer.getContext()) {
-        cachedWebGLSupport = true;
-        return renderer;
-      }
-      renderer?.dispose();
-    } catch {
-      // Continue to next fallback attempt
-    }
-  }
-
-  // Final manual canvas + context fallback (supports WebGL1 / experimental-webgl)
-  try {
-    const canvas = document.createElement("canvas");
-    const ctxAttrs: WebGLContextAttributes = {
-      alpha: wantAlpha,
-      antialias: false,
-      failIfMajorPerformanceCaveat: false,
-    };
-    const gl =
-      (canvas.getContext("webgl2", ctxAttrs) as WebGLRenderingContext | null) ||
-      (canvas.getContext("webgl", ctxAttrs) as WebGLRenderingContext | null) ||
-      (canvas.getContext(
-        "experimental-webgl",
-        ctxAttrs
-      ) as WebGLRenderingContext | null);
-    if (gl) {
-      const renderer = new THREE.WebGLRenderer({
-        canvas,
-        context: gl,
-        alpha: wantAlpha,
-        antialias: false,
-      });
-      cachedWebGLSupport = true;
-      return renderer;
-    }
-  } catch {
-    // WebGL is completely unavailable on this browser/environment
-  }
-
-  return null;
-}
-
 export function getAdaptiveDpr(isSoftwareGl = false): number {
   if (isSoftwareGl || typeof window === "undefined") return 1;
   const rawDpr = window.devicePixelRatio || 1;
@@ -223,7 +138,6 @@ export function computeAutoTier(): {
 }
 
 export function VisualTierProvider({ children }: { children: React.ReactNode }) {
-  // Server renders SimpleView first ("simple"); client evaluates capability on mount
   const [tier, setTier] = React.useState<VisualTier>("simple");
   const [isClientReady, setIsClientReady] = React.useState(false);
   const [isManualOverride, setIsManualOverride] = React.useState(false);
@@ -272,7 +186,7 @@ export function VisualTierProvider({ children }: { children: React.ReactNode }) 
     setTier(auto.tier);
   }, []);
 
-  const downgradeToSimple = React.useCallback(() => {
+  const downgradeToSimple = React.useCallback((_reason?: string) => {
     // Do not force-downgrade global tier when the user wants 3D mode; individual scenes handle fallback gracefully
   }, []);
 

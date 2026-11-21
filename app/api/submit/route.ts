@@ -3,43 +3,33 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { SubmitPayloadSchema, sanitizeText, verifyClassCode } from "@/lib/domain-logic";
 import { createPendingSubmission } from "@/lib/db";
 import {
+  checkRateLimit,
+  detectImageMimeFromMagicBytes,
+  getClientIp,
+} from "@/lib/security";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
+import {
+  MAX_PUBLIC_SUBMISSION_BYTES,
   normalizeChannel,
   parseImageDataUrl,
   uploadMediaToBlob,
   type MediaItem,
 } from "@/lib/media-store";
 
-// Rate limit sederhana per IP / perangkat di memori server
-const rateMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(key: string, maxPerMinute = 15): boolean {
-  const now = Date.now();
-  const entry = rateMap.get(key);
-  if (!entry || entry.resetAt < now) {
-    rateMap.set(key, { count: 1, resetAt: now + 60_000 });
-    return true;
-  }
-  if (entry.count >= maxPerMinute) {
-    return false;
-  }
-  entry.count += 1;
-  return true;
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      "local-client";
-
-    if (!checkRateLimit(ip)) {
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`submit:${ip}`, 15, 10 * 60 * 1000);
+    if (!rl.allowed) {
       return NextResponse.json(
         {
           ok: false,
           error: "Terlalu banyak kiriman dalam waktu singkat. Coba lagi sebentar ya.",
         },
-        { status: 429 }
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        }
       );
     }
 
@@ -68,13 +58,13 @@ export async function POST(req: NextRequest) {
 
     const payload = parsed.data;
 
-    // Verifikasi kode kelas di sisi server (tidak pernah bocor ke klien)
+    // Verifikasi kode kelas di sisi server
     if (!verifyClassCode(payload.classCode)) {
       return NextResponse.json(
         {
           ok: false,
           error:
-            "Kode kelas tidak sesuai. Gunakan kode kelas XII PPLG 1 (default: XIIPPLG1).",
+            "Kode kelas tidak sesuai. Periksa kembali kode akses XII PPLG 1.",
         },
         { status: 403 }
       );
@@ -82,8 +72,6 @@ export async function POST(req: NextRequest) {
 
     let preUploadedBlobItem: MediaItem | undefined;
 
-    // Validasi tipe MIME, ukuran, dan unggah langsung data:image/... ke Vercel Blob (status: "pending", featured: false)
-    // agar TIDAK PERNAH menyimpan base64 mentah ke lib/db.ts
     if (
       (payload.type === "moment" || payload.type === "work") &&
       payload.imageDataUrl
@@ -92,7 +80,7 @@ export async function POST(req: NextRequest) {
         payload.imageDataUrl
       );
       const isHttpsUrl =
-        payload.type === "work" && /^https?:\/\//i.test(payload.imageDataUrl);
+        payload.type === "work" && Boolean(sanitizeSafeUrl(payload.imageDataUrl));
       if (!isDataImage && !isHttpsUrl) {
         return NextResponse.json(
           {
@@ -103,7 +91,6 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      // Base64 overhead ~1.33x dari 2MB binary (~2.8MB string)
       if (payload.imageDataUrl.length > 2.85 * 1024 * 1024) {
         return NextResponse.json(
           {
@@ -117,12 +104,27 @@ export async function POST(req: NextRequest) {
 
       if (payload.imageDataUrl.startsWith("data:image/")) {
         const parsedImg = parseImageDataUrl(payload.imageDataUrl);
-        if (parsedImg.buffer.byteLength > 2 * 1024 * 1024) {
+        if (parsedImg.buffer.byteLength > MAX_PUBLIC_SUBMISSION_BYTES) {
           return NextResponse.json(
             {
               ok: false,
               error:
                 "Ukuran file gambar melebihi batas maksimal 2 MB. Pastikan gambar sudah terkompresi.",
+            },
+            { status: 400 }
+          );
+        }
+
+        const detectedMime = detectImageMimeFromMagicBytes(parsedImg.buffer);
+        if (
+          !detectedMime ||
+          !["image/webp", "image/jpeg", "image/png"].includes(detectedMime)
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Konten gambar tidak valid. Hanya menerima berkas WebP, JPEG, atau PNG asli.",
             },
             { status: 400 }
           );
@@ -135,7 +137,7 @@ export async function POST(req: NextRequest) {
             channel: targetChannel,
             category: cleanCategory,
             buffer: parsedImg.buffer,
-            contentType: parsedImg.contentType,
+            contentType: detectedMime,
             uploaderName: sanitizeText(payload.uploaderName),
             caption: sanitizeText(payload.caption),
             phase: payload.phase,
@@ -150,12 +152,12 @@ export async function POST(req: NextRequest) {
             channel: "karya",
             category: "Karya Siswa",
             buffer: parsedImg.buffer,
-            contentType: parsedImg.contentType,
+            contentType: detectedMime,
             studentId: payload.studentId,
             title: sanitizeText(payload.title),
             caption: sanitizeText(payload.description),
-            demoUrl: payload.demoUrl || "",
-            repoUrl: payload.repoUrl || "",
+            demoUrl: sanitizeSafeUrl(payload.demoUrl),
+            repoUrl: sanitizeSafeUrl(payload.repoUrl),
             tags: payload.tags.map((t) => sanitizeText(t)),
             status: "pending",
             featured: false,
@@ -190,10 +192,10 @@ export async function POST(req: NextRequest) {
         "Terima kasih! Kirimanmu sudah masuk ke antrean moderasi admin dan akan tampil setelah disetujui.",
     });
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Terjadi kesalahan saat memproses kiriman.";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[api/submit] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Terjadi kesalahan saat memproses kiriman." },
+      { status: 500 }
+    );
   }
 }

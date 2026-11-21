@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { sanitizeSafeUrl } from "@/lib/url-safety";
 
 export interface LanyardLink {
    label: string;
@@ -1583,20 +1584,27 @@ export function TeamLanyardRail({ items, eyebrow, heading, caption, action, auto
                                  className="pointer-events-none absolute left-0 transition-opacity duration-150 motion-reduce:transition-none"
                                  style={{ top: cardOffset, width: W, height: g.H, fontSize: base, opacity: 0, visibility: "hidden" }}>
                                  <div className="absolute bottom-[0.7em] left-[0.78em] flex flex-col items-start gap-[0.08em]">
-                                    {links.map(link => (
-                                       <a
-                                          key={link.label}
-                                          href={link.href}
-                                          onPointerDown={event => {
-                                             event.stopPropagation();
-                                             stop();
-                                          }}
-                                          onFocus={stop}
-                                          className={`${LINK_ROW} pointer-events-auto text-card-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring`}>
-                                          <LinkIcon label={link.label} />
-                                          <span className="max-w-[5.2em] truncate">{link.label}</span>
-                                       </a>
-                                    ))}
+                                    {links.map((link) => {
+                                       const safeHref = sanitizeSafeUrl(link.href);
+                                       if (!safeHref) return null;
+                                       return (
+                                          <a
+                                             key={link.label}
+                                             href={safeHref}
+                                             target="_blank"
+                                             rel="noopener noreferrer"
+                                             onPointerDown={(event) => {
+                                                event.stopPropagation();
+                                                stop();
+                                             }}
+                                             onFocus={stop}
+                                             className={`${LINK_ROW} pointer-events-auto text-card-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring`}
+                                          >
+                                             <LinkIcon label={link.label} />
+                                             <span className="max-w-[5.2em] truncate">{link.label}</span>
+                                          </a>
+                                       );
+                                    })}
                                  </div>
                               </div>
                            )}

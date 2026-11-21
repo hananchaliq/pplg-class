@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox",
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   });

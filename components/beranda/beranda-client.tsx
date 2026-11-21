@@ -3,11 +3,11 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import { ArrowRight, BookOpen, Calendar, Users } from "lucide-react";
 import { SITE_CONTENT } from "@/lib/content";
 import { usePageFlipSound } from "@/lib/page-flip-audio";
 import { useLivePublicData } from "@/lib/use-public-data";
-import { useGsap, gsap } from "@/lib/gsap-utils";
 import {
   MOTION_DISTANCE,
   MOTION_DURATION,
@@ -16,7 +16,9 @@ import {
 } from "@/lib/motion-tokens";
 import {
   CountUpNumber,
+  EditorialDivider,
   EditorialLinkButton,
+  EditorialReveal,
   MonochromeShimmer,
   SplitLineHeading,
   TiltRevealCard,
@@ -68,7 +70,6 @@ export function BerandaClient({
   const { data: liveData } = useLivePublicData({ moments: initialMoments });
   const { playPageFlip } = usePageFlipSound();
   const moments = liveData?.moments ?? initialMoments;
-  const pageRootRef = React.useRef<HTMLDivElement | null>(null);
   const [daysLeft, setDaysLeft] = React.useState<number | null>(null);
 
   const graduationDate =
@@ -167,26 +168,6 @@ export function BerandaClient({
     computeDays();
   }, [graduationDate]);
 
-  useGsap(
-    () => {
-      const prefersReduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      if (prefersReduced) return;
-
-      gsap.from(".hero-reveal", {
-        y: MOTION_DISTANCE.md,
-        opacity: 0,
-        duration: MOTION_DURATION.slow,
-        stagger: MOTION_STAGGER.base,
-        ease: MOTION_EASE.gsapEditorial,
-        clearProps: "transform,opacity",
-      });
-    },
-    [],
-    pageRootRef
-  );
-
   const handleNavigate = (
     e: React.MouseEvent<HTMLAnchorElement>,
     targetHref: string
@@ -207,51 +188,94 @@ export function BerandaClient({
   };
 
   return (
-    <div
-      ref={pageRootRef}
-      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10"
-    >
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
       {/* HERO: High-Contrast Editorial Bento + Model 3D Kamera Polaroid Jadul */}
       <section
         aria-labelledby="hero-title"
         className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12"
       >
-        {/* Kolom Kiri: Editorial Tipografi & Dark Bento Scoreboard (iDraft Style) */}
+        {/* Kolom Kiri: Editorial Tipografi & Dark Bento Scoreboard */}
         <div className="flex flex-col items-start lg:col-span-5">
-          <p className="hero-reveal font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            NO. 01 · {SITE_CONTENT.hero.eyebrow}
-          </p>
+          <motion.p
+            initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: MOTION_DURATION.medium, ease: MOTION_EASE.luxury }}
+            className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground"
+          >
+            <span className="relative flex size-2" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent-gold)] opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-[var(--accent-gold)]" />
+            </span>
+            <span>NO. 01 · {SITE_CONTENT.hero.eyebrow}</span>
+          </motion.p>
 
           <SplitLineHeading
             as="h1"
             id="hero-title"
+            delay={0.05}
             className="mt-2 font-serif text-4xl font-bold leading-[1.04] tracking-tight text-foreground sm:text-5xl lg:text-6xl [text-wrap:balance]"
           >
             {SITE_CONTENT.hero.title}
           </SplitLineHeading>
 
-          <p className="hero-reveal mt-2.5 font-serif text-base italic text-muted-foreground sm:text-lg">
+          <motion.p
+            initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: MOTION_DURATION.medium,
+              delay: 0.14,
+              ease: MOTION_EASE.luxury,
+            }}
+            className="mt-2.5 font-serif text-base italic text-muted-foreground sm:text-lg"
+          >
             {SITE_CONTENT.hero.subtitle} · {SITE_CONTENT.school.schoolName}
-          </p>
+          </motion.p>
 
           {homeroomTeacherName ? (
-            <p className="hero-reveal mt-1.5 font-mono text-xs text-muted-foreground">
+            <motion.p
+              initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: MOTION_DURATION.medium,
+                delay: 0.18,
+                ease: MOTION_EASE.luxury,
+              }}
+              className="mt-1.5 font-mono text-xs text-muted-foreground"
+            >
               Wali Kelas Pembimbing · {homeroomTeacherName}
-            </p>
+            </motion.p>
           ) : null}
 
-          <p className="hero-reveal mt-3 font-sans text-sm leading-[1.65] text-foreground/90 sm:text-base">
+          <motion.p
+            initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: MOTION_DURATION.medium,
+              delay: 0.22,
+              ease: MOTION_EASE.luxury,
+            }}
+            className="mt-3 font-sans text-sm leading-[1.65] text-foreground/90 sm:text-base"
+          >
             {SITE_CONTENT.school.tagline}
-          </p>
+          </motion.p>
 
-          {/* High-Contrast Dark Scoreboard & Countdown Bento Card (Inspired by iDraft "Overall Information" & Apex Countdown) */}
-          <div className="hero-reveal mt-6 w-full rounded-3xl border border-[#2A2926] bg-[#141413] p-5 text-[#F3F1EA] shadow-lg sm:p-6">
+          {/* High-Contrast Dark Scoreboard & Countdown Bento Card */}
+          <motion.div
+            initial={{ opacity: 0, y: MOTION_DISTANCE.md }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: MOTION_DURATION.slow,
+              delay: 0.26,
+              ease: MOTION_EASE.luxury,
+            }}
+            className="darkroom-surface mt-6 w-full rounded-3xl p-5 text-[#F3F1EA] sm:p-6"
+          >
             <div className="flex items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#A8A49B]">
               <div className="flex items-center gap-2">
-                <Calendar className="size-3.5 text-[#F3F1EA]" />
+                <Calendar className="size-3.5 text-[#D4B987]" />
                 <span>{SITE_CONTENT.hero.countdownLabel}</span>
               </div>
-              <span>ANGKATAN &apos;27</span>
+              <span className="text-[#D4B987]">ANGKATAN &apos;27</span>
             </div>
 
             <div className="mt-3 flex items-baseline justify-between gap-4 border-b border-white/10 pb-4">
@@ -278,9 +302,9 @@ export function BerandaClient({
               )}
             </div>
 
-            {/* 3 Inner Sub-cards inside Dark Bento Card (Matching iDraft 28/14/11 layout) */}
+            {/* 3 Inner Sub-cards inside Dark Bento Card */}
             <div className="mt-4 grid grid-cols-3 gap-2.5">
-              <div className="rounded-2xl border border-white/8 bg-[#22211F] px-3 py-3 text-center">
+              <div className="rounded-2xl border border-white/8 bg-[#22211F]/90 px-3 py-3 text-center transition-colors hover:border-[#D4B987]/35">
                 <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA] sm:text-2xl">
                   <CountUpNumber
                     value={stats.activeStudents + stats.movedStudents}
@@ -290,7 +314,7 @@ export function BerandaClient({
                   Keluarga Kelas
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-[#22211F] px-3 py-3 text-center">
+              <div className="rounded-2xl border border-white/8 bg-[#22211F]/90 px-3 py-3 text-center transition-colors hover:border-[#D4B987]/35">
                 <p className="font-mono text-xl font-bold tabular-nums text-[#F3F1EA] sm:text-2xl">
                   <CountUpNumber value={stats.totalMoments} />
                 </p>
@@ -298,7 +322,7 @@ export function BerandaClient({
                   Foto Momen
                 </p>
               </div>
-              <div className="rounded-2xl bg-[#F3F1EA] px-3 py-3 text-center text-[#141413]">
+              <div className="rounded-2xl bg-[#F3F1EA] px-3 py-3 text-center text-[#141413] shadow-xs transition-transform duration-200 hover:-translate-y-0.5">
                 <p className="font-mono text-xl font-bold tabular-nums sm:text-2xl">
                   <CountUpNumber
                     value={stats.totalDreams + stats.totalWorks}
@@ -309,10 +333,19 @@ export function BerandaClient({
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Tombol Aksi Utama */}
-          <div className="hero-reveal mt-5 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: MOTION_DISTANCE.sm }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: MOTION_DURATION.medium,
+              delay: 0.34,
+              ease: MOTION_EASE.luxury,
+            }}
+            className="mt-5 grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3"
+          >
             <EditorialLinkButton
               href="/galeri"
               variant="primary"
@@ -332,64 +365,77 @@ export function BerandaClient({
               <Users className="size-4 shrink-0 text-foreground" />
               <span className="truncate">{SITE_CONTENT.hero.ctaSecondary}</span>
             </EditorialLinkButton>
-          </div>
+          </motion.div>
         </div>
 
         {/* Kolom Kanan: Kamera Polaroid 3D Jadul Terbuka Menyatu Halaman */}
-        <div className="hero-reveal overflow-visible lg:col-span-7">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            duration: MOTION_DURATION.slow,
+            delay: 0.18,
+            ease: MOTION_EASE.luxury,
+          }}
+          className="overflow-visible lg:col-span-7"
+        >
           <DynamicPolaroidCamera3D moments={moments} />
-        </div>
+        </motion.div>
       </section>
 
-      {/* High-Contrast Architectural Editorial Ribbon (Inspired by Nexus Feature Strip) */}
-      <section
-        aria-label="Ringkasan Kelas XII PPLG 1"
-        className="mt-10 rounded-2xl border border-[#2A2926] bg-[#141413] px-5 py-4 text-[#F3F1EA] shadow-sm"
-      >
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:divide-x sm:divide-white/12">
-          <div className="sm:px-3 first:sm:pl-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
-              01 · ANGGOTA KELAS
-            </p>
-            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
-              <CountUpNumber value={stats.activeStudents} /> Aktif · +
-              {stats.movedStudents} Sahabat
-            </p>
-          </div>
+      {/* High-Contrast Architectural Editorial Ribbon */}
+      <EditorialReveal delay={0.08} className="mt-10">
+        <section
+          aria-label="Ringkasan Kelas XII PPLG 1"
+          className="darkroom-surface rounded-2xl px-5 py-4 text-[#F3F1EA]"
+        >
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:divide-x sm:divide-white/12">
+            <div className="sm:px-3 first:sm:pl-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+                01 · ANGGOTA KELAS
+              </p>
+              <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+                <CountUpNumber value={stats.activeStudents} /> Aktif · +
+                {stats.movedStudents} Sahabat
+              </p>
+            </div>
 
-          <div className="sm:px-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
-              02 · PENDIDIK MAKN
-            </p>
-            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
-              <CountUpNumber value={stats.totalTeachers} /> Guru Pembimbing
-            </p>
-          </div>
+            <div className="sm:px-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+                02 · PENDIDIK MAKN
+              </p>
+              <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+                <CountUpNumber value={stats.totalTeachers} /> Guru Pembimbing
+              </p>
+            </div>
 
-          <div className="sm:px-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
-              03 · ARSIP KORAN
-            </p>
-            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
-              <CountUpNumber value={stats.totalMoments} /> Dokumentasi X–XII
-            </p>
-          </div>
+            <div className="sm:px-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+                03 · ARSIP KORAN
+              </p>
+              <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+                <CountUpNumber value={stats.totalMoments} /> Dokumentasi X–XII
+              </p>
+            </div>
 
-          <div className="sm:px-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
-              04 · MASA DEPAN
-            </p>
-            <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
-              <CountUpNumber value={stats.totalDreams} /> Mimpi ·{" "}
-              <CountUpNumber value={stats.totalWorks} /> Karya
-            </p>
+            <div className="sm:px-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#A8A49B]">
+                04 · MASA DEPAN
+              </p>
+              <p className="mt-1 font-serif text-lg font-bold tabular-nums text-[#F3F1EA] sm:text-xl">
+                <CountUpNumber value={stats.totalDreams} /> Mimpi ·{" "}
+                <CountUpNumber value={stats.totalWorks} /> Karya
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </EditorialReveal>
+
+      <EditorialDivider label="DIREKTORI RUANG" className="mt-12" />
 
       {/* PETA HALAMAN KENANGAN — Asymmetric High-Contrast Bento Directory */}
       <React.Suspense fallback={null}>
-        <section aria-labelledby="map-heading" className="map-grid-section mt-12">
+        <section aria-labelledby="map-heading" className="map-grid-section mt-8">
           <div className="flex flex-col justify-between gap-3 border-b border-border pb-5 sm:flex-row sm:items-end">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -410,7 +456,6 @@ export function BerandaClient({
 
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-12">
             {dynamicMapCards.map((card, idx) => {
-              // Asymmetric Bento spans & dark anchor contrast (inspired by iDraft & Nexus)
               const spanClass =
                 idx === 0 || idx === 3
                   ? "md:col-span-7"
@@ -423,15 +468,16 @@ export function BerandaClient({
                 <TiltRevealCard
                   key={card.href}
                   delay={idx * MOTION_STAGGER.base}
-                  className={spanClass}
+                  className={`${spanClass} rounded-3xl`}
                 >
                   <a
                     href={card.href}
+                    data-cursor="BUKA"
                     onClick={(e) => handleNavigate(e, card.href)}
-                    className={`group flex h-full min-h-[210px] flex-col justify-between rounded-3xl border p-6 transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
+                    className={`group flex h-full min-h-[210px] flex-col justify-between rounded-3xl p-6 transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
                       isDarkCard
-                        ? "border-[#2A2926] bg-[#141413] text-[#F3F1EA] shadow-md hover:border-[#F3F1EA]/40"
-                        : "border-border bg-card text-foreground shadow-2xs hover:border-foreground/50 hover:shadow-md"
+                        ? "darkroom-surface text-[#F3F1EA] hover:border-[#D4B987]/45"
+                        : "editorial-card-lux border border-border bg-card text-foreground hover:border-foreground/50"
                     }`}
                   >
                     <div>
@@ -439,8 +485,8 @@ export function BerandaClient({
                         <span
                           className={`inline-flex h-8 items-center rounded-xl px-3 font-mono text-xs font-bold tabular-nums ${
                             isDarkCard
-                              ? "bg-[#22211F] text-[#F3F1EA] border border-white/10"
-                              : "bg-secondary text-foreground border border-border"
+                              ? "border border-white/10 bg-[#22211F] text-[#D4B987]"
+                              : "border border-border bg-secondary text-foreground"
                           }`}
                         >
                           {card.index}
@@ -461,7 +507,7 @@ export function BerandaClient({
                           {card.title}
                         </h3>
                         <span
-                          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-1 ${
+                          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-transform duration-300 ease-out group-hover:translate-x-0.5 group-hover:-rotate-12 ${
                             isDarkCard
                               ? "bg-[#F3F1EA] text-[#141413]"
                               : "bg-[#141413] text-[#F3F1EA] dark:bg-[#F3F1EA] dark:text-[#141413]"

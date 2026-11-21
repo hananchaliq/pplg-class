@@ -2,25 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { voteOnPoll } from "@/lib/db";
+import {
+  checkRateLimit,
+  getClientIp,
+  hashWithServerSalt,
+} from "@/lib/security";
 
 const VoteSchema = z.object({
-  pollId: z.string().min(1),
-  optionId: z.string().min(1),
+  pollId: z.string().min(1).max(120),
+  optionId: z.string().min(1).max(120),
   deviceToken: z.string().min(4).max(120),
 });
 
-function hashDeviceVoter(ip: string, deviceToken: string): string {
-  const raw = `${ip}::${deviceToken}`;
-  let h = 2166136261;
-  for (let i = 0; i < raw.length; i++) {
-    h ^= raw.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return `vh_${(h >>> 0).toString(16)}`;
-}
-
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`poll-vote:${ip}`, 20, 10 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Terlalu banyak permintaan suara. Coba lagi sebentar ya.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        }
+      );
+    }
+
     const body = await req.json();
     const parsed = VoteSchema.safeParse(body);
     if (!parsed.success) {
@@ -30,9 +40,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local-ip";
-    const voterHash = hashDeviceVoter(ip, parsed.data.deviceToken);
+    const voterHash = hashWithServerSalt(
+      `${ip}::${parsed.data.deviceToken}`,
+      "poll-vote"
+    );
 
     const result = await voteOnPoll(
       parsed.data.pollId,
@@ -46,7 +57,8 @@ export async function POST(req: NextRequest) {
 
     revalidatePath("/", "layout");
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[api/polls/vote] error:", err);
     return NextResponse.json(
       { ok: false, error: "Gagal menyimpan suara polling." },
       { status: 500 }
